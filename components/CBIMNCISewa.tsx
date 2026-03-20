@@ -1884,9 +1884,10 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
         if (weight >= 2 && weight < 3.5) amoxDose = '125mg (2.5ml syrup) twice daily';
         else if (weight >= 3.5 && weight < 5) amoxDose = '250mg (5ml syrup) twice daily';
         
-        treatments.push(`Give Amoxicillin for 5 days: ${amoxDose}`);
-        treatments.push('Teach mother to treat local infections at home');
-        treatments.push('Follow-up in 3 days');
+        treatments.push(`१) Amoxycillin ५ दिन सम्म खान दिनुहोस्: ${amoxDose}`);
+        treatments.push('२) आमालाई स्थानीय संक्रमणको घरमै उपचार गर्न सिकाउनुहोस्');
+        treatments.push('३) नवजात शिशुलाई घरमै स्याहार गर्न आमालाई सल्लाह दिनुहोस्');
+        treatments.push('४) ३ दिनमा फलो-अप (Follow-up) मा बोलाउनुहोस्');
       }
       if (classifications.includes('Pneumonia')) {
         treatments.push('१) Amoxycillin ७ दिनको लागि खान दिनुहोस्');
