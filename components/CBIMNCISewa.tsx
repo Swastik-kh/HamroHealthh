@@ -788,44 +788,59 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
               <span>३. पखाला (Diarrhea)</span>
               <span className="text-xs font-normal text-emerald-600">Booklet Page 15</span>
             </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">जलवियोजनका संकेतहरू (Dehydration Signs)</label>
-                {[
-                  'चटपटे, झिझिने (Restless, irritable)',
-                  'आँखा गडेको (Sunken eyes)',
-                  'पेटको छाला औंलाले तान्दा बिस्तारै फर्कने (Skin pinch goes back slowly)',
-                  'सुस्त वा बेहोस (Lethargic/Unconscious)',
-                  'छाला तान्दा धेरै ढिलो फर्कने (Skin pinch very slow)'
-                ].map(sign => (
-                  <label key={sign} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      checked={assessmentData.dehydrationSigns?.includes(sign)}
-                      onChange={(e) => {
-                        const current = assessmentData.dehydrationSigns || [];
-                        const next = e.target.checked ? [...current, sign] : current.filter((s: string) => s !== sign);
-                        setAssessmentData({...assessmentData, dehydrationSigns: next});
-                      }}
-                      className="rounded text-emerald-600 focus:ring-emerald-500"
-                    />
-                    {sign}
-                  </label>
-                ))}
-              </div>
-              <div className="space-y-3">
-                <Input label="पखाला लागेको दिन" type="number" value={assessmentData.diarrheaDays || ''} onChange={(e) => setAssessmentData({...assessmentData, diarrheaDays: e.target.value})} />
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    checked={assessmentData.bloodInStool}
-                    onChange={(e) => setAssessmentData({...assessmentData, bloodInStool: e.target.checked})}
-                    className="rounded text-red-600 focus:ring-red-500"
-                  />
-                  दिसामा रगत देखिएको (Blood in stool)
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-slate-700 mb-2">के बच्चालाई पखाला लागेको छ? (Does the child have diarrhea?)</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="hasDiarrheaInfant" checked={hasDiarrhea === true} onChange={() => setHasDiarrhea(true)} className="text-emerald-600 focus:ring-emerald-500" />
+                  <span>छ (Yes)</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="hasDiarrheaInfant" checked={hasDiarrhea === false} onChange={() => { setHasDiarrhea(false); setAssessmentData({...assessmentData, diarrheaDays: '', dehydrationSigns: [], bloodInStool: false}); }} className="text-emerald-600 focus:ring-emerald-500" />
+                  <span>छैन (No)</span>
                 </label>
               </div>
             </div>
+            {hasDiarrhea === true && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700">जलवियोजनका संकेतहरू (Dehydration Signs)</label>
+                  {[
+                    'चटपटे, झिझिने (Restless, irritable)',
+                    'आँखा गडेको (Sunken eyes)',
+                    'पेटको छाला औंलाले तान्दा बिस्तारै फर्कने (Skin pinch goes back slowly)',
+                    'सुस्त वा बेहोस (Lethargic/Unconscious)',
+                    'छाला तान्दा धेरै ढिलो फर्कने (Skin pinch very slow)'
+                  ].map(sign => (
+                    <label key={sign} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={assessmentData.dehydrationSigns?.includes(sign)}
+                        onChange={(e) => {
+                          const current = assessmentData.dehydrationSigns || [];
+                          const next = e.target.checked ? [...current, sign] : current.filter((s: string) => s !== sign);
+                          setAssessmentData({...assessmentData, dehydrationSigns: next});
+                        }}
+                        className="rounded text-emerald-600 focus:ring-emerald-500"
+                      />
+                      {sign}
+                    </label>
+                  ))}
+                </div>
+                <div className="space-y-3">
+                  <Input label="पखाला लागेको दिन" type="number" value={assessmentData.diarrheaDays || ''} onChange={(e) => setAssessmentData({...assessmentData, diarrheaDays: e.target.value})} />
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={assessmentData.bloodInStool}
+                      onChange={(e) => setAssessmentData({...assessmentData, bloodInStool: e.target.checked})}
+                      className="rounded text-red-600 focus:ring-red-500"
+                    />
+                    दिसामा रगत देखिएको (Blood in stool)
+                  </label>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Feeding / Weight */}
@@ -1615,11 +1630,11 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
         const someCount = dehydSigns.length;
         
         if (severeCount >= 2) {
-          classifications.push('Kada Jalabiyojan (Severe Dehydration)');
+          classifications.push('कडा जलवियोजन (Severe Dehydration)');
         } else if (someCount >= 2) {
-          classifications.push('Jalabiyojan (Some Dehydration)');
+          classifications.push('जलवियोजन (Some Dehydration)');
         } else {
-          classifications.push('Jalabiyojan Nabhayeko (No Dehydration)');
+          classifications.push('जलवियोजन नभएको (No Dehydration)');
         }
       }
 
@@ -1833,7 +1848,7 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
     if (classifications.length === 0) return null;
     
     if (moduleType === 'Infant') {
-      if (classifications.includes('Possible Serious Bacterial Infection (PSBI) or Very Severe Disease')) return 'Immediate';
+      if (classifications.includes('ब्याक्टेरियाको सम्भावित गम्भीर संक्रमण वा धेरै कडा रोग (Possible Serious Bacterial Infection)')) return 'Immediate';
       if (classifications.includes('Local Bacterial Infection')) return '3 days';
       if (classifications.includes('Jaundice') || classifications.includes('Severe Jaundice')) return '3 days';
       if (classifications.includes('Some Dehydration') || classifications.includes('Severe Dehydration')) return '2 days';
@@ -1853,18 +1868,16 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
 
     if (moduleType === 'Infant') {
       const weight = parseFloat(assessmentData.weight) || 0;
-      if (classifications.includes('Possible Serious Bacterial Infection (PSBI) or Very Severe Disease')) {
+      if (classifications.includes('ब्याक्टेरियाको सम्भावित गम्भीर संक्रमण वा धेरै कडा रोग (Possible Serious Bacterial Infection)')) {
         let gentDose = '';
         let ampDose = '';
         if (weight > 0) {
           gentDose = `${(weight * 5).toFixed(1)}mg (0.125ml/kg of 40mg/ml)`;
           ampDose = `${(weight * 50).toFixed(0)}mg (0.2ml/kg of 250mg/ml)`;
         }
-        treatments.push(`Give first dose of IM Gentamicin: ${gentDose}`);
-        treatments.push(`Give first dose of IM Ampicillin: ${ampDose}`);
-        treatments.push('Refer URGENTLY to hospital');
-        treatments.push('Prevent low blood sugar (breastfeed or sugar water)');
-        treatments.push('Keep infant warm');
+        treatments.push(`१) शिशुलाई IM Gentamycin (${gentDose}) र IM Ampicillin (${ampDose}) को पहिलो मात्रा दिनुहोस्`);
+        treatments.push('२) रगतमा चिनीको मात्रा कम हुन नदिन स्तनपानलाई निरन्तरता दिनुहोस्');
+        treatments.push('३) शिशुलाई तुरुन्त अस्पताल प्रेषण (Refer) गर्नुहोस्');
       }
       if (classifications.includes('Local Bacterial Infection')) {
         let amoxDose = '';
@@ -1874,6 +1887,11 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
         treatments.push(`Give Amoxicillin for 5 days: ${amoxDose}`);
         treatments.push('Teach mother to treat local infections at home');
         treatments.push('Follow-up in 3 days');
+      }
+      if (classifications.includes('Pneumonia')) {
+        treatments.push('१) Amoxycillin ७ दिनको लागि खान दिनुहोस्');
+        treatments.push('२) घरमै शिशुलाई स्याहार गर्नेबारे आमालाई परामर्श दिनुहोस्');
+        treatments.push('३) ३ दिन पछि फलो-अप (Follow-up) मा बोलाउनुहोस्');
       }
       if (classifications.includes('Severe Jaundice')) {
         treatments.push('Refer URGENTLY to hospital');
