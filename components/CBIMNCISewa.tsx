@@ -1572,25 +1572,26 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
       // PSBI and Pneumonia logic based on age
       const ageDays = currentPatient?.ageDays || 0;
       const breathingRate = parseFloat(assessmentData.breathingRate || '0');
-      const temperature = parseFloat(assessmentData.temperature || '0');
       
-      const hasOtherDangerSigns = (assessmentData.dangerSigns?.length > 0) || 
-                                  (temperature >= 37.5) ||
-                                  (temperature <= 35.5);
+      const dangerSignsList = assessmentData.generalDangerSigns || [];
+      const hasAnyOf8Signs = dangerSignsList.some(s => [
+        'काँप्ने (Convulsions)', 
+        'दूध चुस्न/निल्न नसक्ने (Unable to feed)', 
+        'सुस्त वा बेहोस (Lethargic/Unconscious)', 
+        'कोखा हान्ने (Severe chest in-drawing)', 
+        'नाक फुलाउने (Nasal flaring)', 
+        'कन्कने (Grunting)', 
+        'तालु फुलेको (Bulging fontanelle)',
+        'नाइँटो रातो भई छालासम्म फैलिएको (Umbilical redness spreading to skin)'
+      ].includes(s));
 
-      if (ageDays < 7) {
-        // 0-6 days
-        if (breathingRate >= 60 || hasOtherDangerSigns) {
-          classifications.push('ब्याक्टेरियाको सम्भावित गम्भीर संक्रमण वा धेरै कडा रोग (Possible Serious Bacterial Infection)');
-        }
-      } else {
-        // 7 to 59 days
-        if (breathingRate >= 60) {
-          classifications.push('Pneumonia');
-        }
-        if (hasOtherDangerSigns) {
-          classifications.push('ब्याक्टेरियाको सम्भावित गम्भीर संक्रमण वा धेरै कडा रोग (Possible Serious Bacterial Infection)');
-        }
+      const isAge7OrLess = ageDays <= 7;
+      const isRR60OrMore = breathingRate >= 60;
+
+      if (hasAnyOf8Signs || (isAge7OrLess && isRR60OrMore)) {
+        classifications.push('ब्याक्टेरियाको सम्भावित गम्भीर संक्रमण वा धेरै कडा रोग (Possible Serious Bacterial Infection)');
+      } else if (!isAge7OrLess && breathingRate >= 60) {
+        classifications.push('Pneumonia');
       }
       
       // Local Infection
