@@ -98,6 +98,7 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
   const [hasDiarrhea, setHasDiarrhea] = useState<boolean | null>(null);
   const [hasFever, setHasFever] = useState<boolean | null>(null);
   const [hasEarProblem, setHasEarProblem] = useState<boolean | null>(null);
+  const [hasJaundice, setHasJaundice] = useState<boolean | null>(null);
   const [tempF, setTempF] = useState('');
 
   useEffect(() => {
@@ -238,6 +239,7 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
     setHasDiarrhea(null);
     setHasFever(null);
     setHasEarProblem(null);
+    setHasJaundice(null);
     
     // Auto-select module based on age
     let isInfant = false;
@@ -313,6 +315,7 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
     setHasDiarrhea(!!record.assessmentData?.diarrheaDays || (record.assessmentData?.dehydrationSigns && record.assessmentData.dehydrationSigns.length > 0) || record.assessmentData?.bloodInStool);
     setHasFever(!!record.assessmentData?.temperature || !!record.assessmentData?.feverDays || (record.assessmentData?.feverSigns && record.assessmentData.feverSigns.length > 0));
     setHasEarProblem(!!record.assessmentData?.earPain || !!record.assessmentData?.earDischarge || !!record.assessmentData?.mastoidSwelling);
+    setHasJaundice(record.assessmentData?.jaundiceSigns && record.assessmentData.jaundiceSigns.length > 0);
     
     const data = record.assessmentData || {};
     setAssessmentData({
@@ -737,26 +740,43 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
               <span>२. कमलपित्त (Jaundice)</span>
               <span className="text-xs font-normal text-amber-600">Booklet Page 14</span>
             </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">कमलपित्तको अवस्था</label>
-                {['हत्केला र पैताला पहेंलो (Yellow palms/soles)', '२४ घण्टा भन्दा कमको शिशुमा कमलपित्त', 'कमलपित्त देखिएको (Jaundice present)'].map(sign => (
-                  <label key={sign} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      checked={assessmentData.jaundiceSigns?.includes(sign)}
-                      onChange={(e) => {
-                        const current = assessmentData.jaundiceSigns || [];
-                        const next = e.target.checked ? [...current, sign] : current.filter((s: string) => s !== sign);
-                        setAssessmentData({...assessmentData, jaundiceSigns: next});
-                      }}
-                      className="rounded text-amber-600 focus:ring-amber-500"
-                    />
-                    {sign}
-                  </label>
-                ))}
+            
+            <div className="mb-4">
+              <label className="text-sm font-medium text-slate-700 block mb-2">के कमलपित्त छ? (Is Jaundice present?)</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="hasJaundice" checked={hasJaundice === true} onChange={() => setHasJaundice(true)} className="text-amber-600" />
+                  <span>छ (Yes)</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="hasJaundice" checked={hasJaundice === false} onChange={() => { setHasJaundice(false); setAssessmentData({...assessmentData, jaundiceSigns: []}); }} className="text-amber-600" />
+                  <span>छैन (No)</span>
+                </label>
               </div>
             </div>
+
+            {hasJaundice === true && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700">कमलपित्तको अवस्था</label>
+                  {['हत्केला र पैताला पहेंलो (Yellow palms/soles)', '२४ घण्टा भन्दा कमको शिशुमा कमलपित्त', 'कमलपित्त देखिएको (Jaundice present)'].map(sign => (
+                    <label key={sign} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={assessmentData.jaundiceSigns?.includes(sign)}
+                        onChange={(e) => {
+                          const current = assessmentData.jaundiceSigns || [];
+                          const next = e.target.checked ? [...current, sign] : current.filter((s: string) => s !== sign);
+                          setAssessmentData({...assessmentData, jaundiceSigns: next});
+                        }}
+                        className="rounded text-amber-600 focus:ring-amber-500"
+                      />
+                      {sign}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Diarrhea */}
@@ -1561,7 +1581,7 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
       if (ageDays < 7) {
         // 0-6 days
         if (breathingRate >= 60 || hasOtherDangerSigns) {
-          classifications.push('Bacteriako Sambhabit Ghambhir Sankraman wa Dherai Kada Rog (Possible Serious Bacterial Infection)');
+          classifications.push('ब्याक्टेरियाको सम्भावित गम्भीर संक्रमण वा धेरै कडा रोग (Possible Serious Bacterial Infection)');
         }
       } else {
         // 7 to 59 days
@@ -1569,7 +1589,7 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
           classifications.push('Pneumonia');
         }
         if (hasOtherDangerSigns) {
-          classifications.push('Bacteriako Sambhabit Ghambhir Sankraman wa Dherai Kada Rog (Possible Serious Bacterial Infection)');
+          classifications.push('ब्याक्टेरियाको सम्भावित गम्भीर संक्रमण वा धेरै कडा रोग (Possible Serious Bacterial Infection)');
         }
       }
       
