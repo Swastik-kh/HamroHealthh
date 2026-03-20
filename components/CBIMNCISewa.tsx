@@ -669,69 +669,72 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
                     </label>
                   ))}
                 </div>
-                <div className="space-y-3">
-                  <Input 
-                    label="सासको दर (प्रति मिनेट)" 
-                    type="number"
-                    value={assessmentData.breathingRate || ''} 
-                    onChange={(e) => setAssessmentData({...assessmentData, breathingRate: e.target.value})} 
-                    placeholder="६० वा सोभन्दा बढी भए खतरा"
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input 
-                      label="तापक्रम (Celsius)" 
-                      type="number"
-                      step="0.1"
-                      value={assessmentData.temperature || ''} 
-                      onChange={(e) => {
-                        const c = e.target.value;
-                        setAssessmentData({...assessmentData, temperature: c});
-                        if (c && !isNaN(parseFloat(c))) {
-                          setTempF((parseFloat(c) * 9/5 + 32).toFixed(1));
-                        } else {
-                          setTempF('');
-                        }
-                      }} 
-                      placeholder="37.5+ (ज्वरो), <35.5 (चिसो)"
-                    />
-                    <Input 
-                      label="तापक्रम (Fahrenheit)" 
-                      type="number" 
-                      step="0.1" 
-                      value={tempF} 
-                      onChange={(e) => {
-                        const f = e.target.value;
-                        setTempF(f);
-                        if (f && !isNaN(parseFloat(f))) {
-                          const c = ((parseFloat(f) - 32) * 5/9).toFixed(1);
-                          setAssessmentData({...assessmentData, temperature: c});
-                        } else {
-                          setAssessmentData({...assessmentData, temperature: ''});
-                        }
-                      }} 
-                    />
-                  </div>
-                  <div className="space-y-2 pt-2">
-                    <label className="text-sm font-medium text-slate-700">स्थानीय संक्रमण (Local Infection)</label>
-                    {['नाइँटो रातो भएको (Red umbilicus)', 'नाइँटोबाट पीप बगेको (Umbilical pus)', 'छालामा धेरै फोकाहरू (Skin pustules)'].map(sign => (
-                      <label key={sign} className="flex items-center gap-2 text-xs cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          checked={assessmentData.localInfection?.includes(sign)}
-                          onChange={(e) => {
-                            const current = assessmentData.localInfection || [];
-                            const next = e.target.checked ? [...current, sign] : current.filter((s: string) => s !== sign);
-                            setAssessmentData({...assessmentData, localInfection: next});
-                          }}
-                          className="rounded text-blue-600 focus:ring-blue-500"
-                        />
-                        {sign}
-                      </label>
-                    ))}
-                  </div>
-                </div>
               </div>
             )}
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div className="space-y-3">
+                <Input 
+                  label="सासको दर (प्रति मिनेट)" 
+                  type="number"
+                  value={assessmentData.breathingRate || ''} 
+                  onChange={(e) => setAssessmentData({...assessmentData, breathingRate: e.target.value})} 
+                  placeholder="६० वा सोभन्दा बढी भए खतरा"
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <Input 
+                    label="तापक्रम (Celsius)" 
+                    type="number"
+                    step="0.1"
+                    value={assessmentData.temperature || ''} 
+                    onChange={(e) => {
+                      const c = e.target.value;
+                      setAssessmentData({...assessmentData, temperature: c});
+                      if (c && !isNaN(parseFloat(c))) {
+                        setTempF((parseFloat(c) * 9/5 + 32).toFixed(1));
+                      } else {
+                        setTempF('');
+                      }
+                    }} 
+                    placeholder="37.5+ (ज्वरो), <35.5 (चिसो)"
+                  />
+                  <Input 
+                    label="तापक्रम (Fahrenheit)" 
+                    type="number" 
+                    step="0.1" 
+                    value={tempF} 
+                    onChange={(e) => {
+                      const f = e.target.value;
+                      setTempF(f);
+                      if (f && !isNaN(parseFloat(f))) {
+                        const c = ((parseFloat(f) - 32) * 5/9).toFixed(1);
+                        setAssessmentData({...assessmentData, temperature: c});
+                      } else {
+                        setAssessmentData({...assessmentData, temperature: ''});
+                      }
+                    }} 
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700">स्थानीय संक्रमण (Local Infection)</label>
+                {['नाइँटो रातो भएको (Red umbilicus)', 'नाइँटोबाट पीप बगेको (Umbilical pus)', 'छालामा धेरै फोकाहरू (Skin pustules)'].map(sign => (
+                  <label key={sign} className="flex items-center gap-2 text-xs cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={assessmentData.localInfection?.includes(sign)}
+                      onChange={(e) => {
+                        const current = assessmentData.localInfection || [];
+                        const next = e.target.checked ? [...current, sign] : current.filter((s: string) => s !== sign);
+                        setAssessmentData({...assessmentData, localInfection: next});
+                      }}
+                      className="rounded text-blue-600 focus:ring-blue-500"
+                    />
+                    {sign}
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Jaundice */}
