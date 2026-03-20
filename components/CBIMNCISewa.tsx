@@ -2450,9 +2450,9 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
                     <div className="flex flex-wrap gap-2">
                       {suggestedClassifications.map((cls, idx) => (
                         <span key={idx} className={`px-3 py-1 rounded-full text-xs font-bold border ${
-                          cls.includes('Severe') || cls.includes('PSBI') || cls.includes('Disease') || cls.includes('CONFIRMED')
+                          cls.includes('Severe') || cls.includes('PSBI') || cls.includes('Disease') || cls.includes('CONFIRMED') || cls.includes('ब्याक्टेरियाको सम्भावित गम्भीर संक्रमण')
                             ? 'bg-red-100 text-red-700 border-red-200' 
-                            : cls.includes('Some') || cls.includes('Pneumonia') || cls.includes('Jaundice') || cls.includes('POSSIBLE') || cls.includes('LATENT') || cls.includes('EXPOSED') || cls.includes('SUSPECTED') || cls.includes('REQUIRED')
+                            : cls.includes('Some') || cls.includes('Pneumonia') || cls.includes('Jaundice') || cls.includes('POSSIBLE') || cls.includes('LATENT') || cls.includes('EXPOSED') || cls.includes('SUSPECTED') || cls.includes('REQUIRED') || cls.includes('Local Bacterial Infection')
                               ? 'bg-amber-100 text-amber-700 border-amber-200'
                               : 'bg-emerald-100 text-emerald-700 border-emerald-200'
                         }`}>
