@@ -62,7 +62,7 @@ export const PrescriptionPrint: React.FC<PrescriptionPrintProps> = ({ record, ge
           </div>
         </div>
         <div style={{ padding: '5px' }}>
-          <div>Provisional/Final Diagnosis :-</div>
+          <div>{cbimnciRecord ? 'Classification :-' : 'Provisional/Final Diagnosis :-'}</div>
           <div style={{ minHeight: '40px', fontWeight: 'bold' }}>{recordData?.diagnosis}</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
             <div>Wt.: {cbimnciRecord?.assessmentData?.weight ? `${cbimnciRecord.assessmentData.weight} kg` : ''}</div>
