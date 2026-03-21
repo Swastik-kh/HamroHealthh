@@ -1905,18 +1905,18 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
         const isOnlyEyeDischarge = assessmentData.localInfection?.length === 1 && assessmentData.localInfection.includes('आँखाबाट पिप बगेको (Eye discharge)');
 
         if (isOnlyEyeDischarge) {
-          treatments.push(`१) Amoxycillin ५ दिन सम्म खान दिनुहोस्: ${amoxDose}`);
+          treatments.push(` Amoxycillin ५ दिन सम्म खान दिनुहोस्: ${amoxDose}`);
           treatments.push('आँखामा रहेको पिपलाई मनतातो सफा पानीले सफा गर्नुहोस्। यो प्रक्रिया आँखाबाट पिप बग्न नरोकिएसम्म जारी राख्नुहोस्। पिप सफा गरिसकेपछि Ciprofloxacin Eye/Ear drop १ थोपा दिनको ४ पटक ७ दिनसम्म राख्नुहोस्');
-          treatments.push('३ दिनमा फलो-अप (Follow-up) मा बोलाउनुहोस्');
+          treatments.push(' दिनमा फलो-अप (Follow-up) मा बोलाउनुहोस्');
         } else {
-          treatments.push(`१) Amoxycillin ५ दिन सम्म खान दिनुहोस्: ${amoxDose}`);
-          treatments.push('२) हल्का तरिकाले फोकाको पिप र पत्रहरू दिनमा २ पटक ५ दिनसम्म साबुन पानीले सफा गर्नुहोस् र पखाल्नुहोस्');
-          treatments.push('३) घाउ सुक्खा पार्नुहोस्');
-          treatments.push('४) Gentian Violet ०.५% लगाउनुहोस्');
+          treatments.push(` Amoxycillin ५ दिन सम्म खान दिनुहोस्: ${amoxDose}`);
+          treatments.push(' हल्का तरिकाले फोकाको पिप र पत्रहरू दिनमा २ पटक ५ दिनसम्म साबुन पानीले सफा गर्नुहोस् र पखाल्नुहोस्');
+          treatments.push(' घाउ सुक्खा पार्नुहोस्');
+          treatments.push(' Gentian Violet ०.५% लगाउनुहोस्');
           if (assessmentData.localInfection?.includes('आँखाबाट पिप बगेको (Eye discharge)')) {
-            treatments.push('५) आँखामा रहेको पिपलाई मनतातो सफा पानीले सफा गर्नुहोस्। यो प्रक्रिया आँखाबाट पिप बग्न नरोकिएसम्म जारी राख्नुहोस्। पिप सफा गरिसकेपछि Ciprofloxacin Eye/Ear drop १ थोपा दिनको ४ पटक ७ दिनसम्म राख्नुहोस्');
+            treatments.push(' आँखामा रहेको पिपलाई मनतातो सफा पानीले सफा गर्नुहोस्। यो प्रक्रिया आँखाबाट पिप बग्न नरोकिएसम्म जारी राख्नुहोस्। पिप सफा गरिसकेपछि Ciprofloxacin Eye/Ear drop १ थोपा दिनको ४ पटक ७ दिनसम्म राख्नुहोस्');
           }
-          treatments.push('६) ३ दिनमा फलो-अप (Follow-up) मा बोलाउनुहोस्');
+          treatments.push(' ३ दिनमा फलो-अप (Follow-up) मा बोलाउनुहोस्');
         }
       }
       if (classifications.includes('Pneumonia')) {
@@ -1926,22 +1926,22 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
           const maxDose = (weight * 100) / 2;
           amoxDose = `${minDose.toFixed(0)}-${maxDose.toFixed(0)}mg twice daily`;
         }
-        treatments.push(`१) Amoxycillin ७ दिनको लागि खान दिनुहोस्: ${amoxDose}`);
-        treatments.push('२) घरमै शिशुलाई स्याहार गर्नेबारे आमालाई परामर्श दिनुहोस्');
-        treatments.push('३) ३ दिन पछि फलो-अप (Follow-up) मा बोलाउनुहोस्');
+        treatments.push(` Amoxycillin ७ दिनको लागि खान दिनुहोस्: ${amoxDose}`);
+        treatments.push(' घरमै शिशुलाई स्याहार गर्नेबारे आमालाई परामर्श दिनुहोस्');
+        treatments.push(' ३ दिन पछि फलो-अप (Follow-up) मा बोलाउनुहोस्');
       }
       if (classifications.includes('Low Birth Weight') || classifications.includes('Very Low Birth Weight')) {
         treatments.push('शिशुलाई न्यानो पारी राख्ने तरिका:');
-        treatments.push('१) सफा, नरम र सुख्खा कपडाले शिशुको शरीर पुछी दिने र बेर्ने');
-        treatments.push('२) आमाको छाती, पेटसँग शिशुलाई टाँसेर राख्ने (Kangaroo Mother Care)');
-        treatments.push('३) तुरुन्त स्तनपान सुरु गर्ने');
-        treatments.push('४) शिशु जन्मेको २४ घण्टासम्म ननुहाइदिने');
-        treatments.push('५) शिशुलाई न्यानो कपडाले टाउको समेत छोपेर बेर्ने');
-        treatments.push('६) सुत्ने बेलामा शिशुलाई आमासँगै टाँसेर सुताउने');
+        treatments.push(' सफा, नरम र सुख्खा कपडाले शिशुको शरीर पुछी दिने र बेर्ने');
+        treatments.push(' आमाको छाती, पेटसँग शिशुलाई टाँसेर राख्ने (Kangaroo Mother Care)');
+        treatments.push(' तुरुन्त स्तनपान सुरु गर्ने');
+        treatments.push(' शिशु जन्मेको २४ घण्टासम्म ननुहाइदिने');
+        treatments.push(' शिशुलाई न्यानो कपडाले टाउको समेत छोपेर बेर्ने');
+        treatments.push(' सुत्ने बेलामा शिशुलाई आमासँगै टाँसेर सुताउने');
         treatments.push('१ घण्टा पछि पुनर्मूल्यांकन गर्नुहोस्:');
-        treatments.push('१) ब्याक्टेरियाको सम्भावित संक्रमणको लागि जाँच गर्नुहोस्');
-        treatments.push('२) यदि संक्रमणका कुनै लक्षण छैनन् र तापक्रम सामान्य छ भने शिशुको स्याहारलाई निरन्तरता दिन आमालाई सल्लाह दिनुहोस्');
-        treatments.push('३) १४ दिनमा अनुगमनको लागि बोलाउनुहोस्');
+        treatments.push(' ब्याक्टेरियाको सम्भावित संक्रमणको लागि जाँच गर्नुहोस्');
+        treatments.push(' यदि संक्रमणका कुनै लक्षण छैनन् र तापक्रम सामान्य छ भने शिशुको स्याहारलाई निरन्तरता दिन आमालाई सल्लाह दिनुहोस्');
+        treatments.push(' १४ दिनमा अनुगमनको लागि बोलाउनुहोस्');
       }
       if (assessmentData.feedingProblems?.includes('मुखभित्र घाउ वा सेता दागहरू (Thrush)')) {
         treatments.push('अैालाको टुप्पामा सफा लुगा बेर्ने र नुन पानीले भिजाएर मुखभित्रको घाउ दिनमा ४ पटक ७ दिनसम्म पुछ्नुहोस्, आधा शक्तिको जेन्सियन भायलेट (Gentian Violet) ०.२५% वा क्लोट्रिमाजोल (Clotrimazole) माउथ पेन्ट दिनमा ४ पटक ७ दिनसम्म घाउमा लगाउनुहोस्।');
@@ -1978,25 +1978,25 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
         const sucklingNotEffective = assessmentData.suckling === 'Not Effective' || assessmentData.suckling === 'Not at all';
         
         if (attachmentNotGood || sucklingNotEffective) {
-          treatments.push('१) स्तन सम्पर्क राम्रो छैन र प्रभावकारी रुपले स्तन चुसेको छैन भने सही आसन र स्तन सम्पर्क बारे आमालाई सिकाउनुहोस्');
-          treatments.push('२) यदि स्तन सम्पर्क तुरुन्तै हुन नसकेको अवस्था छ भने आमालाई दूध निचोरेर कपबाट शिशुलाई खुवाउन सिकाउनुहोस्');
+          treatments.push(' स्तन सम्पर्क राम्रो छैन र प्रभावकारी रुपले स्तन चुसेको छैन भने सही आसन र स्तन सम्पर्क बारे आमालाई सिकाउनुहोस्');
+          treatments.push(' यदि स्तन सम्पर्क तुरुन्तै हुन नसकेको अवस्था छ भने आमालाई दूध निचोरेर कपबाट शिशुलाई खुवाउन सिकाउनुहोस्');
         }
         
         if (assessmentData.feedingProblems?.includes('२४ घण्टामा १० पटक भन्दा कम स्तनपान')) {
-          treatments.push('३) यदि स्तनपान २४ घण्टामा १० पटक भन्दा कम गराएको रहेछ भने आमालाई पटक बढाउन सल्लाह दिनुहोस् र बच्चाले चाहेको खण्डमा र चाहे जति दिनमा र राति पनि शिशुलाई स्तनपान गराउन सल्लाह दिनुहोस्');
+          treatments.push(' यदि स्तनपान २४ घण्टामा १० पटक भन्दा कम गराएको रहेछ भने आमालाई पटक बढाउन सल्लाह दिनुहोस् र बच्चाले चाहेको खण्डमा र चाहे जति दिनमा र राति पनि शिशुलाई स्तनपान गराउन सल्लाह दिनुहोस्');
         }
         
         if (assessmentData.feedingProblems?.includes('थप खाना वा झोल दिने गरेको')) {
-          treatments.push('४) यदि स्तनपान बाहेक अरु खानेकुरा वा झोल कुरा खुवाउने गरेको रहेछ भने त्यस किसिमको खाना घटाउन र झोलकुरा खान दिँदा कप प्रयोग गर्न र स्तनपान बढाउन सल्लाह दिनुहोस्');
+          treatments.push(' यदि स्तनपान बाहेक अरु खानेकुरा वा झोल कुरा खुवाउने गरेको रहेछ भने त्यस किसिमको खाना घटाउन र झोलकुरा खान दिँदा कप प्रयोग गर्न र स्तनपान बढाउन सल्लाह दिनुहोस्');
         }
         
         if (assessmentData.suckling === 'Not at all') {
-          treatments.push('५) यदि स्तनपान पट्टकै नगराउने गरेको छ भने स्तनपानको लागि परामर्श लिने ठाउँमा जाँच्न प्रेषण गर्नुहोस्, स्तनपानको सट्टामा दिइने दूध सही तरिकाले तयार गर्न र कपले खुवाउन सल्लाह दिनुहोस्');
+          treatments.push(' यदि स्तनपान पट्टकै नगराउने गरेको छ भने स्तनपानको लागि परामर्श लिने ठाउँमा जाँच्न प्रेषण गर्नुहोस्, स्तनपानको सट्टामा दिइने दूध सही तरिकाले तयार गर्न र कपले खुवाउन सल्लाह दिनुहोस्');
         }
 
-        treatments.push('६) शिशुलाई घरमा कसरी खुवाउने र न्यानो बनाइराख्ने भन्ने बारेमा सल्लाह दिनुहोस्');
-        treatments.push('७) घरमा शिशुलाई हेरचाह गर्न आमालाई सल्लाह दिनुहोस्');
-        treatments.push('८) खाना सम्बन्धी समस्याको लागि ३ दिनमा अनुगमनको लागि बोलाउनुहोस्');
+        treatments.push(' शिशुलाई घरमा कसरी खुवाउने र न्यानो बनाइराख्ने भन्ने बारेमा सल्लाह दिनुहोस्');
+        treatments.push(' घरमा शिशुलाई हेरचाह गर्न आमालाई सल्लाह दिनुहोस्');
+        treatments.push(' खाना सम्बन्धी समस्याको लागि ३ दिनमा अनुगमनको लागि बोलाउनुहोस्');
       }
     } else {
       const weight = parseFloat(assessmentData.weight) || 0;
