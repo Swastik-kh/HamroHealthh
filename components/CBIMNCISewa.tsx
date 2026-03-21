@@ -1708,6 +1708,14 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
           classifications.push('Low Birth Weight');
         }
       }
+
+      if (!classifications.includes('Very Low Birth Weight') && 
+          !classifications.includes('Feeding Problem') && 
+          !classifications.includes('Low Birth Weight') &&
+          !classifications.includes('No Feeding Problem') &&
+          !classifications.includes('No Feeding Problem and Normal Weight')) {
+        classifications.push('No Feeding Problem');
+      }
     } else {
       // Child
       // General Danger Signs
@@ -1960,6 +1968,18 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
         treatments.push(`१) Amoxycillin ७ दिनको लागि खान दिनुहोस्: ${amoxDose}`);
         treatments.push('२) घरमै शिशुलाई स्याहार गर्नेबारे आमालाई परामर्श दिनुहोस्');
         treatments.push('३) ३ दिन पछि फलो-अप (Follow-up) मा बोलाउनुहोस्');
+      }
+      if (classifications.includes('Low Birth Weight') || classifications.includes('Very Low Birth Weight')) {
+        treatments.push('शिशुलाई न्यानो पारी राख्ने तरिका:');
+        treatments.push('१) सफा, नरम र सुख्खा कपडाले शिशुको शरीर पुछी दिने र बेर्ने');
+        treatments.push('२) आमाको छाती, पेटसँग शिशुलाई टाँसेर राख्ने (Kangaroo Mother Care)');
+        treatments.push('३) तुरुन्त स्तनपान सुरु गर्ने');
+        treatments.push('४) शिशु जन्मेको २४ घण्टासम्म ननुहाइदिने');
+        treatments.push('५) शिशुलाई न्यानो कपडाले टाउको समेत छोपेर बेर्ने');
+        treatments.push('६) सुत्ने बेलामा शिशुलाई आमासँगै टाँसेर सुताउने');
+        treatments.push('१ घण्टा पछि पुनर्मूल्यांकन गर्नुहोस्:');
+        treatments.push('१) ब्याक्टेरियाको सम्भावित संक्रमणको लागि जाँच गर्नुहोस्');
+        treatments.push('२) यदि संक्रमणका कुनै लक्षण छैनन् र तापक्रम सामान्य छ भने शिशुको स्याहारलाई निरन्तरता दिन आमालाई सल्लाह दिनुहोस्');
       }
       if (classifications.includes('Thrush')) {
         treatments.push('१) औंलाको टुप्पामा सफा लुगा बेर्ने र नुन पानीले भिजाएर मुख भित्रको घाउ दिनमा ४ पटक ७ दिनसम्म पुछ्नुहोस्');
@@ -2540,9 +2560,9 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
                     <div className="flex flex-wrap gap-2">
                       {suggestedClassifications.map((cls, idx) => (
                         <span key={idx} className={`px-3 py-1 rounded-full text-xs font-bold border ${
-                          cls.includes('Severe') || cls.includes('PSBI') || cls.includes('Disease') || cls.includes('CONFIRMED') || cls.includes('ब्याक्टेरियाको सम्भावित गम्भीर संक्रमण')
+                          cls.includes('Severe') || cls.includes('PSBI') || cls.includes('Disease') || cls.includes('CONFIRMED') || cls.includes('ब्याक्टेरियाको सम्भावित गम्भीर संक्रमण') || cls.includes('Very Low Birth Weight')
                             ? 'bg-red-100 text-red-700 border-red-200' 
-                            : cls.includes('Some') || cls.includes('Pneumonia') || cls.includes('Jaundice') || cls.includes('POSSIBLE') || cls.includes('LATENT') || cls.includes('EXPOSED') || cls.includes('SUSPECTED') || cls.includes('REQUIRED') || cls.includes('Local Bacterial Infection')
+                            : cls.includes('Some') || cls.includes('Pneumonia') || cls.includes('Jaundice') || cls.includes('POSSIBLE') || cls.includes('LATENT') || cls.includes('EXPOSED') || cls.includes('SUSPECTED') || cls.includes('REQUIRED') || cls.includes('Local Bacterial Infection') || cls.includes('Low Birth Weight') || (cls.includes('Feeding Problem') && !cls.includes('No Feeding Problem'))
                               ? 'bg-amber-100 text-amber-700 border-amber-200'
                               : 'bg-emerald-100 text-emerald-700 border-emerald-200'
                         }`}>
