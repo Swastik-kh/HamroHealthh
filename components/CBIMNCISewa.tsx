@@ -119,6 +119,24 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
     }
   }, [assessmentData.dehydrationSigns]);
 
+  useEffect(() => {
+    const feedingProblems = assessmentData.feedingProblems || [];
+    const hasThrush = feedingProblems.includes('मुखभित्र घाउ वा सेता दागहरू (Thrush)');
+    const thrushAdvice = 'आउलाको टुप्पामा सफा लुगा बेर्ने र नुन पानीले भिजाएर मुखभित्रको घाउ दिनमा ४ पटक ७ दिनसम्म पुछ्नुहोस्, आधा शक्तिको जेन्सियन भायलेट (Gentian Violet) ०.२५% वा क्लोट्रिमाजोल (Clotrimazole) माउथ पेन्ट दिनमा ४ पटक ७ दिनसम्म घाउमा लगाउनुहोस्।';
+    
+    setCbimnciData(prev => {
+      const currentAdvice = prev.advice || '';
+      const hasAdvice = currentAdvice.includes(thrushAdvice);
+      
+      if (hasThrush && !hasAdvice) {
+        return { ...prev, advice: currentAdvice ? `${currentAdvice}\n${thrushAdvice}` : thrushAdvice };
+      } else if (!hasThrush && hasAdvice) {
+        return { ...prev, advice: currentAdvice.replace(thrushAdvice, '').trim() };
+      }
+      return prev;
+    });
+  }, [assessmentData.feedingProblems]);
+
   const medicineSuggestions = useMemo(() => {
     const defaultMedicines = [
       'Amoxicillin DT 125mg',
@@ -610,6 +628,31 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
   const handlePrint = useReactToPrint({
     contentRef: printRef,
     documentTitle: `CBIMNCI-${currentPatient?.uniquePatientId}`,
+    onBeforePrint: () => {
+      return new Promise<void>((resolve) => {
+        const images = printRef.current?.querySelectorAll('img');
+        if (images && images.length > 0) {
+          let loadedCount = 0;
+          images.forEach((img) => {
+            if (img.complete) {
+              loadedCount++;
+            } else {
+              img.onload = () => {
+                loadedCount++;
+                if (loadedCount === images.length) resolve();
+              };
+              img.onerror = () => {
+                loadedCount++;
+                if (loadedCount === images.length) resolve();
+              };
+            }
+          });
+          if (loadedCount === images.length) resolve();
+        } else {
+          resolve();
+        }
+      });
+    }
   });
 
   const filteredServices = serviceItems?.filter(item => 
@@ -860,9 +903,9 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
                     </p>
                   </div>
                 )}
-                <label className="text-sm font-medium text-slate-700 block">स्तनपानको अवस्था</label>
+                <label className="text-sm font-medium text-slate-700 block">स्तनपान वा बोतलबाट खुवाउने अवस्था</label>
                 <div className="space-y-1">
-                  {['२४ घण्टामा १० पटक भन्दा कम स्तनपान', 'थप खाना वा झोल दिने गरेको', 'स्तनपान गराउन गाह्रो भएको'].map(sign => (
+                  {['२४ घण्टामा १० पटक भन्दा कम स्तनपान', 'थप खाना वा झोल दिने गरेको', 'स्तनपान गराउन गाह्रो भएको', 'मुखभित्र घाउ वा सेता दागहरू (Thrush)'].map(sign => (
                     <label key={sign} className="flex items-center gap-2 text-xs cursor-pointer">
                       <input 
                         type="checkbox" 
@@ -1869,30 +1912,47 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
     if (moduleType === 'Infant') {
       const weight = parseFloat(assessmentData.weight) || 0;
       if (classifications.includes('ब्याक्टेरियाको सम्भावित गम्भीर संक्रमण वा धेरै कडा रोग (Possible Serious Bacterial Infection)')) {
-        let gentDose = '';
-        let ampDose = '';
         if (weight > 0) {
-          gentDose = `${(weight * 5).toFixed(1)}mg (0.125ml/kg of 40mg/ml)`;
-          ampDose = `${(weight * 50).toFixed(0)}mg (0.2ml/kg of 250mg/ml)`;
+          const gentDose = `${(weight * 5).toFixed(1)}mg (0.125ml/kg of 40mg/ml)`;
+          const ampDose = `${(weight * 50).toFixed(0)}mg (0.2ml/kg of 250mg/ml)`;
+          treatments.push(`१) शिशुलाई IM Gentamycin को पहिलो मात्रा दिनुहोस्: ${gentDose}`);
+          treatments.push(`२) शिशुलाई IM Ampicillin को पहिलो मात्रा दिनुहोस्: ${ampDose}`);
+          treatments.push('३) रगतमा चिनीको मात्रा कम हुन नदिन स्तनपानलाई निरन्तरता दिनुहोस्');
+          treatments.push('४) शिशुलाई तुरुन्त अस्पताल प्रेषण (Refer) गर्नुहोस्');
+        } else {
+          treatments.push('१) शिशुको तौल प्रविष्ट गर्नुहोस् (Gentamycin र Ampicillin को मात्रा गणना गर्न)');
+          treatments.push('२) रगतमा चिनीको मात्रा कम हुन नदिन स्तनपानलाई निरन्तरता दिनुहोस्');
+          treatments.push('३) शिशुलाई तुरुन्त अस्पताल प्रेषण (Refer) गर्नुहोस्');
         }
-        treatments.push(`१) शिशुलाई IM Gentamycin (${gentDose}) र IM Ampicillin (${ampDose}) को पहिलो मात्रा दिनुहोस्`);
-        treatments.push('२) रगतमा चिनीको मात्रा कम हुन नदिन स्तनपानलाई निरन्तरता दिनुहोस्');
-        treatments.push('३) शिशुलाई तुरुन्त अस्पताल प्रेषण (Refer) गर्नुहोस्');
       }
       if (classifications.includes('Local Bacterial Infection')) {
         let amoxDose = '';
-        if (weight >= 2 && weight < 3.5) amoxDose = '125mg (2.5ml syrup) twice daily';
-        else if (weight >= 3.5 && weight < 5) amoxDose = '250mg (5ml syrup) twice daily';
+        if (weight > 0) {
+          const minDose = (weight * 75) / 2;
+          const maxDose = (weight * 100) / 2;
+          amoxDose = `${minDose.toFixed(0)}-${maxDose.toFixed(0)}mg twice daily`;
+        }
         
         treatments.push(`१) Amoxycillin ५ दिन सम्म खान दिनुहोस्: ${amoxDose}`);
-        treatments.push('२) आमालाई स्थानीय संक्रमणको घरमै उपचार गर्न सिकाउनुहोस्');
-        treatments.push('३) नवजात शिशुलाई घरमै स्याहार गर्न आमालाई सल्लाह दिनुहोस्');
-        treatments.push('४) ३ दिनमा फलो-अप (Follow-up) मा बोलाउनुहोस्');
+        treatments.push('२) हल्का तरिकाले फोकाको पिप र पत्रहरू दिनमा २ पटक ५ दिनसम्म साबुन पानीले सफा गर्नुहोस् र पखाल्नुहोस्');
+        treatments.push('३) घाउ सुक्खा पार्नुहोस्');
+        treatments.push('४) Gentian Violet ०.५% लगाउनुहोस्');
+        treatments.push('५) ३ दिनमा फलो-अप (Follow-up) मा बोलाउनुहोस्');
       }
       if (classifications.includes('Pneumonia')) {
-        treatments.push('१) Amoxycillin ७ दिनको लागि खान दिनुहोस्');
+        let amoxDose = '';
+        if (weight > 0) {
+          const minDose = (weight * 75) / 2;
+          const maxDose = (weight * 100) / 2;
+          amoxDose = `${minDose.toFixed(0)}-${maxDose.toFixed(0)}mg twice daily`;
+        }
+        treatments.push(`१) Amoxycillin ७ दिनको लागि खान दिनुहोस्: ${amoxDose}`);
         treatments.push('२) घरमै शिशुलाई स्याहार गर्नेबारे आमालाई परामर्श दिनुहोस्');
         treatments.push('३) ३ दिन पछि फलो-अप (Follow-up) मा बोलाउनुहोस्');
+      }
+      if (classifications.includes('Thrush')) {
+        treatments.push('१) औंलाको टुप्पामा सफा लुगा बेर्ने र नुन पानीले भिजाएर मुख भित्रको घाउ दिनमा ४ पटक ७ दिनसम्म पुछ्नुहोस्');
+        treatments.push('२) आधा शक्ति (०.२५%) को Gentian Violet वा Clotrimazole mouth paint दिनमा ४ पटक ७ दिनसम्म घाउमा लगाउनुहोस्');
       }
       if (classifications.includes('Severe Jaundice')) {
         treatments.push('Refer URGENTLY to hospital');
