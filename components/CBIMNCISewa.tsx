@@ -28,6 +28,61 @@ const initialPrescriptionItem: PrescriptionItem = {
   instructions: ''
 };
 
+const initialAssessmentData = {
+  dangerSigns: [],
+  localInfection: [],
+  jaundiceSigns: [],
+  dehydrationSigns: [],
+  feedingProblems: [],
+  generalDangerSigns: [],
+  respiratorySigns: [],
+  feverSigns: [],
+  nutritionSigns: [],
+  immunization: [],
+  breathingRate: '',
+  temperature: '',
+  diarrheaDays: '',
+  weight: '',
+  muac: '',
+  coughDays: '',
+  feverDays: '',
+  earDischargeDays: '',
+  malariaRisk: 'None',
+  pallor: '',
+  attachment: '',
+  suckling: '',
+  earPain: false,
+  earDischarge: false,
+  earDischarge14Days: false,
+  mastoidSwelling: false,
+  bloodInStool: false,
+  choleraOutbreak: false,
+  hivStatus: false,
+  hivTestStatus: '',
+  motherHivStatus: '',
+  parotidSwellingOrLymphNodes: false,
+  isBreastfeeding: false,
+  stoppedBreastfeedingLessThan3Months: false,
+  tbContact: false,
+  tbSymptoms: [],
+  tbDiagnosis: false,
+  weightLoss: false,
+  fatigue: false
+};
+
+const initialCbimnciData: Partial<CBIMNCIRecord> = {
+  chiefComplaints: '',
+  diagnosis: '',
+  investigation: '',
+  prescriptions: [],
+  advice: '',
+  nextVisitDate: '',
+  isRefer: false,
+  isDeath: false,
+  isFollowup: false,
+  followupDays: 0
+};
+
 export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({ 
   serviceSeekerRecords = [], 
   cbimnciRecords = [], 
@@ -41,49 +96,8 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
   const [searchId, setSearchId] = useState('');
   const [currentPatient, setCurrentPatient] = useState<ServiceSeekerRecord | null>(null);
   const [moduleType, setModuleType] = useState<'Infant' | 'Child'>('Child');
-  const [assessmentData, setAssessmentData] = useState<any>({
-    dangerSigns: [],
-    localInfection: [],
-    jaundiceSigns: [],
-    dehydrationSigns: [],
-    feedingProblems: [],
-    generalDangerSigns: [],
-    respiratorySigns: [],
-    feverSigns: [],
-    nutritionSigns: [],
-    immunization: [],
-    breathingRate: '',
-    temperature: '',
-    diarrheaDays: '',
-    weight: '',
-    muac: '',
-    coughDays: '',
-    feverDays: '',
-    earDischargeDays: '',
-    malariaRisk: 'None',
-    pallor: '',
-    attachment: '',
-    suckling: '',
-    earPain: false,
-    earDischarge: false,
-    mastoidSwelling: false,
-    bloodInStool: false,
-    choleraOutbreak: false,
-    hivStatus: false,
-    parotidSwellingOrLymphNodes: false
-  });
-  const [cbimnciData, setCbimnciData] = useState<Partial<CBIMNCIRecord>>({
-    chiefComplaints: '',
-    diagnosis: '',
-    investigation: '',
-    prescriptions: [],
-    advice: '',
-    nextVisitDate: '',
-    isRefer: false,
-    isDeath: false,
-    isFollowup: false,
-    followupDays: 0
-  });
+  const [assessmentData, setAssessmentData] = useState<any>(initialAssessmentData);
+  const [cbimnciData, setCbimnciData] = useState<Partial<CBIMNCIRecord>>(initialCbimnciData);
   const [prescriptionItems, setPrescriptionItems] = useState<PrescriptionItem[]>([]);
   const [showPrescriptionForm, setShowPrescriptionForm] = useState(false);
   const [currentPrescription, setCurrentPrescription] = useState<PrescriptionItem>(initialPrescriptionItem);
@@ -269,58 +283,9 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
     }
     const module = isInfant ? 'Infant' : 'Child';
     setModuleType(module);
-    setAssessmentData({
-      dangerSigns: [],
-      localInfection: [],
-      jaundiceSigns: [],
-      dehydrationSigns: [],
-      feedingProblems: [],
-      generalDangerSigns: [],
-      respiratorySigns: [],
-      feverSigns: [],
-      nutritionSigns: [],
-      immunization: [],
-      breathingRate: '',
-      temperature: '',
-      diarrheaDays: '',
-      weight: '',
-      muac: '',
-      coughDays: '',
-      feverDays: '',
-      earDischargeDays: '',
-      malariaRisk: 'None',
-      pallor: '',
-      attachment: '',
-      suckling: '',
-      earPain: false,
-      earDischarge: false,
-      mastoidSwelling: false,
-      bloodInStool: false,
-      hivStatus: false,
-      parotidSwellingOrLymphNodes: false,
-      hivTestStatus: '',
-      motherHivStatus: '',
-      isBreastfeeding: false,
-      stoppedBreastfeedingLessThan3Months: false,
-      tbContact: false,
-      tbSymptoms: [],
-      tbDiagnosis: false,
-      weightLoss: false,
-      fatigue: false
-    });
+    setAssessmentData(initialAssessmentData);
 
-    setCbimnciData({
-      chiefComplaints: '',
-      diagnosis: '',
-      investigation: '',
-      prescriptions: [],
-      advice: '',
-      nextVisitDate: '',
-      isRefer: false,
-      isDeath: false,
-      isFollowup: false,
-      followupDays: 0
-    });
+    setCbimnciData(initialCbimnciData);
     setPrescriptionItems([]);
     setEditingRecordId(null);
     setTempF('');
@@ -570,57 +535,8 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
     onSaveRecord(newRecord);
     alert(editingRecordId ? 'CBIMNCI रेकर्ड अपडेट गरियो।' : 'CBIMNCI रेकर्ड सुरक्षित गरियो।');
     
-    setCbimnciData({
-      chiefComplaints: '',
-      diagnosis: '',
-      investigation: '',
-      prescriptions: [],
-      advice: '',
-      nextVisitDate: '',
-      isRefer: false,
-      isDeath: false,
-      isFollowup: false,
-      followupDays: 0
-    });
-    setAssessmentData({
-      dangerSigns: [],
-      localInfection: [],
-      jaundiceSigns: [],
-      dehydrationSigns: [],
-      feedingProblems: [],
-      generalDangerSigns: [],
-      respiratorySigns: [],
-      feverSigns: [],
-      nutritionSigns: [],
-      immunization: [],
-      breathingRate: '',
-      temperature: '',
-      diarrheaDays: '',
-      weight: '',
-      muac: '',
-      coughDays: '',
-      feverDays: '',
-      earDischargeDays: '',
-      malariaRisk: 'None',
-      pallor: '',
-      attachment: '',
-      suckling: '',
-      earPain: false,
-      earDischarge: false,
-      mastoidSwelling: false,
-      bloodInStool: false,
-      hivStatus: false,
-      parotidSwellingOrLymphNodes: false,
-      hivTestStatus: '',
-      motherHivStatus: '',
-      isBreastfeeding: false,
-      stoppedBreastfeedingLessThan3Months: false,
-      tbContact: false,
-      tbSymptoms: [],
-      tbDiagnosis: false,
-      weightLoss: false,
-      fatigue: false
-    });
+    setCbimnciData(initialCbimnciData);
+    setAssessmentData(initialAssessmentData);
     setPrescriptionItems([]);
     setEditingRecordId(null);
   };
@@ -1337,6 +1253,15 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
                     />
                     कानबाट पिप बग्ने (Ear discharge)
                   </label>
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={assessmentData.earDischarge14Days}
+                      onChange={(e) => setAssessmentData({...assessmentData, earDischarge14Days: e.target.checked})}
+                      className="rounded text-slate-600 focus:ring-slate-500"
+                    />
+                    कानबाट १४ दिन भन्दा बढी दिनदेखि पिप बगिरहेको (Ear discharge for 14 days or more)
+                  </label>
                   {assessmentData.earDischarge && (
                     <Input label="लगातार कति दिन देखि?" type="number" value={assessmentData.earDischargeDays || ''} onChange={(e) => setAssessmentData({...assessmentData, earDischargeDays: e.target.value})} />
                   )}
@@ -1564,8 +1489,8 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
                                          (zScore && parseFloat(zScore) < -3);
             
             const showTbAssessment = 
-              (coughDuration > 14) ||
-              (feverDuration > 14 && temp > 38) ||
+              (coughDuration >= 14) ||
+              (feverDuration >= 14 && temp > 38) ||
               (assessmentData.weightLoss) ||
               (isSevereMalnutrition) ||
               (assessmentData.fatigue);
@@ -1601,7 +1526,7 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
                   
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700">क्षयरोगका लक्षणहरू (TB Symptoms)</label>
-                    {['२ हप्ता वा बढी समयदेखि खोकी (Cough > 2 weeks)', '२ हप्ता वा बढी समयदेखि ज्वरो (Fever > 2 weeks)', 'तौल नबढेको वा घटेको (Weight loss / Poor weight gain)'].map(sign => (
+                    {['२ हप्ता वा बढी समयदेखि खोकी (Cough >= 2 weeks)', '२ हप्ता वा बढी समयदेखि ज्वरो (Fever >= 2 weeks)', 'तौल नबढेको वा घटेको (Weight loss / Poor weight gain)'].map(sign => (
                       <label key={sign} className="flex items-center gap-2 text-sm cursor-pointer">
                         <input 
                           type="checkbox" 
@@ -1832,9 +1757,9 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
         classifications.push('Mastoiditis');
       } else if (assessmentData.earPain || (assessmentData.earDischarge && parseInt(assessmentData.earDischargeDays) < 14)) {
         classifications.push('Acute Ear Infection');
-      } else if (assessmentData.earDischarge && parseInt(assessmentData.earDischargeDays) >= 14) {
+      } else if (assessmentData.earDischarge14Days || (assessmentData.earDischarge && parseInt(assessmentData.earDischargeDays) >= 14)) {
         classifications.push('Chronic Ear Infection');
-      } else if (assessmentData.earDischarge === false && assessmentData.earPain === false) {
+      } else if (assessmentData.earDischarge === false && assessmentData.earPain === false && assessmentData.earDischarge14Days === false) {
         classifications.push('No Ear Infection');
       }
 
@@ -2168,6 +2093,17 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
         }
 
         treatments.push('Dry the ear by wicking if there is discharge');
+        treatments.push('Follow-up in 5 days');
+      }
+      if (classifications.includes('Mastoiditis')) {
+        const ampDose = weight > 0 ? `${(weight * 50).toFixed(0)}mg IM` : '50mg/kg IM';
+        treatments.push(`Give first dose of IM Ampicillin: ${ampDose}`);
+        treatments.push('Give one dose of Paracetamol for pain relief');
+        treatments.push('Refer URGENTLY to hospital/health facility');
+      }
+      if (classifications.includes('Chronic Ear Infection')) {
+        treatments.push('Dry the ear by wicking if there is discharge');
+        treatments.push('Treat with topical antibiotic drops (e.g. Ciprofloxacin) for 14 days');
         treatments.push('Follow-up in 5 days');
       }
       if (classifications.includes('Severe Acute Malnutrition')) {
@@ -2592,9 +2528,9 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
                     <div className="flex flex-wrap gap-2">
                       {suggestedClassifications.map((cls, idx) => (
                         <span key={idx} className={`px-3 py-1 rounded-full text-xs font-bold border ${
-                          cls.includes('Severe') || cls.includes('PSBI') || cls.includes('Disease') || cls.includes('CONFIRMED') || cls.includes('ब्याक्टेरियाको सम्भावित गम्भीर संक्रमण') || cls.includes('Very Low Birth Weight')
+                          cls.includes('Severe') || cls.includes('PSBI') || cls.includes('Disease') || cls.includes('CONFIRMED') || cls.includes('ब्याक्टेरियाको सम्भावित गम्भीर संक्रमण') || cls.includes('Very Low Birth Weight') || cls.includes('Mastoiditis')
                             ? 'bg-red-100 text-red-700 border-red-200' 
-                            : cls.includes('Some') || cls.includes('Pneumonia') || cls.includes('Jaundice') || cls.includes('POSSIBLE') || cls.includes('LATENT') || cls.includes('EXPOSED') || cls.includes('SUSPECTED') || cls.includes('REQUIRED') || cls.includes('Local Bacterial Infection') || cls.includes('Low Birth Weight') || (cls.includes('Feeding Problem') && !cls.includes('No Feeding Problem'))
+                            : cls.includes('Some') || (cls.includes('Pneumonia') && !cls.includes('No Pneumonia')) || cls.includes('Jaundice') || cls.includes('POSSIBLE') || cls.includes('LATENT') || cls.includes('EXPOSED') || cls.includes('SUSPECTED') || cls.includes('REQUIRED') || cls.includes('Local Bacterial Infection') || cls.includes('Low Birth Weight') || (cls.includes('Ear Infection') && !cls.includes('No Ear Infection')) || (cls.includes('Feeding Problem') && !cls.includes('No Feeding Problem'))
                               ? 'bg-amber-100 text-amber-700 border-amber-200'
                               : 'bg-emerald-100 text-emerald-700 border-emerald-200'
                         }`}>
@@ -2680,7 +2616,7 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">मुख्य समस्याहरू (Chief Complaints)</label>
                   <textarea
-                    value={cbimnciData.chiefComplaints}
+                    value={cbimnciData.chiefComplaints || ''}
                     onChange={(e) => setCbimnciData({...cbimnciData, chiefComplaints: e.target.value})}
                     className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 min-h-[80px]"
                     placeholder="बिरामीको मुख्य समस्याहरू लेख्नुहोस्..."
@@ -2691,7 +2627,7 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">वर्गीकरण (Classification)</label>
                     <textarea
-                      value={cbimnciData.diagnosis}
+                      value={cbimnciData.diagnosis || ''}
                       onChange={(e) => setCbimnciData({...cbimnciData, diagnosis: e.target.value})}
                       className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 min-h-[80px]"
                       placeholder="वर्गीकरण लेख्नुहोस्..."
@@ -2726,7 +2662,7 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
                        )}
                     </div>
                     <textarea
-                      value={cbimnciData.investigation}
+                      value={cbimnciData.investigation || ''}
                       onChange={(e) => setCbimnciData({...cbimnciData, investigation: e.target.value})}
                       className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 min-h-[80px]"
                     />
@@ -2818,7 +2754,7 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">सल्लाह / सुझाव (Advice)</label>
                   <textarea
-                    value={cbimnciData.advice}
+                    value={cbimnciData.advice || ''}
                     onChange={(e) => setCbimnciData({...cbimnciData, advice: e.target.value})}
                     className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 min-h-[60px]"
                   />
