@@ -1066,6 +1066,7 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
         currentUser={currentUser}
         serviceItems={serviceItems}
         inventoryItems={inventoryItems}
+        generalSettings={generalSettings}
       />;
       case 'prayogsala_sewa': return <PrayogsalaSewa 
         serviceSeekerRecords={serviceSeekerRecords}

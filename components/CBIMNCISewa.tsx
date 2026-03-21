@@ -1,12 +1,13 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Search, Save, Printer, Plus, Trash2, User, Stethoscope, Pill, History, Baby, Edit } from 'lucide-react';
-import { ServiceSeekerRecord, CBIMNCIRecord, PrescriptionItem, ServiceItem } from '../types/coreTypes';
+import { ServiceSeekerRecord, CBIMNCIRecord, PrescriptionItem, ServiceItem, OrganizationSettings } from '../types/coreTypes';
 import { InventoryItem } from '../types/inventoryTypes';
 import { Input } from './Input';
 // @ts-ignore
 import NepaliDate from 'nepali-date-converter';
 import { useReactToPrint } from 'react-to-print';
 import { growthCharts } from '../constants/growthCharts';
+import { PrescriptionPrint } from './PrescriptionPrint';
 
 interface CBIMNCISewaProps {
   serviceSeekerRecords?: ServiceSeekerRecord[];
@@ -17,6 +18,7 @@ interface CBIMNCISewaProps {
   currentUser: any;
   serviceItems?: ServiceItem[];
   inventoryItems?: InventoryItem[];
+  generalSettings: OrganizationSettings;
 }
 
 const initialPrescriptionItem: PrescriptionItem = {
@@ -91,7 +93,8 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
   currentFiscalYear,
   currentUser,
   serviceItems = [],
-  inventoryItems = []
+  inventoryItems = [],
+  generalSettings
 }) => {
   const [searchId, setSearchId] = useState('');
   const [currentPatient, setCurrentPatient] = useState<ServiceSeekerRecord | null>(null);
@@ -2914,201 +2917,28 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
       )}
 
       <div className="absolute -top-[9999px] left-0">
-        <div ref={printRef} className="p-8 bg-white text-slate-900 print:block">
-          <div className="flex justify-between items-start border-b-2 border-slate-800 pb-6 mb-6">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center border border-slate-300">
-                <Baby size={32} className="text-primary-600" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-slate-900">{currentUser?.organizationName || 'स्वास्थ्य संस्थाको नाम'}</h1>
-                <p className="text-sm text-slate-600">CBIMNCI Department</p>
-              </div>
-            </div>
-            <div className="text-right text-sm">
-              <p><strong>Date:</strong> {new NepaliDate().format('YYYY-MM-DD')}</p>
-            </div>
-          </div>
-
+        <div ref={printRef} className="p-0 bg-white text-slate-900 print:block">
           {currentPatient && (
-            <div className="grid grid-cols-2 gap-4 mb-6 bg-slate-50 p-4 rounded-lg border border-slate-200 text-sm">
-              <div><span className="font-bold text-slate-600">Name:</span> {currentPatient.name}</div>
-              <div><span className="font-bold text-slate-600">Age/Sex:</span> {currentPatient.age} / {currentPatient.gender}</div>
-              <div><span className="font-bold text-slate-600">PID:</span> {currentPatient.uniquePatientId}</div>
-            </div>
+            <PrescriptionPrint 
+              record={currentPatient} 
+              generalSettings={generalSettings}
+              cbimnciRecord={{
+                id: editingRecordId || 'new',
+                fiscalYear: '',
+                serviceSeekerId: currentPatient.id,
+                uniquePatientId: currentPatient.uniquePatientId,
+                visitDate: new NepaliDate().format('YYYY-MM-DD'),
+                moduleType: moduleType,
+                assessmentData: assessmentData,
+                chiefComplaints: cbimnciData.chiefComplaints,
+                diagnosis: cbimnciData.diagnosis,
+                investigation: cbimnciData.investigation,
+                prescriptions: prescriptionItems,
+                advice: cbimnciData.advice,
+                nextVisitDate: cbimnciData.nextVisitDate
+              }}
+            />
           )}
-
-          <div className="space-y-6 mb-8">
-            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-              <h4 className="font-bold text-slate-800 border-b border-slate-300 mb-2 pb-1">
-                Assessment ({moduleType === 'Infant' ? 'Infant up to 2m' : 'Child 2m-5y'})
-              </h4>
-              <div className="grid grid-cols-1 gap-y-4 text-sm">
-                {suggestedClassifications.length > 0 && (
-                  <div className="mb-4">
-                    <div className="mb-2">
-                      <span className="font-bold">Classifications:</span> {suggestedClassifications.join(', ')}
-                    </div>
-                    {suggestedTreatments.length > 0 && (
-                      <div className="text-xs text-slate-600 italic">
-                        <span className="font-bold not-italic">Recommended Actions:</span> {suggestedTreatments.join('; ')}
-                      </div>
-                    )}
-                    {suggestedNextVisit && (
-                      <div className="mt-2 text-xs font-bold text-primary-700">
-                        Follow-up suggested in: {suggestedNextVisit}
-                      </div>
-                    )}
-                  </div>
-                )}
-                {moduleType === 'Infant' ? (
-                  <>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div><span className="font-bold">Danger Signs:</span> {assessmentData.dangerSigns?.join(', ') || 'None'}</div>
-                      <div><span className="font-bold">Breathing Rate:</span> {assessmentData.breathingRate || '-'} bpm</div>
-                      <div><span className="font-bold">Temperature:</span> {assessmentData.temperature || '-'} °C</div>
-                      <div><span className="font-bold">Local Infection:</span> {assessmentData.localInfection?.join(', ') || 'None'}</div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 border-t pt-2">
-                      <div><span className="font-bold">Jaundice:</span> {assessmentData.jaundiceSigns?.join(', ') || 'None'}</div>
-                      <div><span className="font-bold">Diarrhea:</span> {assessmentData.diarrheaDays ? `${assessmentData.diarrheaDays} days` : '-'} {assessmentData.bloodInStool ? '(Blood)' : ''}</div>
-                      <div><span className="font-bold">Dehydration:</span> {assessmentData.dehydrationSigns?.join(', ') || 'None'}</div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 border-t pt-2">
-                      <div><span className="font-bold">Weight:</span> {assessmentData.weight || '-'} kg</div>
-                      <div><span className="font-bold">Feeding:</span> {assessmentData.feedingProblems?.join(', ') || 'Normal'}</div>
-                      <div><span className="font-bold">Attachment/Suckling:</span> {assessmentData.attachment || '-'}/{assessmentData.suckling || '-'}</div>
-                      <div><span className="font-bold">Immunization:</span> {assessmentData.immunization?.join(', ') || 'None'}</div>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div><span className="font-bold">General Danger Signs:</span> {assessmentData.generalDangerSigns?.join(', ') || 'None'}</div>
-                      <div><span className="font-bold">Cough/Breathing:</span> {assessmentData.coughDays ? `${assessmentData.coughDays} days` : '-'} {assessmentData.breathingRate ? `(${assessmentData.breathingRate} bpm)` : ''}</div>
-                      <div><span className="font-bold">Respiratory Signs:</span> {assessmentData.respiratorySigns?.join(', ') || 'None'}</div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 border-t pt-2">
-                      <div><span className="font-bold">Diarrhea:</span> {assessmentData.diarrheaDays ? `${assessmentData.diarrheaDays} days` : '-'} {assessmentData.bloodInStool ? '(Blood)' : ''}</div>
-                      <div><span className="font-bold">Dehydration:</span> {assessmentData.dehydrationSigns?.join(', ') || 'None'}</div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 border-t pt-2">
-                      <div><span className="font-bold">Fever:</span> {assessmentData.temperature || '-'} °C ({assessmentData.feverDays || '0'} days)</div>
-                      <div><span className="font-bold">Malaria Risk:</span> {assessmentData.malariaRisk || '-'}</div>
-                      <div><span className="font-bold">Fever Signs:</span> {assessmentData.feverSigns?.join(', ') || 'None'}</div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 border-t pt-2">
-                      <div><span className="font-bold">Ear Problem:</span> {assessmentData.earPain ? 'Pain' : ''} {assessmentData.earDischarge ? `Discharge (${assessmentData.earDischargeDays}d)` : ''} {assessmentData.mastoidSwelling ? 'Mastoid Swelling' : ''}</div>
-                      <div><span className="font-bold">Nutrition:</span> {assessmentData.weight || '-'}kg, MUAC: {assessmentData.muac || '-'}mm, Pallor: {assessmentData.pallor || '-'}</div>
-                      <div><span className="font-bold">Immunization:</span> {assessmentData.immunization?.join(', ') || 'None'}</div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {cbimnciData.chiefComplaints && (
-              <div>
-                <h4 className="font-bold text-slate-800 border-b border-slate-200 mb-2 pb-1">Chief Complaints</h4>
-                <p className="text-sm whitespace-pre-wrap">{cbimnciData.chiefComplaints}</p>
-              </div>
-            )}
-            
-            {/* Growth Monitoring Chart */}
-            <div className="border border-slate-300 p-4 rounded-lg">
-              <h4 className="font-bold text-slate-800 border-b border-slate-200 mb-2 pb-1">Growth Monitoring Chart</h4>
-              <img 
-                src={currentPatient?.gender === 'Male' ? growthCharts.Male : growthCharts.Female}
-                alt="Growth Monitoring Chart" 
-                className="w-full h-auto object-contain border border-slate-200 rounded"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-
-            {/* Nutrition and Breastfeeding Advice */}
-            <div className="border border-blue-300 p-4 rounded-lg bg-blue-50">
-              <h4 className="font-bold text-blue-800 border-b border-blue-200 mb-2 pb-1">पोषण तथा स्तनपान सम्बन्धी सल्लाह (Nutrition & Breastfeeding Advice)</h4>
-              
-              {/* Feeding Chart */}
-              <div className="mb-4">
-                <h5 className="font-bold text-blue-700 text-sm mb-1">खाना सम्बन्धि तालिका (Feeding Chart)</h5>
-                <img 
-                  src="https://raw.githubusercontent.com/swastikkhatiwada/imnci-assets/main/feeding-chart.png" 
-                  alt="Feeding Chart" 
-                  className="w-full h-auto object-contain border border-blue-200 rounded"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-
-              {/* Breastfeeding Advice for infants < 2 months */}
-              {moduleType === 'Infant' && (
-                <div className="flex gap-4 items-center">
-                  <img 
-                    src="https://picsum.photos/seed/breastfeeding/200/200" 
-                    alt="Breastfeeding" 
-                    className="w-24 h-24 rounded-full border border-blue-200"
-                    referrerPolicy="no-referrer"
-                  />
-                  <ul className="text-sm text-blue-900 list-disc pl-5 space-y-1">
-                    <li>शिशुलाई ६ महिनासम्म आमाको दूध मात्र खुवाउनुहोस्।</li>
-                    <li>दिनमा कम्तिमा ८-१२ पटक स्तनपान गराउनुहोस्।</li>
-                    <li>शिशुले दूध राम्रोसँग चुसेको सुनिश्चित गर्नुहोस्।</li>
-                    <li>आमाले पोषिलो खाना र प्रशस्त पानी पिउनुपर्छ।</li>
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            {cbimnciData.diagnosis && (
-              <div>
-                <h4 className="font-bold text-slate-800 border-b border-slate-200 mb-2 pb-1">Classification</h4>
-                <p className="text-sm whitespace-pre-wrap">{cbimnciData.diagnosis}</p>
-              </div>
-            )}
-
-            {cbimnciData.advice && (
-              <div>
-                <h4 className="font-bold text-slate-800 border-b border-slate-200 mb-2 pb-1">सल्लाह/सुझाव (Advice/Suggestion)</h4>
-                <p className="text-sm whitespace-pre-wrap">{cbimnciData.advice}</p>
-              </div>
-            )}
-          </div>
-
-          {prescriptionItems.length > 0 && (
-            <div className="mb-8">
-              <h4 className="font-bold text-slate-800 border-b-2 border-slate-800 mb-4 pb-1">Prescription</h4>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-300 text-left">
-                    <th className="py-2 font-bold">Medicine</th>
-                    <th className="py-2 font-bold">Dosage</th>
-                    <th className="py-2 font-bold">Freq.</th>
-                    <th className="py-2 font-bold">Duration</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {prescriptionItems.map((item, idx) => (
-                    <tr key={idx} className="border-b border-slate-100">
-                      <td className="py-3">{item.medicineName}</td>
-                      <td className="py-3">{item.dosage}</td>
-                      <td className="py-3">{item.frequency}</td>
-                      <td className="py-3">{item.duration}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          <div className="mt-auto pt-8">
-            <div className="flex justify-between items-end mt-12 pt-4 border-t border-slate-200">
-              <div className="text-xs text-slate-400">Printed on: {new Date().toLocaleString()}</div>
-              <div className="text-center">
-                <div className="h-12 border-b border-slate-300 w-48 mb-2"></div>
-                <p className="text-sm font-bold text-slate-700">Medical Officer Signature</p>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

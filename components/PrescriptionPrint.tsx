@@ -1,6 +1,6 @@
 import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { ServiceSeekerRecord, OrganizationSettings, OPDRecord } from '../types/coreTypes';
+import { ServiceSeekerRecord, OrganizationSettings, OPDRecord, CBIMNCIRecord } from '../types/coreTypes';
 // @ts-ignore
 import NepaliDate from 'nepali-date-converter';
 
@@ -8,10 +8,13 @@ interface PrescriptionPrintProps {
   record: ServiceSeekerRecord;
   generalSettings: OrganizationSettings;
   opdRecord?: OPDRecord;
+  cbimnciRecord?: CBIMNCIRecord;
 }
 
-export const PrescriptionPrint: React.FC<PrescriptionPrintProps> = ({ record, generalSettings, opdRecord }) => {
+export const PrescriptionPrint: React.FC<PrescriptionPrintProps> = ({ record, generalSettings, opdRecord, cbimnciRecord }) => {
   const stickerData = `ID: ${record.uniquePatientId}\nName: ${record.name}\nReg: ${record.registrationNumber}`;
+  
+  const recordData = opdRecord || cbimnciRecord;
 
   return (
     <div className="prescription-print" style={{ 
@@ -40,7 +43,7 @@ export const PrescriptionPrint: React.FC<PrescriptionPrintProps> = ({ record, ge
         </div>
       </div>
       <div style={{ textAlign: 'right', marginTop: '5px' }}>मिति : {(() => {
-        const dateStr = opdRecord?.visitDate || new NepaliDate().format('YYYY-MM-DD');
+        const dateStr = recordData?.visitDate || new NepaliDate().format('YYYY-MM-DD');
         const nepaliDigits = ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९'];
         return dateStr.replace(/[0-9]/g, (digit) => nepaliDigits[parseInt(digit)]);
       })()}</div>
@@ -60,11 +63,13 @@ export const PrescriptionPrint: React.FC<PrescriptionPrintProps> = ({ record, ge
         </div>
         <div style={{ padding: '5px' }}>
           <div>Provisional/Final Diagnosis :-</div>
-          <div style={{ minHeight: '40px', fontWeight: 'bold' }}>{opdRecord?.diagnosis}</div>
+          <div style={{ minHeight: '40px', fontWeight: 'bold' }}>{recordData?.diagnosis}</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
-            <div>Wt.:</div><div>BP:</div>
-            <div>Pulse:</div><div>Temp:</div>
-            <div>RR:</div>
+            <div>Wt.: {cbimnciRecord?.assessmentData?.weight ? `${cbimnciRecord.assessmentData.weight} kg` : ''}</div>
+            <div>BP: {cbimnciRecord?.assessmentData?.bp || ''}</div>
+            <div>Pulse: {cbimnciRecord?.assessmentData?.pulse || ''}</div>
+            <div>Temp: {cbimnciRecord?.assessmentData?.temperature ? `${cbimnciRecord.assessmentData.temperature} °C` : ''}</div>
+            <div>RR: {cbimnciRecord?.assessmentData?.breathingRate ? `${cbimnciRecord.assessmentData.breathingRate} bpm` : ''}</div>
           </div>
         </div>
       </div>
@@ -88,18 +93,40 @@ export const PrescriptionPrint: React.FC<PrescriptionPrintProps> = ({ record, ge
           <div><input type="checkbox" /> USG</div>
           <br/>
           <div><strong>Other Investigation :-</strong></div>
-          <div style={{ whiteSpace: 'pre-wrap', fontSize: '9pt' }}>{opdRecord?.investigation}</div>
+          <div style={{ whiteSpace: 'pre-wrap', fontSize: '9pt' }}>{recordData?.investigation}</div>
         </div>
         {/* Right Column: C/O and Rx */}
         <div style={{ padding: '5px' }}>
           <div style={{ borderBottom: '1px solid #000', minHeight: '100px' }}>
             <strong>C/O</strong>
-            <div style={{ whiteSpace: 'pre-wrap', marginTop: '5px' }}>{opdRecord?.chiefComplaints}</div>
+            {cbimnciRecord && (
+              <div style={{ fontSize: '9pt', marginBottom: '5px', borderBottom: '1px dashed #ccc', paddingBottom: '5px' }}>
+                <strong>Assessment ({cbimnciRecord.moduleType}):</strong>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px' }}>
+                  {cbimnciRecord.moduleType === 'Infant' ? (
+                    <>
+                      <div>Danger: {cbimnciRecord.assessmentData.dangerSigns?.join(', ') || 'None'}</div>
+                      <div>Infection: {cbimnciRecord.assessmentData.localInfection?.join(', ') || 'None'}</div>
+                      <div>Jaundice: {cbimnciRecord.assessmentData.jaundiceSigns?.join(', ') || 'None'}</div>
+                      <div>Feeding: {cbimnciRecord.assessmentData.feedingProblems?.join(', ') || 'Normal'}</div>
+                    </>
+                  ) : (
+                    <>
+                      <div>Danger: {cbimnciRecord.assessmentData.generalDangerSigns?.join(', ') || 'None'}</div>
+                      <div>Cough: {cbimnciRecord.assessmentData.coughDays || '0'} days</div>
+                      <div>Fever: {cbimnciRecord.assessmentData.feverDays || '0'} days</div>
+                      <div>Diarrhea: {cbimnciRecord.assessmentData.diarrheaDays || '0'} days</div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+            <div style={{ whiteSpace: 'pre-wrap', marginTop: '5px' }}>{recordData?.chiefComplaints}</div>
           </div>
           <div style={{ minHeight: '400px' }}>
             <strong>Rx</strong>
             <div style={{ marginTop: '10px' }}>
-              {opdRecord?.prescriptions?.map((p, i) => (
+              {recordData?.prescriptions?.map((p, i) => (
                 <div key={i} style={{ marginBottom: '8px' }}>
                   <div style={{ fontWeight: 'bold' }}>{i + 1}. {p.medicineName} {p.dosage}</div>
                   <div style={{ marginLeft: '15px', fontSize: '9pt' }}>
@@ -108,20 +135,46 @@ export const PrescriptionPrint: React.FC<PrescriptionPrintProps> = ({ record, ge
                 </div>
               ))}
             </div>
-            {opdRecord?.advice && (
+            {recordData?.advice && (
               <div style={{ marginTop: '20px', borderTop: '1px dashed #ccc', paddingTop: '10px' }}>
                 <strong>Advice:</strong>
-                <div style={{ whiteSpace: 'pre-wrap', fontSize: '9pt' }}>{opdRecord.advice}</div>
+                <div style={{ whiteSpace: 'pre-wrap', fontSize: '9pt' }}>{recordData.advice}</div>
               </div>
             )}
-            {opdRecord?.nextVisitDate && (
+            {recordData?.nextVisitDate && (
               <div style={{ marginTop: '10px', fontStyle: 'italic' }}>
-                Next Visit: {opdRecord.nextVisitDate}
+                Next Visit: {recordData.nextVisitDate}
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* CBIMNCI Specific Charts */}
+      {cbimnciRecord && (
+        <div style={{ marginTop: '10px', borderTop: '1px solid #000', paddingTop: '10px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div style={{ border: '1px solid #ccc', padding: '5px' }}>
+              <div style={{ fontWeight: 'bold', fontSize: '9pt', borderBottom: '1px solid #ccc', marginBottom: '5px' }}>Growth Monitoring Chart</div>
+              <img 
+                src={record.gender === 'Male' ? 'https://raw.githubusercontent.com/swastikkhatiwada/imnci-assets/main/growth-chart-boy.png' : 'https://raw.githubusercontent.com/swastikkhatiwada/imnci-assets/main/growth-chart-girl.png'}
+                alt="Growth Chart" 
+                style={{ width: '100%', height: 'auto' }}
+                referrerPolicy="no-referrer"
+              />
+            </div>
+            <div style={{ border: '1px solid #ccc', padding: '5px' }}>
+              <div style={{ fontWeight: 'bold', fontSize: '9pt', borderBottom: '1px solid #ccc', marginBottom: '5px' }}>Feeding Chart</div>
+              <img 
+                src="https://raw.githubusercontent.com/swastikkhatiwada/imnci-assets/main/feeding-chart.png" 
+                alt="Feeding Chart" 
+                style={{ width: '100%', height: 'auto' }}
+                referrerPolicy="no-referrer"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <div style={{ borderTop: '1px solid #000', fontSize: '9pt' }}>
