@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { Search, FileText, User, Activity, Save, Printer, History, FlaskConical, Trash2, CheckCircle2, Beaker } from 'lucide-react';
-import { ServiceSeekerRecord, BillingRecord, ServiceItem, LabReport, LabTestResult } from '../types/coreTypes';
+import { ServiceSeekerRecord, BillingRecord, ServiceItem, LabReport, LabTestResult, OrganizationSettings } from '../types/coreTypes';
 // @ts-ignore
 import NepaliDate from 'nepali-date-converter';
 import { useReactToPrint } from 'react-to-print';
@@ -14,6 +14,7 @@ interface PrayogsalaSewaProps {
   onDeleteRecord: (id: string) => void;
   currentFiscalYear: string;
   currentUser: any;
+  generalSettings: OrganizationSettings;
 }
 
 interface PendingTest extends LabTestResult {
@@ -28,7 +29,8 @@ export const PrayogsalaSewa: React.FC<PrayogsalaSewaProps> = ({
   onSaveRecord,
   onDeleteRecord,
   currentFiscalYear,
-  currentUser
+  currentUser,
+  generalSettings
 }) => {
   const [searchId, setSearchId] = useState('');
   const [currentPatient, setCurrentPatient] = useState<ServiceSeekerRecord | null>(null);
@@ -532,10 +534,25 @@ export const PrayogsalaSewa: React.FC<PrayogsalaSewaProps> = ({
       <div style={{ display: "none" }}>
         <div ref={printRef} className="p-8 bg-white text-slate-900 print:block font-sans">
           {/* Header */}
-          <div className="text-center mb-6 border-b-2 border-slate-800 pb-4">
-            <h1 className="text-2xl font-bold uppercase">{currentUser?.organizationName || 'Health Institution'}</h1>
-            <p className="text-sm text-slate-600">{currentUser?.address || 'Address'}</p>
-            <h2 className="text-lg font-bold mt-2 border-2 border-slate-800 inline-block px-4 py-1 rounded">LABORATORY REPORT</h2>
+          <div className="flex justify-between items-center border-b-2 border-slate-800 pb-4 mb-6">
+            <img 
+              src={generalSettings?.logoUrl || 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Emblem_of_Nepal.svg/1200px-Emblem_of_Nepal.svg.png'} 
+              style={{ width: '80px', height: '80px' }} 
+              alt="Logo" 
+              referrerPolicy="no-referrer"
+            />
+            <div className="text-center flex-1">
+              <h1 className="text-2xl font-bold">{generalSettings?.orgNameNepali || generalSettings?.orgNameEnglish || 'आधारभूत नगर अस्पताल'}</h1>
+              <p className="text-sm font-medium">{generalSettings?.subTitleNepali || ''}</p>
+              <p className="text-sm font-medium">{generalSettings?.subTitleNepali2 || ''}</p>
+              <p className="text-sm font-medium">{generalSettings?.subTitleNepali3 || ''}</p>
+              <p className="text-sm font-medium">{generalSettings?.address || ''}</p>
+              <h2 className="text-lg font-bold mt-2 border-2 border-slate-800 inline-block px-4 py-1 rounded uppercase">Laboratory Report</h2>
+            </div>
+            <div className="text-right text-xs space-y-1">
+              <p>PAN No: {generalSettings?.panNo || 'N/A'}</p>
+              <p>Phone: {generalSettings?.phone || 'N/A'}</p>
+            </div>
           </div>
 
           {/* Patient Info */}

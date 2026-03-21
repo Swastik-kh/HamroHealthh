@@ -1079,6 +1079,7 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
         onDeleteRecord={onDeleteLabReport}
         currentFiscalYear={currentFiscalYear}
         currentUser={currentUser}
+        generalSettings={generalSettings}
       />;
       case 'dispensory_sewa': return <DispensarySewa 
                                         currentFiscalYear={currentFiscalYear} 

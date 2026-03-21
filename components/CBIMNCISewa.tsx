@@ -3090,14 +3090,29 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
         <div ref={reportPrintRef} className="p-8 bg-white text-slate-900 print:block font-nepali">
           {selectedReport && (
             <div>
-              <div className="text-center border-b-2 border-slate-800 pb-4 mb-6">
-                <h1 className="text-2xl font-bold">{generalSettings?.orgNameNepali || generalSettings?.orgNameEnglish}</h1>
-                <p className="text-sm">{generalSettings?.address}</p>
-                <h2 className="text-lg font-bold mt-2 underline uppercase">Laboratory Report</h2>
-                <div className="flex justify-between mt-4 text-sm">
-                  <span>Date: {selectedReport.reportDate}</span>
-                  <span>Invoice: {selectedReport.invoiceNumber}</span>
+              <div className="flex justify-between items-center border-b-2 border-slate-800 pb-4 mb-6">
+                <img 
+                  src={generalSettings?.logoUrl || 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Emblem_of_Nepal.svg/1200px-Emblem_of_Nepal.svg.png'} 
+                  style={{ width: '80px', height: '80px' }} 
+                  alt="Logo" 
+                  referrerPolicy="no-referrer"
+                />
+                <div className="text-center flex-1">
+                  <h1 className="text-2xl font-bold">{generalSettings?.orgNameNepali || generalSettings?.orgNameEnglish || 'आधारभूत नगर अस्पताल'}</h1>
+                  <p className="text-sm font-medium">{generalSettings?.subTitleNepali || ''}</p>
+                  <p className="text-sm font-medium">{generalSettings?.subTitleNepali2 || ''}</p>
+                  <p className="text-sm font-medium">{generalSettings?.subTitleNepali3 || ''}</p>
+                  <p className="text-sm font-medium">{generalSettings?.address || ''}</p>
+                  <h2 className="text-lg font-bold mt-2 border-2 border-slate-800 inline-block px-4 py-1 rounded uppercase">Laboratory Report</h2>
                 </div>
+                <div className="text-right text-xs space-y-1">
+                  <p>PAN No: {generalSettings?.panNo || 'N/A'}</p>
+                  <p>Phone: {generalSettings?.phone || 'N/A'}</p>
+                </div>
+              </div>
+              <div className="flex justify-between mt-4 text-sm mb-4">
+                <span>Date: {selectedReport.reportDate}</span>
+                <span>Invoice: {selectedReport.invoiceNumber}</span>
               </div>
 
               <div className="grid grid-cols-2 gap-y-2 mb-6 text-sm border p-4 rounded-lg">
