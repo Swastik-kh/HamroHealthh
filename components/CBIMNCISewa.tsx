@@ -1980,10 +1980,10 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
         treatments.push('१ घण्टा पछि पुनर्मूल्यांकन गर्नुहोस्:');
         treatments.push('१) ब्याक्टेरियाको सम्भावित संक्रमणको लागि जाँच गर्नुहोस्');
         treatments.push('२) यदि संक्रमणका कुनै लक्षण छैनन् र तापक्रम सामान्य छ भने शिशुको स्याहारलाई निरन्तरता दिन आमालाई सल्लाह दिनुहोस्');
+        treatments.push('३) १४ दिनमा अनुगमनको लागि बोलाउनुहोस्');
       }
-      if (classifications.includes('Thrush')) {
-        treatments.push('१) औंलाको टुप्पामा सफा लुगा बेर्ने र नुन पानीले भिजाएर मुख भित्रको घाउ दिनमा ४ पटक ७ दिनसम्म पुछ्नुहोस्');
-        treatments.push('२) आधा शक्ति (०.२५%) को Gentian Violet वा Clotrimazole mouth paint दिनमा ४ पटक ७ दिनसम्म घाउमा लगाउनुहोस्');
+      if (assessmentData.feedingProblems?.includes('मुखभित्र घाउ वा सेता दागहरू (Thrush)')) {
+        treatments.push('अैालाको टुप्पामा सफा लुगा बेर्ने र नुन पानीले भिजाएर मुखभित्रको घाउ दिनमा ४ पटक ७ दिनसम्म पुछ्नुहोस्, आधा शक्तिको जेन्सियन भायलेट (Gentian Violet) ०.२५% वा क्लोट्रिमाजोल (Clotrimazole) माउथ पेन्ट दिनमा ४ पटक ७ दिनसम्म घाउमा लगाउनुहोस्।');
       }
       if (classifications.includes('Severe Jaundice')) {
         treatments.push('Refer URGENTLY to hospital');
@@ -2008,6 +2008,34 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
         treatments.push('Give Zinc Supplement for 10 days (2-6m: 10mg, >6m: 20mg)');
         treatments.push('Continue feeding');
         treatments.push('Advise mother when to return immediately');
+      }
+
+      if (classifications.includes('Feeding Problem')) {
+        treatments.push('स्तनपान सम्बन्धी समस्याको उपचार:');
+        
+        const attachmentNotGood = assessmentData.attachment === 'Not Well' || assessmentData.attachment === 'Not at all';
+        const sucklingNotEffective = assessmentData.suckling === 'Not Effective' || assessmentData.suckling === 'Not at all';
+        
+        if (attachmentNotGood || sucklingNotEffective) {
+          treatments.push('१) स्तन सम्पर्क राम्रो छैन र प्रभावकारी रुपले स्तन चुसेको छैन भने सही आसन र स्तन सम्पर्क बारे आमालाई सिकाउनुहोस्');
+          treatments.push('२) यदि स्तन सम्पर्क तुरुन्तै हुन नसकेको अवस्था छ भने आमालाई दूध निचोरेर कपबाट शिशुलाई खुवाउन सिकाउनुहोस्');
+        }
+        
+        if (assessmentData.feedingProblems?.includes('२४ घण्टामा १० पटक भन्दा कम स्तनपान')) {
+          treatments.push('३) यदि स्तनपान २४ घण्टामा १० पटक भन्दा कम गराएको रहेछ भने आमालाई पटक बढाउन सल्लाह दिनुहोस् र बच्चाले चाहेको खण्डमा र चाहे जति दिनमा र राति पनि शिशुलाई स्तनपान गराउन सल्लाह दिनुहोस्');
+        }
+        
+        if (assessmentData.feedingProblems?.includes('थप खाना वा झोल दिने गरेको')) {
+          treatments.push('४) यदि स्तनपान बाहेक अरु खानेकुरा वा झोल कुरा खुवाउने गरेको रहेछ भने त्यस किसिमको खाना घटाउन र झोलकुरा खान दिँदा कप प्रयोग गर्न र स्तनपान बढाउन सल्लाह दिनुहोस्');
+        }
+        
+        if (assessmentData.suckling === 'Not at all') {
+          treatments.push('५) यदि स्तनपान पट्टकै नगराउने गरेको छ भने स्तनपानको लागि परामर्श लिने ठाउँमा जाँच्न प्रेषण गर्नुहोस्, स्तनपानको सट्टामा दिइने दूध सही तरिकाले तयार गर्न र कपले खुवाउन सल्लाह दिनुहोस्');
+        }
+
+        treatments.push('६) शिशुलाई घरमा कसरी खुवाउने र न्यानो बनाइराख्ने भन्ने बारेमा सल्लाह दिनुहोस्');
+        treatments.push('७) घरमा शिशुलाई हेरचाह गर्न आमालाई सल्लाह दिनुहोस्');
+        treatments.push('८) खाना सम्बन्धी समस्याको लागि ३ दिनमा अनुगमनको लागि बोलाउनुहोस्');
       }
     } else {
       const weight = parseFloat(assessmentData.weight) || 0;
