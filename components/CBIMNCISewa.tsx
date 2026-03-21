@@ -761,7 +761,7 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-700">स्थानीय संक्रमण (Local Infection)</label>
-                {['नाइँटो रातो भएको (Red umbilicus)', 'नाइँटोबाट पीप बगेको (Umbilical pus)', 'छालामा धेरै फोकाहरू (Skin pustules)'].map(sign => (
+                {['नाइँटो रातो भएको (Red umbilicus)', 'नाइँटोबाट पीप बगेको (Umbilical pus)', 'छालामा धेरै फोकाहरू (Skin pustules)', 'आँखाबाट पिप बगेको (Eye discharge)'].map(sign => (
                   <label key={sign} className="flex items-center gap-2 text-xs cursor-pointer">
                     <input 
                       type="checkbox" 
@@ -1933,11 +1933,22 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
           amoxDose = `${minDose.toFixed(0)}-${maxDose.toFixed(0)}mg twice daily`;
         }
         
-        treatments.push(`१) Amoxycillin ५ दिन सम्म खान दिनुहोस्: ${amoxDose}`);
-        treatments.push('२) हल्का तरिकाले फोकाको पिप र पत्रहरू दिनमा २ पटक ५ दिनसम्म साबुन पानीले सफा गर्नुहोस् र पखाल्नुहोस्');
-        treatments.push('३) घाउ सुक्खा पार्नुहोस्');
-        treatments.push('४) Gentian Violet ०.५% लगाउनुहोस्');
-        treatments.push('५) ३ दिनमा फलो-अप (Follow-up) मा बोलाउनुहोस्');
+        const isOnlyEyeDischarge = assessmentData.localInfection?.length === 1 && assessmentData.localInfection.includes('आँखाबाट पिप बगेको (Eye discharge)');
+
+        if (isOnlyEyeDischarge) {
+          treatments.push(`१) Amoxycillin ५ दिन सम्म खान दिनुहोस्: ${amoxDose}`);
+          treatments.push('आँखामा रहेको पिपलाई मनतातो सफा पानीले सफा गर्नुहोस्। यो प्रक्रिया आँखाबाट पिप बग्न नरोकिएसम्म जारी राख्नुहोस्। पिप सफा गरिसकेपछि Ciprofloxacin Eye/Ear drop १ थोपा दिनको ४ पटक ७ दिनसम्म राख्नुहोस्');
+          treatments.push('३ दिनमा फलो-अप (Follow-up) मा बोलाउनुहोस्');
+        } else {
+          treatments.push(`१) Amoxycillin ५ दिन सम्म खान दिनुहोस्: ${amoxDose}`);
+          treatments.push('२) हल्का तरिकाले फोकाको पिप र पत्रहरू दिनमा २ पटक ५ दिनसम्म साबुन पानीले सफा गर्नुहोस् र पखाल्नुहोस्');
+          treatments.push('३) घाउ सुक्खा पार्नुहोस्');
+          treatments.push('४) Gentian Violet ०.५% लगाउनुहोस्');
+          if (assessmentData.localInfection?.includes('आँखाबाट पिप बगेको (Eye discharge)')) {
+            treatments.push('५) आँखामा रहेको पिपलाई मनतातो सफा पानीले सफा गर्नुहोस्। यो प्रक्रिया आँखाबाट पिप बग्न नरोकिएसम्म जारी राख्नुहोस्। पिप सफा गरिसकेपछि Ciprofloxacin Eye/Ear drop १ थोपा दिनको ४ पटक ७ दिनसम्म राख्नुहोस्');
+          }
+          treatments.push('६) ३ दिनमा फलो-अप (Follow-up) मा बोलाउनुहोस्');
+        }
       }
       if (classifications.includes('Pneumonia')) {
         let amoxDose = '';
