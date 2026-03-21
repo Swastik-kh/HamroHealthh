@@ -151,6 +151,39 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
     });
   }, [assessmentData.feedingProblems]);
 
+  useEffect(() => {
+    const coughDuration = parseInt(assessmentData.coughDays || '0');
+    const feverDuration = parseInt(assessmentData.feverDays || '0');
+    const coughSymptom = '२ हप्ता वा बढी समयदेखि खोकी (Cough >= 2 weeks)';
+    const feverSymptom = '२ हप्ता वा बढी समयदेखि ज्वरो (Fever >= 2 weeks)';
+    
+    setAssessmentData(prev => {
+      let nextSymptoms = [...(prev.tbSymptoms || [])];
+      let changed = false;
+
+      if (coughDuration >= 14 && !nextSymptoms.includes(coughSymptom)) {
+        nextSymptoms.push(coughSymptom);
+        changed = true;
+      } else if (coughDuration < 14 && nextSymptoms.includes(coughSymptom)) {
+        nextSymptoms = nextSymptoms.filter(s => s !== coughSymptom);
+        changed = true;
+      }
+
+      if (feverDuration >= 14 && !nextSymptoms.includes(feverSymptom)) {
+        nextSymptoms.push(feverSymptom);
+        changed = true;
+      } else if (feverDuration < 14 && nextSymptoms.includes(feverSymptom)) {
+        nextSymptoms = nextSymptoms.filter(s => s !== feverSymptom);
+        changed = true;
+      }
+
+      if (changed) {
+        return { ...prev, tbSymptoms: nextSymptoms };
+      }
+      return prev;
+    });
+  }, [assessmentData.coughDays, assessmentData.feverDays]);
+
   const medicineSuggestions = useMemo(() => {
     const defaultMedicines = [
       'Amoxicillin DT 125mg',
