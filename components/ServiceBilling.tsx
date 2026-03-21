@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { Search, FileText, User, Calendar, Activity, AlertCircle, Plus, Trash2, Printer, Save, CreditCard, Banknote, History, CheckCircle2 } from 'lucide-react';
-import { ServiceSeekerRecord, OPDRecord, BillingRecord, BillingItem, ServiceItem } from '../types/coreTypes';
+import { Search, FileText, User, Calendar, Activity, AlertCircle, Plus, Trash2, Printer, Save, CreditCard, Banknote, History, CheckCircle2, Baby } from 'lucide-react';
+import { ServiceSeekerRecord, OPDRecord, BillingRecord, BillingItem, ServiceItem, CBIMNCIRecord } from '../types/coreTypes';
 import { Input } from './Input';
 // @ts-ignore
 import NepaliDate from 'nepali-date-converter';
@@ -9,6 +9,7 @@ import { useReactToPrint } from 'react-to-print';
 interface ServiceBillingProps {
   serviceSeekerRecords: ServiceSeekerRecord[];
   opdRecords: OPDRecord[];
+  cbimnciRecords?: CBIMNCIRecord[];
   currentFiscalYear: string;
   billingRecords: BillingRecord[];
   onSaveRecord: (record: BillingRecord) => void;
@@ -20,6 +21,7 @@ interface ServiceBillingProps {
 export const ServiceBilling: React.FC<ServiceBillingProps> = ({ 
   serviceSeekerRecords = [], 
   opdRecords = [], 
+  cbimnciRecords = [],
   currentFiscalYear,
   billingRecords = [],
   onSaveRecord,
@@ -30,6 +32,7 @@ export const ServiceBilling: React.FC<ServiceBillingProps> = ({
   const [searchId, setSearchId] = useState('');
   const [currentPatient, setCurrentPatient] = useState<ServiceSeekerRecord | null>(null);
   const [patientOpdRecords, setPatientOpdRecords] = useState<OPDRecord[]>([]);
+  const [patientCbimnciRecords, setPatientCbimnciRecords] = useState<CBIMNCIRecord[]>([]);
   
   // Billing State
   const [billingItems, setBillingItems] = useState<BillingItem[]>([]);
@@ -61,6 +64,10 @@ export const ServiceBilling: React.FC<ServiceBillingProps> = ({
       const records = opdRecords.filter(r => r.uniquePatientId === patient.uniquePatientId);
       records.sort((a, b) => b.visitDate.localeCompare(a.visitDate));
       setPatientOpdRecords(records);
+
+      const cbimnci = cbimnciRecords.filter(r => r.uniquePatientId === patient.uniquePatientId);
+      cbimnci.sort((a, b) => b.visitDate.localeCompare(a.visitDate));
+      setPatientCbimnciRecords(cbimnci);
       
       // Reset billing form
       setBillingItems([]);
@@ -303,6 +310,52 @@ export const ServiceBilling: React.FC<ServiceBillingProps> = ({
                   })
                 ) : (
                   <p className="text-slate-400 text-sm italic text-center">कुनै OPD रेकर्ड छैन</p>
+                )}
+              </div>
+            </div>
+
+            {/* CBIMNCI Investigations List */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+              <h3 className="font-bold text-slate-800 text-sm mb-4 border-b pb-2 flex items-center gap-2">
+                <Baby size={16} className="text-green-600" />
+                सिफारिस गरिएका जाँचहरू (CBIMNCI)
+              </h3>
+              <div className="space-y-4 max-h-[300px] overflow-y-auto">
+                {patientCbimnciRecords.length > 0 ? (
+                  patientCbimnciRecords.map((record) => {
+                    const isBilled = record.investigation ? (() => {
+                      const serviceNames = record.investigation.split(/[\n,]/).map(s => s.trim().toLowerCase()).filter(s => s);
+                      return serviceNames.length > 0 && serviceNames.every(name => 
+                        billingRecords.some(b => 
+                          b.serviceSeekerId === currentPatient?.id && 
+                          b.items.some(i => i.serviceName.toLowerCase() === name)
+                        )
+                      );
+                    })() : false;
+
+                    return record.investigation ? (
+                      <div key={record.id} className="border border-slate-100 rounded p-3 bg-slate-50 text-sm">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-xs font-bold text-slate-500">{record.visitDate}</span>
+                          {isBilled ? (
+                            <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded flex items-center gap-1 font-bold">
+                              <CheckCircle2 size={10} /> Billed
+                            </span>
+                          ) : (
+                            <button 
+                              onClick={() => handleCopyToBill(record.investigation)}
+                              className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded hover:bg-blue-200"
+                            >
+                              Copy to Bill
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-slate-700 whitespace-pre-wrap">{record.investigation}</p>
+                      </div>
+                    ) : null;
+                  })
+                ) : (
+                  <p className="text-slate-400 text-sm italic text-center">कुनै CBIMNCI रेकर्ड छैन</p>
                 )}
               </div>
             </div>

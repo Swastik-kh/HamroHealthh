@@ -1040,6 +1040,7 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
       case 'service_billing': return <ServiceBilling 
         serviceSeekerRecords={serviceSeekerRecords}
         opdRecords={opdRecords}
+        cbimnciRecords={cbimnciRecords}
         currentFiscalYear={currentFiscalYear}
         billingRecords={billingRecords}
         onSaveRecord={onSaveBillingRecord}
