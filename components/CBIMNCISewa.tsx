@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { Search, Save, Printer, Plus, Trash2, User, Stethoscope, Pill, History, Baby, Edit, FileText } from 'lucide-react';
+import { Search, Save, Printer, Plus, Trash2, User, Stethoscope, Pill, History, Baby, Edit, FileText, CheckCircle2 } from 'lucide-react';
 import { ServiceSeekerRecord, CBIMNCIRecord, PrescriptionItem, ServiceItem, OrganizationSettings, LabReport } from '../types/coreTypes';
 import { InventoryItem } from '../types/inventoryTypes';
 import { Input } from './Input';
@@ -2946,6 +2946,43 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
                   </div>
                 ) : (
                   <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+                    {/* Recommended Investigations Section */}
+                    <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-4 mb-6">
+                      <h3 className="font-bold text-amber-800 text-sm flex items-center gap-2 mb-3 border-b border-amber-100 pb-2 uppercase">
+                        <Stethoscope size={16} /> सिफारिस गरिएका जाँचहरू (Recommended Investigations)
+                      </h3>
+                      <div className="space-y-3">
+                        {cbimnciRecords
+                          .filter(r => r.uniquePatientId === currentPatient.uniquePatientId && r.investigation)
+                          .sort((a, b) => b.visitDate.localeCompare(a.visitDate))
+                          .map(record => (
+                            <div key={record.id} className="flex justify-between items-start bg-white p-3 rounded-lg border border-amber-200 shadow-sm">
+                              <div>
+                                <p className="text-xs font-bold text-amber-600 mb-1">{record.visitDate}</p>
+                                <p className="text-sm font-medium text-slate-800">{record.investigation}</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {labReports.some(lr => 
+                                  lr.uniquePatientId === currentPatient.uniquePatientId && 
+                                  lr.reportDate >= record.visitDate
+                                ) ? (
+                                  <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                                    <CheckCircle2 size={10} /> Report Available
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold">
+                                    Pending Result
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        {cbimnciRecords.filter(r => r.uniquePatientId === currentPatient.uniquePatientId && r.investigation).length === 0 && (
+                          <p className="text-xs text-slate-400 italic text-center py-2">कुनै सिफारिस गरिएको जाँच भेटिएन</p>
+                        )}
+                      </div>
+                    </div>
+
                     <div className="flex justify-between items-center mb-6 border-b pb-4">
                       <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
                         <FileText className="text-indigo-600" /> प्रयोगशाला रिपोर्टहरू (Laboratory Reports)
@@ -2988,9 +3025,14 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
                               <div className="p-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                   {report.tests.map((test, idx) => (
-                                    <div key={idx} className="flex justify-between items-center p-2 bg-slate-50 rounded-lg border border-slate-100">
-                                      <span className="text-sm font-medium text-slate-700">{test.testName}</span>
-                                      <span className="text-sm font-bold text-indigo-700">{test.result} {test.unit}</span>
+                                    <div key={idx} className="flex flex-col p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                      <div className="flex justify-between items-center mb-1">
+                                        <span className="text-sm font-bold text-slate-700">{test.testName}</span>
+                                        <span className="text-sm font-bold text-indigo-700">{test.result} {test.unit}</span>
+                                      </div>
+                                      {test.normalRange && (
+                                        <p className="text-[10px] text-slate-500 italic">Range: {test.normalRange}</p>
+                                      )}
                                     </div>
                                   ))}
                                 </div>
@@ -3049,9 +3091,9 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
           {selectedReport && (
             <div>
               <div className="text-center border-b-2 border-slate-800 pb-4 mb-6">
-                <h1 className="text-2xl font-bold">{generalSettings?.organizationName}</h1>
+                <h1 className="text-2xl font-bold">{generalSettings?.orgNameNepali || generalSettings?.orgNameEnglish}</h1>
                 <p className="text-sm">{generalSettings?.address}</p>
-                <h2 className="text-lg font-bold mt-2 underline">Laboratory Report</h2>
+                <h2 className="text-lg font-bold mt-2 underline uppercase">Laboratory Report</h2>
                 <div className="flex justify-between mt-4 text-sm">
                   <span>Date: {selectedReport.reportDate}</span>
                   <span>Invoice: {selectedReport.invoiceNumber}</span>
@@ -3059,7 +3101,7 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
               </div>
 
               <div className="grid grid-cols-2 gap-y-2 mb-6 text-sm border p-4 rounded-lg">
-                <div><span className="font-bold">Patient Name:</span> {currentPatient?.patientName}</div>
+                <div><span className="font-bold">Patient Name:</span> {currentPatient?.name}</div>
                 <div><span className="font-bold">Age/Sex:</span> {currentPatient?.age} / {currentPatient?.gender}</div>
                 <div><span className="font-bold">Patient ID:</span> {currentPatient?.uniquePatientId}</div>
                 <div><span className="font-bold">Address:</span> {currentPatient?.address}</div>
@@ -3080,7 +3122,7 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
                       <td className="border border-slate-400 p-2">{test.testName}</td>
                       <td className="border border-slate-400 p-2 text-center font-bold">{test.result}</td>
                       <td className="border border-slate-400 p-2 text-center">{test.unit}</td>
-                      <td className="border border-slate-400 p-2 text-center">{test.range || '-'}</td>
+                      <td className="border border-slate-400 p-2 text-center">{test.normalRange || '-'}</td>
                     </tr>
                   ))}
                 </tbody>
