@@ -2051,6 +2051,10 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
         treatments.push('Prevent low blood sugar');
         treatments.push('Keep child warm');
       }
+      if (assessmentData.generalDangerSigns?.includes('काँप्ने (Convulsions)')) {
+        const diazepamDose = weight > 0 ? `${(weight * 0.5).toFixed(1)}mg` : '0.5 mg/kg';
+        treatments.push(`Give Diazepam ${diazepamDose} (10mg/2ml) solution per-rectum`);
+      }
       if (classifications.includes('Pneumonia')) {
         let amoxDose = '';
         const ageYears = currentPatient?.ageYears || 0;
@@ -2606,11 +2610,20 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
                     {suggestedTreatments.length > 0 && (
                       <div className="mt-3 space-y-1">
                         <p className="text-[10px] font-bold text-slate-400 uppercase">Suggested Treatment:</p>
-                        {suggestedTreatments.map((t, idx) => (
-                          <p key={idx} className="text-xs text-slate-700 flex items-start gap-1">
-                            <span className="text-primary-500">•</span> {t}
-                          </p>
-                        ))}
+                        {suggestedTreatments.map((t, idx) => {
+                          const isLowBloodSugar = t.includes('Prevent low blood sugar') || t.includes('रगतमा चिनीको मात्रा कम हुन नदिन');
+                          return (
+                            <div key={idx} className="text-xs text-slate-700 flex items-start gap-1 group relative">
+                              <span className="text-primary-500">•</span> 
+                              <span className={isLowBloodSugar ? "cursor-help border-b border-dotted border-slate-400" : ""}>{t}</span>
+                              {isLowBloodSugar && (
+                                <div className="hidden group-hover:block absolute z-50 w-80 p-3 bg-slate-800 text-white text-[11px] rounded-lg shadow-xl bottom-full left-0 mb-2 pointer-events-none leading-relaxed font-nepali">
+                                  रगतमा चिनीको मात्रा कम हुनबाट जोगाउन उपचार गर्नुहोस् १) यदि बच्चाले आमाको स्तनपान गर्न सक्छ भने बच्चालाई स्तनपान गराउन भन्नुहोस् , २) यदि बच्चाले स्तनपान गर्न सक्दैन तर निल्न सम्म सक्छ भने ६ महिना सम्मको शिशुको लागि आमाको दूध निचोरेर वा गाई बस्तुको दूध खान दिनुहोस् यस्तो कुनै पनि चिज पाइदैन भने चिनी पानी खान दिनुहोस्, उपचार केन्द्रबाट जानु अघि ३०-५० मिली दूध वा चिनी पानी खान दिनुहोस्, चिनी पानी बनाउन २०० मिली सफा पानीमा ४ चिया चम्चा (२० ग्राम) चिनी घोल्नुहोस् , ३) यदि बच्चाले निल्न पनि सक्दैन भने यदि तपाईं तालिम प्राप्त हुनुहुन्छ भने ५० मिली दूध वा चिनी पानी NG tube द्वारा दिनुहोस् (शिशुको लागि ५ मिली/केजी)
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                     <div className="flex gap-2 mt-3">
