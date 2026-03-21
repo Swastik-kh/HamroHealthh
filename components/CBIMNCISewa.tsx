@@ -3024,6 +3024,13 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
                 <p className="text-sm whitespace-pre-wrap">{cbimnciData.diagnosis}</p>
               </div>
             )}
+
+            {cbimnciData.advice && (
+              <div>
+                <h4 className="font-bold text-slate-800 border-b border-slate-200 mb-2 pb-1">सल्लाह/सुझाव (Advice/Suggestion)</h4>
+                <p className="text-sm whitespace-pre-wrap">{cbimnciData.advice}</p>
+              </div>
+            )}
           </div>
 
           {prescriptionItems.length > 0 && (
