@@ -104,7 +104,7 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
   useEffect(() => {
     const dehydrationSigns = assessmentData.dehydrationSigns || [];
     const count = [
-      'चटपटे, झिझिने (Restless, irritable)',
+      'छटपटीने, झिझिने (Restless, irritable)',
       'आँखा गडेको (Sunken eyes)',
       'पेटको छाला औंलाले तान्दा बिस्तारै फर्कने (Skin pinch goes back slowly)'
     ].filter(sign => dehydrationSigns.includes(sign)).length;
@@ -122,7 +122,7 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
   useEffect(() => {
     const feedingProblems = assessmentData.feedingProblems || [];
     const hasThrush = feedingProblems.includes('मुखभित्र घाउ वा सेता दागहरू (Thrush)');
-    const thrushAdvice = 'आउलाको टुप्पामा सफा लुगा बेर्ने र नुन पानीले भिजाएर मुखभित्रको घाउ दिनमा ४ पटक ७ दिनसम्म पुछ्नुहोस्, आधा शक्तिको जेन्सियन भायलेट (Gentian Violet) ०.२५% वा क्लोट्रिमाजोल (Clotrimazole) माउथ पेन्ट दिनमा ४ पटक ७ दिनसम्म घाउमा लगाउनुहोस्।';
+    const thrushAdvice = 'अैांलाको टुप्पामा सफा लुगा बेर्ने र नुन पानीले भिजाएर मुखभित्रको घाउ दिनमा ४ पटक ७ दिनसम्म पुछ्नुहोस्, आधा शक्तिको जेन्सियन भायलेट (Gentian Violet) ०.२५% वा क्लोट्रिमाजोल (Clotrimazole) माउथ पेन्ट दिनमा ४ पटक ७ दिनसम्म घाउमा लगाउनुहोस्।';
     
     setCbimnciData(prev => {
       const currentAdvice = prev.advice || '';
@@ -761,7 +761,7 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-700">स्थानीय संक्रमण (Local Infection)</label>
-                {['नाइँटो रातो भएको (Red umbilicus)', 'नाइँटोबाट पीप बगेको (Umbilical pus)', 'छालामा धेरै फोकाहरू (Skin pustules)', 'आँखाबाट पिप बगेको (Eye discharge)'].map(sign => (
+                {['नाइँटो रातो भएको (Red umbilicus)', 'नाइँटोबाट पीप बगेको (Umbilical pus)', 'छालामा  फोकाहरू (Skin pustules)', 'आँखाबाट पिप बगेको (Eye discharge)'].map(sign => (
                   <label key={sign} className="flex items-center gap-2 text-xs cursor-pointer">
                     <input 
                       type="checkbox" 
@@ -849,7 +849,7 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-slate-700">जलवियोजनका संकेतहरू (Dehydration Signs)</label>
                   {[
-                    'चटपटे, झिझिने (Restless, irritable)',
+                    'छटपटीने, झिझिने (Restless, irritable)',
                     'आँखा गडेको (Sunken eyes)',
                     'पेटको छाला औंलाले तान्दा बिस्तारै फर्कने (Skin pinch goes back slowly)',
                     'सुस्त वा बेहोस (Lethargic/Unconscious)',
