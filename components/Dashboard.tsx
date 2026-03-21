@@ -1060,6 +1060,7 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
       case 'cbimnci_sewa': return <CBIMNCISewa 
         serviceSeekerRecords={serviceSeekerRecords}
         cbimnciRecords={cbimnciRecords}
+        labReports={labReports}
         onSaveRecord={onSaveCBIMNCIRecord}
         onDeleteRecord={onDeleteCBIMNCIRecord}
         currentFiscalYear={currentFiscalYear}

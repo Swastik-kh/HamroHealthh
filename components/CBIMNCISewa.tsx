@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { Search, Save, Printer, Plus, Trash2, User, Stethoscope, Pill, History, Baby, Edit } from 'lucide-react';
-import { ServiceSeekerRecord, CBIMNCIRecord, PrescriptionItem, ServiceItem, OrganizationSettings } from '../types/coreTypes';
+import { Search, Save, Printer, Plus, Trash2, User, Stethoscope, Pill, History, Baby, Edit, FileText } from 'lucide-react';
+import { ServiceSeekerRecord, CBIMNCIRecord, PrescriptionItem, ServiceItem, OrganizationSettings, LabReport } from '../types/coreTypes';
 import { InventoryItem } from '../types/inventoryTypes';
 import { Input } from './Input';
 // @ts-ignore
@@ -12,6 +12,7 @@ import { PrescriptionPrint } from './PrescriptionPrint';
 interface CBIMNCISewaProps {
   serviceSeekerRecords?: ServiceSeekerRecord[];
   cbimnciRecords?: CBIMNCIRecord[];
+  labReports?: LabReport[];
   onSaveRecord: (record: CBIMNCIRecord) => void;
   onDeleteRecord: (recordId: string) => void;
   currentFiscalYear: string;
@@ -88,6 +89,7 @@ const initialCbimnciData: Partial<CBIMNCIRecord> = {
 export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({ 
   serviceSeekerRecords = [], 
   cbimnciRecords = [], 
+  labReports = [],
   onSaveRecord, 
   onDeleteRecord, 
   currentFiscalYear,
@@ -224,6 +226,12 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
     'आवश्यकता अनुसार (SOS)'
   ];
   
+  const [activeTab, setActiveTab] = useState<'assessment' | 'reports'>('assessment');
+  const [selectedReport, setSelectedReport] = useState<any>(null);
+  const reportPrintRef = useRef<HTMLDivElement>(null);
+  const handlePrintReport = useReactToPrint({
+    contentRef: reportPrintRef,
+  });
   const [investigationSearch, setInvestigationSearch] = useState('');
   const [showInvestigationResults, setShowInvestigationResults] = useState(false);
   
@@ -2517,399 +2525,493 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
           </div>
 
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-              <div className="flex justify-between items-center mb-6 border-b pb-4">
-                <h3 className="font-bold text-slate-800 text-lg">CBIMNCI परीक्षण फारम</h3>
-                <div className="flex items-center gap-2">
-                  {moduleType === 'Infant' ? (
-                    <div className="px-3 py-1 rounded-full text-xs font-bold bg-blue-600 text-white shadow-md">
-                      Infant (up to 2m)
-                    </div>
-                  ) : (
-                    <div className="px-3 py-1 rounded-full text-xs font-bold bg-green-600 text-white shadow-md">
-                      Child (2m - 5y)
-                    </div>
-                  )}
-                  <span className="text-sm text-slate-500 bg-slate-100 px-3 py-1 rounded-full ml-2">
-                    {new NepaliDate().format('YYYY-MM-DD')}
-                  </span>
-                </div>
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="flex border-b border-slate-200 bg-slate-50/50">
+                <button
+                  onClick={() => setActiveTab('assessment')}
+                  className={`flex-1 py-3 px-4 text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+                    activeTab === 'assessment'
+                      ? 'bg-white text-primary-600 border-b-2 border-primary-600'
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <Baby size={18} /> परीक्षण फारम (Assessment)
+                </button>
+                <button
+                  onClick={() => setActiveTab('reports')}
+                  className={`flex-1 py-3 px-4 text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+                    activeTab === 'reports'
+                      ? 'bg-white text-indigo-600 border-b-2 border-indigo-600'
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  <FileText size={18} /> रिपोर्टहरू (Reports)
+                </button>
               </div>
 
-              <div className="space-y-6">
-                <div className="flex items-center gap-4 bg-indigo-50 p-4 rounded-xl border border-indigo-100 shadow-sm">
-                  <div className="flex-1">
-                    <h4 className="font-bold text-indigo-800 text-sm mb-1 flex items-center gap-2">
-                      <Baby size={16} /> तौल (Weight in kg)
-                    </h4>
-                    <p className="text-xs text-indigo-600">औषधिको मात्रा (Dose) हिसाब गर्न तौल अनिवार्य छ।</p>
-                  </div>
-                  <div className="w-48">
-                    <input 
-                      type="number" 
-                      step="0.01" 
-                      placeholder="तौल (kg) राख्नुहोस्"
-                      value={assessmentData.weight || ''} 
-                      onChange={(e) => setAssessmentData({...assessmentData, weight: e.target.value})} 
-                      className="w-full px-4 py-2 border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm bg-white font-bold text-indigo-900"
-                    />
-                  </div>
-                </div>
-
-                {renderAssessmentForm()}
-
-                {suggestedClassifications.length > 0 && (
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 animate-in fade-in slide-in-from-top-2">
-                    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Suggested Classifications (Booklet Based)</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {suggestedClassifications.map((cls, idx) => (
-                        <span key={idx} className={`px-3 py-1 rounded-full text-xs font-bold border ${
-                          cls.includes('Severe') || cls.includes('PSBI') || cls.includes('Disease') || cls.includes('CONFIRMED') || cls.includes('ब्याक्टेरियाको सम्भावित गम्भीर संक्रमण') || cls.includes('Very Low Birth Weight') || cls.includes('Mastoiditis')
-                            ? 'bg-red-100 text-red-700 border-red-200' 
-                            : cls.includes('Some') || (cls.includes('Pneumonia') && !cls.includes('No Pneumonia')) || cls.includes('Jaundice') || cls.includes('POSSIBLE') || cls.includes('LATENT') || cls.includes('EXPOSED') || cls.includes('SUSPECTED') || cls.includes('REQUIRED') || cls.includes('Local Bacterial Infection') || cls.includes('Low Birth Weight') || (cls.includes('Ear Infection') && !cls.includes('No Ear Infection')) || (cls.includes('Feeding Problem') && !cls.includes('No Feeding Problem'))
-                              ? 'bg-amber-100 text-amber-700 border-amber-200'
-                              : 'bg-emerald-100 text-emerald-700 border-emerald-200'
-                        }`}>
-                          {cls}
+              <div className="p-6">
+                {activeTab === 'assessment' ? (
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-center mb-6 border-b pb-4">
+                      <h3 className="font-bold text-slate-800 text-lg">CBIMNCI परीक्षण फारम</h3>
+                      <div className="flex items-center gap-2">
+                        {moduleType === 'Infant' ? (
+                          <div className="px-3 py-1 rounded-full text-xs font-bold bg-blue-600 text-white shadow-md">
+                            Infant (up to 2m)
+                          </div>
+                        ) : (
+                          <div className="px-3 py-1 rounded-full text-xs font-bold bg-green-600 text-white shadow-md">
+                            Child (2m - 5y)
+                          </div>
+                        )}
+                        <span className="text-sm text-slate-500 bg-slate-100 px-3 py-1 rounded-full ml-2">
+                          {new NepaliDate().format('YYYY-MM-DD')}
                         </span>
-                      ))}
-                    </div>
-                    {suggestedNextVisit && (
-                      <p className="mt-2 text-xs text-slate-600">
-                        <span className="font-bold">Suggested Follow-up:</span> {suggestedNextVisit}
-                      </p>
-                    )}
-                    {suggestedTreatments.length > 0 && (
-                      <div className="mt-3 space-y-1">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase">Suggested Treatment:</p>
-                        {suggestedTreatments.map((t, idx) => {
-                          const isLowBloodSugar = t.includes('Prevent low blood sugar') || t.includes('रगतमा चिनीको मात्रा कम हुन नदिन');
-                          return (
-                            <div key={idx} className="text-xs text-slate-700 flex items-start gap-1 group relative">
-                              <span className="text-primary-500">•</span> 
-                              <span className={isLowBloodSugar ? "cursor-help border-b border-dotted border-slate-400" : ""}>{t}</span>
-                              {isLowBloodSugar && (
-                                <div className="hidden group-hover:block absolute z-50 w-80 p-3 bg-slate-800 text-white text-[11px] rounded-lg shadow-xl bottom-full left-0 mb-2 pointer-events-none leading-relaxed font-nepali">
-                                  रगतमा चिनीको मात्रा कम हुनबाट जोगाउन उपचार गर्नुहोस् १) यदि बच्चाले आमाको स्तनपान गर्न सक्छ भने बच्चालाई स्तनपान गराउन भन्नुहोस् , २) यदि बच्चाले स्तनपान गर्न सक्दैन तर निल्न सम्म सक्छ भने ६ महिना सम्मको शिशुको लागि आमाको दूध निचोरेर वा गाई बस्तुको दूध खान दिनुहोस् यस्तो कुनै पनि चिज पाइदैन भने चिनी पानी खान दिनुहोस्, उपचार केन्द्रबाट जानु अघि ३०-५० मिली दूध वा चिनी पानी खान दिनुहोस्, चिनी पानी बनाउन २०० मिली सफा पानीमा ४ चिया चम्चा (२० ग्राम) चिनी घोल्नुहोस् , ३) यदि बच्चाले निल्न पनि सक्दैन भने यदि तपाईं तालिम प्राप्त हुनुहुन्छ भने ५० मिली दूध वा चिनी पानी NG tube द्वारा दिनुहोस् (शिशुको लागि ५ मिली/केजी)
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
                       </div>
-                    )}
-                    <div className="flex gap-2 mt-3">
-                      <button 
-                        onClick={() => setCbimnciData({...cbimnciData, diagnosis: suggestedClassifications.join(', ')})}
-                        className="text-xs bg-white border border-slate-300 text-slate-700 px-2 py-1 rounded hover:bg-slate-50 transition-colors"
-                      >
-                        Apply to Classification
-                      </button>
-                      <button 
-                        onClick={() => {
-                          const newItems = suggestedTreatments.map((t, idx) => {
-                            // Try to extract medicine name and dose
-                            // Pattern: "Give [Medicine] for [Duration]: [Dose]" or "Give [Medicine]: [Dose]"
-                            let medicineName = t;
-                            let dosage = '';
-                            let duration = '';
+                    </div>
 
-                            if (t.includes(':')) {
-                              const parts = t.split(':');
-                              const leftPart = parts[0].replace('Give ', '').trim();
-                              dosage = parts[1].trim();
-                              
-                              if (leftPart.includes(' for ')) {
-                                const subParts = leftPart.split(' for ');
-                                medicineName = subParts[0].trim();
-                                duration = subParts[1].trim();
-                              } else {
-                                medicineName = leftPart;
-                              }
-                            } else if (t.startsWith('Give ')) {
-                              medicineName = t.replace('Give ', '').trim();
-                            }
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-4 bg-indigo-50 p-4 rounded-xl border border-indigo-100 shadow-sm">
+                        <div className="flex-1">
+                          <h4 className="font-bold text-indigo-800 text-sm mb-1 flex items-center gap-2">
+                            <Baby size={16} /> तौल (Weight in kg)
+                          </h4>
+                          <p className="text-xs text-indigo-600">औषधिको मात्रा (Dose) हिसाब गर्न तौल अनिवार्य छ।</p>
+                        </div>
+                        <div className="w-48">
+                          <input 
+                            type="number" 
+                            step="0.01" 
+                            placeholder="तौल (kg) राख्नुहोस्"
+                            value={assessmentData.weight || ''} 
+                            onChange={(e) => setAssessmentData({...assessmentData, weight: e.target.value})} 
+                            className="w-full px-4 py-2 border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm bg-white font-bold text-indigo-900"
+                          />
+                        </div>
+                      </div>
 
-                            return {
-                              id: `suggested-${Date.now()}-${idx}`,
-                              medicineName,
-                              dosage,
-                              frequency: dosage.includes('twice daily') ? '2 times a day' : (dosage.includes('once daily') ? '1 time a day' : ''),
-                              duration,
-                              instructions: ''
-                            };
+                      {renderAssessmentForm()}
+
+                      {suggestedClassifications.length > 0 && (
+                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 animate-in fade-in slide-in-from-top-2">
+                          <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Suggested Classifications (Booklet Based)</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {suggestedClassifications.map((cls, idx) => (
+                              <span key={idx} className={`px-3 py-1 rounded-full text-xs font-bold border ${
+                                cls.includes('Severe') || cls.includes('PSBI') || cls.includes('Disease') || cls.includes('CONFIRMED') || cls.includes('ब्याक्टेरियाको सम्भावित गम्भीर संक्रमण') || cls.includes('Very Low Birth Weight') || cls.includes('Mastoiditis')
+                                  ? 'bg-red-100 text-red-700 border-red-200' 
+                                  : cls.includes('Some') || (cls.includes('Pneumonia') && !cls.includes('No Pneumonia')) || cls.includes('Jaundice') || cls.includes('POSSIBLE') || cls.includes('LATENT') || cls.includes('EXPOSED') || cls.includes('SUSPECTED') || cls.includes('REQUIRED') || cls.includes('Local Bacterial Infection') || cls.includes('Low Birth Weight') || (cls.includes('Ear Infection') && !cls.includes('No Ear Infection')) || (cls.includes('Feeding Problem') && !cls.includes('No Feeding Problem'))
+                                    ? 'bg-amber-100 text-amber-700 border-amber-200'
+                                    : 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                              }`}>
+                                {cls}
+                              </span>
+                            ))}
+                          </div>
+                          {suggestedNextVisit && (
+                            <p className="mt-2 text-xs text-slate-600">
+                              <span className="font-bold">Suggested Follow-up:</span> {suggestedNextVisit}
+                            </p>
+                          )}
+                          {suggestedTreatments.length > 0 && (
+                            <div className="mt-3 space-y-1">
+                              <p className="text-[10px] font-bold text-slate-400 uppercase">Suggested Treatment:</p>
+                              {suggestedTreatments.map((t, idx) => {
+                                const isLowBloodSugar = t.includes('Prevent low blood sugar') || t.includes('रगतमा चिनीको मात्रा कम हुन नदिन');
+                                return (
+                                  <div key={idx} className="text-xs text-slate-700 flex items-start gap-1 group relative">
+                                    <span className="text-primary-500">•</span> 
+                                    <span className={isLowBloodSugar ? "cursor-help border-b border-dotted border-slate-400" : ""}>{t}</span>
+                                    {isLowBloodSugar && (
+                                      <div className="hidden group-hover:block absolute z-50 w-80 p-3 bg-slate-800 text-white text-[11px] rounded-lg shadow-xl bottom-full left-0 mb-2 pointer-events-none leading-relaxed font-nepali">
+                                        रगतमा चिनीको मात्रा कम हुनबाट जोगाउन उपचार गर्नुहोस् १) यदि बच्चाले आमाको स्तनपान गर्न सक्छ भने बच्चालाई स्तनपान गराउन भन्नुहोस् , २) यदि बच्चाले स्तनपान गर्न सक्दैन तर निल्न सम्म सक्छ भने ६ महिना सम्मको शिशुको लागि आमाको दूध निचोरेर वा गाई बस्तुको दूध खान दिनुहोस् यस्तो कुनै पनि चिज पाइदैन भने चिनी पानी खान दिनुहोस्, उपचार केन्द्रबाट जानु अघि ३०-५० मिली दूध वा चिनी पानी खान दिनुहोस्, चिनी पानी बनाउन २०० मिली सफा पानीमा ४ चिया चम्चा (२० ग्राम) चिनी घोल्नुहोस् , ३) यदि बच्चाले निल्न पनि सक्दैन भने यदि तपाईं तालिम प्राप्त हुनुहुन्छ भने ५० मिली दूध वा चिनी पानी NG tube द्वारा दिनुहोस् (शिशुको लागि ५ मिली/केजी)
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                          <div className="flex gap-2 mt-3">
+                            <button 
+                              onClick={() => setCbimnciData({...cbimnciData, diagnosis: suggestedClassifications.join(', ')})}
+                              className="text-xs bg-white border border-slate-300 text-slate-700 px-2 py-1 rounded hover:bg-slate-50 transition-colors"
+                            >
+                              Apply to Classification
+                            </button>
+                            <button 
+                              onClick={() => {
+                                const newItems = suggestedTreatments.map((t, idx) => {
+                                  let medicineName = t;
+                                  let dosage = '';
+                                  let duration = '';
+
+                                  if (t.includes(':')) {
+                                    const parts = t.split(':');
+                                    const leftPart = parts[0].replace('Give ', '').trim();
+                                    dosage = parts[1].trim();
+                                    
+                                    if (leftPart.includes(' for ')) {
+                                      const subParts = leftPart.split(' for ');
+                                      medicineName = subParts[0].trim();
+                                      duration = subParts[1].trim();
+                                    } else {
+                                      medicineName = leftPart;
+                                    }
+                                  } else if (t.startsWith('Give ')) {
+                                    medicineName = t.replace('Give ', '').trim();
+                                  }
+
+                                  return {
+                                    id: `suggested-${Date.now()}-${idx}`,
+                                    medicineName,
+                                    dosage,
+                                    frequency: dosage.includes('twice daily') ? '2 times a day' : (dosage.includes('once daily') ? '1 time a day' : ''),
+                                    duration,
+                                    instructions: ''
+                                  };
+                                });
+                                setPrescriptionItems([...prescriptionItems, ...newItems]);
+                              }}
+                              className="text-xs bg-white border border-primary-300 text-primary-700 px-2 py-1 rounded hover:bg-primary-50 transition-colors"
+                            >
+                              Apply to Prescription
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">मुख्य समस्याहरू (Chief Complaints)</label>
+                        <textarea
+                          value={cbimnciData.chiefComplaints || ''}
+                          onChange={(e) => setCbimnciData({...cbimnciData, chiefComplaints: e.target.value})}
+                          className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 min-h-[80px]"
+                          placeholder="बिरामीको मुख्य समस्याहरू लेख्नुहोस्..."
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">वर्गीकरण (Classification)</label>
+                          <textarea
+                            value={cbimnciData.diagnosis || ''}
+                            onChange={(e) => setCbimnciData({...cbimnciData, diagnosis: e.target.value})}
+                            className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 min-h-[80px]"
+                            placeholder="वर्गीकरण लेख्नुहोस्..."
+                          />
+                        </div>
+                        <div className="relative">
+                          <label className="block text-sm font-medium text-slate-700 mb-2">जाँच (Investigation)</label>
+                          <div className="relative mb-2">
+                             <input
+                               type="text"
+                               value={investigationSearch}
+                               onChange={(e) => {
+                                 setInvestigationSearch(e.target.value);
+                                 setShowInvestigationResults(true);
+                               }}
+                               placeholder="Search Service..."
+                               className="w-full p-2 pl-8 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-primary-500"
+                             />
+                             <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                             {showInvestigationResults && investigationSearch && (
+                               <div className="absolute top-full left-0 w-full bg-white border border-slate-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto mt-1">
+                                 {filteredServices.map(service => (
+                                   <div 
+                                     key={service.id}
+                                     onClick={() => handleAddInvestigation(service.serviceName)}
+                                     className="p-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-slate-50 last:border-0"
+                                   >
+                                     {service.serviceName}
+                                   </div>
+                                 ))}
+                               </div>
+                             )}
+                          </div>
+                          <textarea
+                            value={cbimnciData.investigation || ''}
+                            onChange={(e) => setCbimnciData({...cbimnciData, investigation: e.target.value})}
+                            className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 min-h-[80px]"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="border rounded-xl p-4 bg-slate-50">
+                        <div className="flex justify-between items-center mb-4">
+                          <h4 className="font-bold text-slate-700 flex items-center gap-2">
+                            <Pill size={18} className="text-primary-600" /> औषधि सिफारिस (Prescription)
+                          </h4>
+                          <button 
+                            onClick={() => setShowPrescriptionForm(true)}
+                            className="text-sm bg-white border border-primary-200 text-primary-700 px-3 py-1.5 rounded-lg hover:bg-primary-50 flex items-center gap-1 shadow-sm"
+                          >
+                            <Plus size={16} /> औषधि थप्नुहोस्
+                          </button>
+                        </div>
+
+                        {showPrescriptionForm && (
+                          <div className="bg-white p-4 rounded-lg border border-primary-100 mb-4 shadow-sm">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                              <div className="relative">
+                                <Input 
+                                  label="औषधिको नाम" 
+                                  value={currentPrescription.medicineName} 
+                                  onChange={e => setCurrentPrescription({...currentPrescription, medicineName: e.target.value})} 
+                                  list="medicine-list"
+                                />
+                                <datalist id="medicine-list">
+                                  {medicineSuggestions.map((med, idx) => (
+                                    <option key={idx} value={med} />
+                                  ))}
+                                </datalist>
+                              </div>
+                              <div>
+                                <Input label="मात्रा (Dosage)" value={currentPrescription.dosage} onChange={e => setCurrentPrescription({...currentPrescription, dosage: e.target.value})} list="dosage-list" />
+                                <datalist id="dosage-list">
+                                  {dosageSuggestions.map((d, i) => <option key={i} value={d} />)}
+                                </datalist>
+                              </div>
+                              <div>
+                                <Input label="पटक (Frequency)" value={currentPrescription.frequency} onChange={e => setCurrentPrescription({...currentPrescription, frequency: e.target.value})} list="frequency-list" />
+                                <datalist id="frequency-list">
+                                  {frequencySuggestions.map((f, i) => <option key={i} value={f} />)}
+                                </datalist>
+                              </div>
+                              <Input label="अवधि (Duration)" value={currentPrescription.duration} onChange={e => setCurrentPrescription({...currentPrescription, duration: e.target.value})} />
+                            </div>
+                            <div className="flex justify-end gap-2">
+                              <button onClick={() => setShowPrescriptionForm(false)} className="px-4 py-2 text-slate-500 rounded-lg text-sm">रद्द</button>
+                              <button onClick={handleAddPrescription} className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm">थप्नुहोस्</button>
+                            </div>
+                          </div>
+                        )}
+
+                        {prescriptionItems.length > 0 && (
+                          <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+                            <table className="w-full text-sm text-left">
+                              <thead className="bg-slate-50 text-slate-600">
+                                <tr>
+                                  <th className="p-3">औषधि</th>
+                                  <th className="p-3">मात्रा</th>
+                                  <th className="p-3">पटक</th>
+                                  <th className="p-3">अवधि</th>
+                                  <th className="p-3 w-10"></th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100">
+                                {prescriptionItems.map((item) => (
+                                  <tr key={item.id}>
+                                    <td className="p-3 font-medium">{item.medicineName}</td>
+                                    <td className="p-3">{item.dosage}</td>
+                                    <td className="p-3">{item.frequency}</td>
+                                    <td className="p-3">{item.duration}</td>
+                                    <td className="p-3">
+                                      <button onClick={() => handleRemovePrescription(item.id)} className="text-red-400 hover:text-red-600">
+                                        <Trash2 size={16} />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">सल्लाह / सुझाव (Advice)</label>
+                        <textarea
+                          value={cbimnciData.advice || ''}
+                          onChange={(e) => setCbimnciData({...cbimnciData, advice: e.target.value})}
+                          className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 min-h-[60px]"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                        <div className="flex items-center gap-3">
+                          <input 
+                            type="checkbox" 
+                            id="isRefer"
+                            checked={cbimnciData.isRefer}
+                            onChange={(e) => setCbimnciData({...cbimnciData, isRefer: e.target.checked})}
+                            className="w-5 h-5 text-primary-600 border-slate-300 rounded focus:ring-primary-500"
+                          />
+                          <label htmlFor="isRefer" className="text-sm font-bold text-slate-700 cursor-pointer">रेफर गरिएको (Referral)</label>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <input 
+                            type="checkbox" 
+                            id="isDeath"
+                            checked={cbimnciData.isDeath}
+                            onChange={(e) => setCbimnciData({...cbimnciData, isDeath: e.target.checked})}
+                            className="w-5 h-5 text-red-600 border-slate-300 rounded focus:ring-red-500"
+                          />
+                          <label htmlFor="isDeath" className="text-sm font-bold text-red-700 cursor-pointer">मृत्यु भएको (Death)</label>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <input 
+                            type="checkbox" 
+                            id="isFollowup"
+                            checked={cbimnciData.isFollowup}
+                            onChange={(e) => setCbimnciData({...cbimnciData, isFollowup: e.target.checked})}
+                            className="w-5 h-5 text-amber-600 border-slate-300 rounded focus:ring-amber-500"
+                          />
+                          <label htmlFor="isFollowup" className="text-sm font-bold text-amber-700 cursor-pointer">फलोअप (Followup)</label>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">फलोअप (Follow-up Days)</label>
+                          <div className="flex items-center gap-2">
+                            <input 
+                              type="number" 
+                              value={cbimnciData.followupDays || ''}
+                              onChange={(e) => setCbimnciData({...cbimnciData, followupDays: parseInt(e.target.value) || 0})}
+                              className="w-20 p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500"
+                              placeholder="दिन"
+                            />
+                            <span className="text-xs text-slate-500 font-bold">दिन पछि</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap justify-end gap-4 pt-4 border-t">
+                        <button onClick={handleRestore} className="px-6 py-2.5 bg-amber-100 text-amber-800 rounded-lg hover:bg-amber-200 flex items-center gap-2 shadow-sm font-medium border border-amber-200 w-full sm:w-auto justify-center">
+                          <History size={18} /> Restore Previous
+                        </button>
+                        <button onClick={() => {
+                          setEditingRecordId(null);
+                          setCbimnciData({
+                            chiefComplaints: '',
+                            diagnosis: '',
+                            investigation: '',
+                            prescriptions: [],
+                            advice: '',
+                            nextVisitDate: '',
+                            isRefer: false,
+                            isDeath: false,
+                            isFollowup: false,
+                            followupDays: 0
                           });
-                          setPrescriptionItems([...prescriptionItems, ...newItems]);
-                        }}
-                        className="text-xs bg-white border border-primary-300 text-primary-700 px-2 py-1 rounded hover:bg-primary-50 transition-colors"
-                      >
-                        Apply to Prescription
-                      </button>
+                          setAssessmentData({
+                            dangerSigns: [],
+                            localInfection: [],
+                            jaundiceSigns: [],
+                            dehydrationSigns: [],
+                            feedingProblems: [],
+                            generalDangerSigns: [],
+                            respiratorySigns: [],
+                            feverSigns: [],
+                            nutritionSigns: [],
+                            immunization: [],
+                            breathingRate: '',
+                            temperature: '',
+                            diarrheaDays: '',
+                            weight: '',
+                            muac: '',
+                            coughDays: '',
+                            feverDays: '',
+                            earDischargeDays: '',
+                            malariaRisk: 'None',
+                            pallor: '',
+                            attachment: '',
+                            suckling: '',
+                            earPain: false,
+                            earDischarge: false,
+                            mastoidSwelling: false,
+                            bloodInStool: false,
+                            hivStatus: false,
+                            parotidSwellingOrLymphNodes: false,
+                            hivTestStatus: '',
+                            motherHivStatus: '',
+                            isBreastfeeding: false,
+                            stoppedBreastfeedingLessThan3Months: false,
+                            tbContact: false,
+                            tbSymptoms: [],
+                            tbDiagnosis: false,
+                            weightLoss: false,
+                            fatigue: false
+                          });
+                          setPrescriptionItems([]);
+                        }} className="px-6 py-2.5 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 flex items-center gap-2 shadow-sm font-medium border border-slate-200 w-full sm:w-auto justify-center">
+                          <Trash2 size={18} /> Clear Form
+                        </button>
+                        <button onClick={handlePrint} className="px-6 py-2.5 bg-slate-800 text-white rounded-lg hover:bg-slate-900 flex items-center gap-2 shadow-sm w-full sm:w-auto justify-center">
+                          <Printer size={18} /> प्रिन्ट (Print)
+                        </button>
+                        <button onClick={handleSave} className="px-6 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center gap-2 shadow-sm font-medium w-full sm:w-auto justify-center">
+                          <Save size={18} /> {editingRecordId ? 'अपडेट गर्नुहोस्' : 'सुरक्षित गर्नुहोस्'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+                    <div className="flex justify-between items-center mb-6 border-b pb-4">
+                      <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                        <FileText className="text-indigo-600" /> प्रयोगशाला रिपोर्टहरू (Laboratory Reports)
+                      </h3>
+                    </div>
+
+                    <div className="space-y-4">
+                      {labReports.filter(r => r.uniquePatientId === currentPatient.uniquePatientId).length > 0 ? (
+                        labReports
+                          .filter(r => r.uniquePatientId === currentPatient.uniquePatientId)
+                          .sort((a, b) => b.reportDate.localeCompare(a.reportDate))
+                          .map(report => (
+                            <div key={report.id} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:border-indigo-300 transition-all">
+                              <div className="bg-slate-50 p-3 border-b border-slate-200 flex justify-between items-center">
+                                <div className="flex items-center gap-3">
+                                  <div className="bg-indigo-100 p-2 rounded-lg text-indigo-600">
+                                    <FileText size={18} />
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-bold text-slate-500 uppercase">Report Date</p>
+                                    <p className="text-sm font-bold text-slate-800">{report.reportDate}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                  <div className="text-right">
+                                    <p className="text-xs font-bold text-slate-500 uppercase">Invoice #</p>
+                                    <p className="text-sm font-mono text-indigo-600">{report.invoiceNumber}</p>
+                                  </div>
+                                  <button 
+                                    onClick={() => {
+                                      setSelectedReport(report);
+                                      setTimeout(() => handlePrintReport(), 100);
+                                    }}
+                                    className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg flex items-center gap-1 text-xs font-bold border border-indigo-100"
+                                  >
+                                    <Printer size={14} /> Print
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="p-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  {report.tests.map((test, idx) => (
+                                    <div key={idx} className="flex justify-between items-center p-2 bg-slate-50 rounded-lg border border-slate-100">
+                                      <span className="text-sm font-medium text-slate-700">{test.testName}</span>
+                                      <span className="text-sm font-bold text-indigo-700">{test.result} {test.unit}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                                {report.remarks && (
+                                  <div className="mt-4 p-3 bg-amber-50 rounded-lg border border-amber-100">
+                                    <p className="text-xs font-bold text-amber-800 uppercase mb-1">Remarks</p>
+                                    <p className="text-sm text-amber-900 italic">{report.remarks}</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                      ) : (
+                        <div className="text-center py-12 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                          <FileText size={48} className="mx-auto text-slate-300 mb-4" />
+                          <p className="text-slate-500 font-medium">कुनै प्रयोगशाला रिपोर्ट भेटिएन (No laboratory reports found)</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
-                
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">मुख्य समस्याहरू (Chief Complaints)</label>
-                  <textarea
-                    value={cbimnciData.chiefComplaints || ''}
-                    onChange={(e) => setCbimnciData({...cbimnciData, chiefComplaints: e.target.value})}
-                    className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 min-h-[80px]"
-                    placeholder="बिरामीको मुख्य समस्याहरू लेख्नुहोस्..."
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">वर्गीकरण (Classification)</label>
-                    <textarea
-                      value={cbimnciData.diagnosis || ''}
-                      onChange={(e) => setCbimnciData({...cbimnciData, diagnosis: e.target.value})}
-                      className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 min-h-[80px]"
-                      placeholder="वर्गीकरण लेख्नुहोस्..."
-                    />
-                  </div>
-                  <div className="relative">
-                    <label className="block text-sm font-medium text-slate-700 mb-2">जाँच (Investigation)</label>
-                    <div className="relative mb-2">
-                       <input
-                         type="text"
-                         value={investigationSearch}
-                         onChange={(e) => {
-                           setInvestigationSearch(e.target.value);
-                           setShowInvestigationResults(true);
-                         }}
-                         placeholder="Search Service..."
-                         className="w-full p-2 pl-8 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-primary-500"
-                       />
-                       <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                       {showInvestigationResults && investigationSearch && (
-                         <div className="absolute top-full left-0 w-full bg-white border border-slate-200 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto mt-1">
-                           {filteredServices.map(service => (
-                             <div 
-                               key={service.id}
-                               onClick={() => handleAddInvestigation(service.serviceName)}
-                               className="p-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-slate-50 last:border-0"
-                             >
-                               {service.serviceName}
-                             </div>
-                           ))}
-                         </div>
-                       )}
-                    </div>
-                    <textarea
-                      value={cbimnciData.investigation || ''}
-                      onChange={(e) => setCbimnciData({...cbimnciData, investigation: e.target.value})}
-                      className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 min-h-[80px]"
-                    />
-                  </div>
-                </div>
-
-                <div className="border rounded-xl p-4 bg-slate-50">
-                  <div className="flex justify-between items-center mb-4">
-                    <h4 className="font-bold text-slate-700 flex items-center gap-2">
-                      <Pill size={18} className="text-primary-600" /> औषधि सिफारिस (Prescription)
-                    </h4>
-                    <button 
-                      onClick={() => setShowPrescriptionForm(true)}
-                      className="text-sm bg-white border border-primary-200 text-primary-700 px-3 py-1.5 rounded-lg hover:bg-primary-50 flex items-center gap-1 shadow-sm"
-                    >
-                      <Plus size={16} /> औषधि थप्नुहोस्
-                    </button>
-                  </div>
-
-                  {showPrescriptionForm && (
-                    <div className="bg-white p-4 rounded-lg border border-primary-100 mb-4 shadow-sm">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div className="relative">
-                          <Input 
-                            label="औषधिको नाम" 
-                            value={currentPrescription.medicineName} 
-                            onChange={e => setCurrentPrescription({...currentPrescription, medicineName: e.target.value})} 
-                            list="medicine-list"
-                          />
-                          <datalist id="medicine-list">
-                            {medicineSuggestions.map((med, idx) => (
-                              <option key={idx} value={med} />
-                            ))}
-                          </datalist>
-                        </div>
-                        <div>
-                          <Input label="मात्रा (Dosage)" value={currentPrescription.dosage} onChange={e => setCurrentPrescription({...currentPrescription, dosage: e.target.value})} list="dosage-list" />
-                          <datalist id="dosage-list">
-                            {dosageSuggestions.map((d, i) => <option key={i} value={d} />)}
-                          </datalist>
-                        </div>
-                        <div>
-                          <Input label="पटक (Frequency)" value={currentPrescription.frequency} onChange={e => setCurrentPrescription({...currentPrescription, frequency: e.target.value})} list="frequency-list" />
-                          <datalist id="frequency-list">
-                            {frequencySuggestions.map((f, i) => <option key={i} value={f} />)}
-                          </datalist>
-                        </div>
-                        <Input label="अवधि (Duration)" value={currentPrescription.duration} onChange={e => setCurrentPrescription({...currentPrescription, duration: e.target.value})} />
-                      </div>
-                      <div className="flex justify-end gap-2">
-                        <button onClick={() => setShowPrescriptionForm(false)} className="px-4 py-2 text-slate-500 rounded-lg text-sm">रद्द</button>
-                        <button onClick={handleAddPrescription} className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm">थप्नुहोस्</button>
-                      </div>
-                    </div>
-                  )}
-
-                  {prescriptionItems.length > 0 && (
-                    <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-                      <table className="w-full text-sm text-left">
-                        <thead className="bg-slate-50 text-slate-600">
-                          <tr>
-                            <th className="p-3">औषधि</th>
-                            <th className="p-3">मात्रा</th>
-                            <th className="p-3">पटक</th>
-                            <th className="p-3">अवधि</th>
-                            <th className="p-3 w-10"></th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {prescriptionItems.map((item) => (
-                            <tr key={item.id}>
-                              <td className="p-3 font-medium">{item.medicineName}</td>
-                              <td className="p-3">{item.dosage}</td>
-                              <td className="p-3">{item.frequency}</td>
-                              <td className="p-3">{item.duration}</td>
-                              <td className="p-3">
-                                <button onClick={() => handleRemovePrescription(item.id)} className="text-red-400 hover:text-red-600">
-                                  <Trash2 size={16} />
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">सल्लाह / सुझाव (Advice)</label>
-                  <textarea
-                    value={cbimnciData.advice || ''}
-                    onChange={(e) => setCbimnciData({...cbimnciData, advice: e.target.value})}
-                    className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 min-h-[60px]"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                  <div className="flex items-center gap-3">
-                    <input 
-                      type="checkbox" 
-                      id="isRefer"
-                      checked={cbimnciData.isRefer}
-                      onChange={(e) => setCbimnciData({...cbimnciData, isRefer: e.target.checked})}
-                      className="w-5 h-5 text-primary-600 border-slate-300 rounded focus:ring-primary-500"
-                    />
-                    <label htmlFor="isRefer" className="text-sm font-bold text-slate-700 cursor-pointer">रेफर गरिएको (Referral)</label>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <input 
-                      type="checkbox" 
-                      id="isDeath"
-                      checked={cbimnciData.isDeath}
-                      onChange={(e) => setCbimnciData({...cbimnciData, isDeath: e.target.checked})}
-                      className="w-5 h-5 text-red-600 border-slate-300 rounded focus:ring-red-500"
-                    />
-                    <label htmlFor="isDeath" className="text-sm font-bold text-red-700 cursor-pointer">मृत्यु भएको (Death)</label>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <input 
-                      type="checkbox" 
-                      id="isFollowup"
-                      checked={cbimnciData.isFollowup}
-                      onChange={(e) => setCbimnciData({...cbimnciData, isFollowup: e.target.checked})}
-                      className="w-5 h-5 text-amber-600 border-slate-300 rounded focus:ring-amber-500"
-                    />
-                    <label htmlFor="isFollowup" className="text-sm font-bold text-amber-700 cursor-pointer">फलोअप (Followup)</label>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">फलोअप (Follow-up Days)</label>
-                    <div className="flex items-center gap-2">
-                      <input 
-                        type="number" 
-                        value={cbimnciData.followupDays || ''}
-                        onChange={(e) => setCbimnciData({...cbimnciData, followupDays: parseInt(e.target.value) || 0})}
-                        className="w-20 p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500"
-                        placeholder="दिन"
-                      />
-                      <span className="text-xs text-slate-500 font-bold">दिन पछि</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap justify-end gap-4 pt-4 border-t">
-                  <button onClick={handleRestore} className="px-6 py-2.5 bg-amber-100 text-amber-800 rounded-lg hover:bg-amber-200 flex items-center gap-2 shadow-sm font-medium border border-amber-200 w-full sm:w-auto justify-center">
-                    <History size={18} /> Restore Previous
-                  </button>
-                  <button onClick={() => {
-                    setEditingRecordId(null);
-                    setCbimnciData({
-                      chiefComplaints: '',
-                      diagnosis: '',
-                      investigation: '',
-                      prescriptions: [],
-                      advice: '',
-                      nextVisitDate: '',
-                      isRefer: false,
-                      isDeath: false,
-                      isFollowup: false,
-                      followupDays: 0
-                    });
-                    setAssessmentData({
-                      dangerSigns: [],
-                      localInfection: [],
-                      jaundiceSigns: [],
-                      dehydrationSigns: [],
-                      feedingProblems: [],
-                      generalDangerSigns: [],
-                      respiratorySigns: [],
-                      feverSigns: [],
-                      nutritionSigns: [],
-                      immunization: [],
-                      breathingRate: '',
-                      temperature: '',
-                      diarrheaDays: '',
-                      weight: '',
-                      muac: '',
-                      coughDays: '',
-                      feverDays: '',
-                      earDischargeDays: '',
-                      malariaRisk: 'None',
-                      pallor: '',
-                      attachment: '',
-                      suckling: '',
-                      earPain: false,
-                      earDischarge: false,
-                      mastoidSwelling: false,
-                      bloodInStool: false,
-                      hivStatus: false,
-                      parotidSwellingOrLymphNodes: false,
-                      hivTestStatus: '',
-                      motherHivStatus: '',
-                      isBreastfeeding: false,
-                      stoppedBreastfeedingLessThan3Months: false,
-                      tbContact: false,
-                      tbSymptoms: [],
-                      tbDiagnosis: false,
-                      weightLoss: false,
-                      fatigue: false
-                    });
-                    setPrescriptionItems([]);
-                  }} className="px-6 py-2.5 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 flex items-center gap-2 shadow-sm font-medium border border-slate-200 w-full sm:w-auto justify-center">
-                    <Trash2 size={18} /> Clear Form
-                  </button>
-                  <button onClick={handlePrint} className="px-6 py-2.5 bg-slate-800 text-white rounded-lg hover:bg-slate-900 flex items-center gap-2 shadow-sm w-full sm:w-auto justify-center">
-                    <Printer size={18} /> प्रिन्ट (Print)
-                  </button>
-                  <button onClick={handleSave} className="px-6 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center gap-2 shadow-sm font-medium w-full sm:w-auto justify-center">
-                    <Save size={18} /> {editingRecordId ? 'अपडेट गर्नुहोस्' : 'सुरक्षित गर्नुहोस्'}
-                  </button>
-                </div>
               </div>
             </div>
           </div>
@@ -2938,6 +3040,70 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
                 nextVisitDate: cbimnciData.nextVisitDate
               }}
             />
+          )}
+        </div>
+      </div>
+      {/* Hidden Print Template for Reports */}
+      <div style={{ display: 'none' }}>
+        <div ref={reportPrintRef} className="p-8 bg-white text-slate-900 print:block font-nepali">
+          {selectedReport && (
+            <div>
+              <div className="text-center border-b-2 border-slate-800 pb-4 mb-6">
+                <h1 className="text-2xl font-bold">{generalSettings?.organizationName}</h1>
+                <p className="text-sm">{generalSettings?.address}</p>
+                <h2 className="text-lg font-bold mt-2 underline">Laboratory Report</h2>
+                <div className="flex justify-between mt-4 text-sm">
+                  <span>Date: {selectedReport.reportDate}</span>
+                  <span>Invoice: {selectedReport.invoiceNumber}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-y-2 mb-6 text-sm border p-4 rounded-lg">
+                <div><span className="font-bold">Patient Name:</span> {currentPatient?.patientName}</div>
+                <div><span className="font-bold">Age/Sex:</span> {currentPatient?.age} / {currentPatient?.gender}</div>
+                <div><span className="font-bold">Patient ID:</span> {currentPatient?.uniquePatientId}</div>
+                <div><span className="font-bold">Address:</span> {currentPatient?.address}</div>
+              </div>
+
+              <table className="w-full text-sm border-collapse border border-slate-400">
+                <thead className="bg-slate-100">
+                  <tr>
+                    <th className="border border-slate-400 p-2 text-left">Test Name</th>
+                    <th className="border border-slate-400 p-2 text-center">Result</th>
+                    <th className="border border-slate-400 p-2 text-center">Unit</th>
+                    <th className="border border-slate-400 p-2 text-center">Reference Range</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedReport.tests.map((test: any, i: number) => (
+                    <tr key={i}>
+                      <td className="border border-slate-400 p-2">{test.testName}</td>
+                      <td className="border border-slate-400 p-2 text-center font-bold">{test.result}</td>
+                      <td className="border border-slate-400 p-2 text-center">{test.unit}</td>
+                      <td className="border border-slate-400 p-2 text-center">{test.range || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {selectedReport.remarks && (
+                <div className="mt-6 p-4 border border-slate-200 rounded-lg bg-slate-50">
+                  <p className="text-xs font-bold text-slate-500 uppercase mb-1">Remarks:</p>
+                  <p className="text-sm italic">{selectedReport.remarks}</p>
+                </div>
+              )}
+
+              <div className="mt-20 flex justify-between items-end px-4">
+                <div className="text-center">
+                  <div className="w-32 border-t border-slate-400 mb-1"></div>
+                  <p className="text-xs font-bold">Lab Technician</p>
+                </div>
+                <div className="text-center">
+                  <div className="w-32 border-t border-slate-400 mb-1"></div>
+                  <p className="text-xs font-bold">Authorized Signature</p>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>
