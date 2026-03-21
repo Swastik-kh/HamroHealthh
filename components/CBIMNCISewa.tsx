@@ -2963,7 +2963,7 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
                               </div>
                               <div className="flex items-center gap-2">
                                 {labReports.some(lr => 
-                                  lr.uniquePatientId === currentPatient.uniquePatientId && 
+                                  lr.serviceSeekerId === currentPatient.id && 
                                   lr.reportDate >= record.visitDate
                                 ) ? (
                                   <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
@@ -2990,9 +2990,9 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
                     </div>
 
                     <div className="space-y-4">
-                      {labReports.filter(r => r.uniquePatientId === currentPatient.uniquePatientId).length > 0 ? (
+                      {labReports.filter(r => r.serviceSeekerId === currentPatient.id).length > 0 ? (
                         labReports
-                          .filter(r => r.uniquePatientId === currentPatient.uniquePatientId)
+                          .filter(r => r.serviceSeekerId === currentPatient.id)
                           .sort((a, b) => b.reportDate.localeCompare(a.reportDate))
                           .map(report => (
                             <div key={report.id} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm hover:border-indigo-300 transition-all">
