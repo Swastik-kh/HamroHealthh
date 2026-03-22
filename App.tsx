@@ -91,6 +91,7 @@ const App: React.FC = () => {
   const [usgRecords, setUsgRecords] = useState<USGRecord[]>([]);
   const [physiotherapyRecords, setPhysiotherapyRecords] = useState<PhysiotherapyRecord[]>([]);
   const [ipdRecords, setIpdRecords] = useState<IPDRecord[]>([]);
+  const [itemList, setItemList] = useState<ItemEntry[]>([]);
 
   const managedOrgs = useMemo(() => {
       if (currentUser?.role !== 'HEALTH_SECTION') return [];
@@ -228,6 +229,7 @@ const App: React.FC = () => {
     setupOrgListener('usgRecords', setUsgRecords);
     setupOrgListener('physiotherapyRecords', setPhysiotherapyRecords);
     setupOrgListener('ipdRecords', setIpdRecords);
+    setupOrgListener('itemList', setItemList);
 
     return () => unsubscribes.forEach(unsub => unsub());
   }, [currentUser, activeOrgName]);
@@ -1133,6 +1135,7 @@ const App: React.FC = () => {
     ipdRecords={ipdRecords}
     onSaveIPDRecord={handleSaveIPDRecord}
     onDeleteIPDRecord={handleDeleteIPDRecord}
+    itemList={itemList}
     onUpdateReadNotifications={handleUpdateReadNotifications}
     activeOrgName={activeOrgName}
     onSetActiveOrgName={setActiveOrgName}
