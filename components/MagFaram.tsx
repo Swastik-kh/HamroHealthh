@@ -138,11 +138,16 @@ export const MagFaram: React.FC<MagFaramProps> = ({ currentFiscalYear, currentUs
         if (item.id === id) {
             let existing = inventoryItems.find(i => i.itemName.trim().toLowerCase() === newName.trim().toLowerCase());
             if (existing) return { ...item, name: newName, isFromInventory: true, codeNo: existing.uniqueCode || existing.sanketNo || '', unit: existing.unit, specification: existing.specification || '' };
+            
+            // Check in itemList if not found in inventoryItems
+            let fromItemList = itemList.find(i => i.itemName.trim().toLowerCase() === newName.trim().toLowerCase());
+            if (fromItemList) return { ...item, name: newName, isFromInventory: false, codeNo: '', unit: fromItemList.unit, specification: '' };
+            
             return { ...item, name: newName, isFromInventory: false, codeNo: '', unit: '', specification: '' };
         }
         return item;
     }));
-  }, [inventoryItems]);
+  }, [inventoryItems, itemList]);
 
   const updateItemField = useCallback((id: number, field: keyof LocalMagItem, value: any) => {
     setItems(prev => prev.map(item => (item.id === id ? { ...item, [field]: value } : item)));
