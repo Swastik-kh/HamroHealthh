@@ -655,7 +655,9 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
                     'नाक फुलाउने (Nasal flaring)', 
                     'कन्कने (Grunting)', 
                     'तालु फुलेको (Bulging fontanelle)',
-                    'नाइँटो रातो भई छालासम्म फैलिएको (Umbilical redness spreading to skin)'
+                    'नाइँटो रातो भई छालासम्म फैलिएको (Umbilical redness spreading to skin)',
+                    'ज्वरो (Fever >= 37.5°C or skin feels hot)',
+                    'अति कम तापक्रम (Hypothermia < 35.5°C)'
                   ].concat((currentPatient?.ageDays !== undefined && currentPatient.ageDays <= 7) ? ['सासको दर ६० वा सोभन्दा बढी (Respiratory rate 60 or more)'] : []).map(sign => (
                     <label key={sign} className="flex items-center gap-2 text-sm cursor-pointer">
                       <input 
@@ -1602,8 +1604,13 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
       // PSBI and Pneumonia logic based on age
       const ageDays = currentPatient?.ageDays || 0;
       const breathingRate = parseFloat(assessmentData.breathingRate || '0');
+      const temperature = parseFloat(assessmentData.temperature || '0');
       
       const dangerSignsList = assessmentData.generalDangerSigns || [];
+      
+      const hasFever = temperature >= 37.5 || dangerSignsList.includes('ज्वरो (Fever >= 37.5°C or skin feels hot)');
+      const hasHypothermia = (temperature > 0 && temperature < 35.5) || dangerSignsList.includes('अति कम तापक्रम (Hypothermia < 35.5°C)');
+
       const hasAnyOf8Signs = dangerSignsList.some(s => [
         'काँप्ने (Convulsions)', 
         'दूध चुस्न/निल्न नसक्ने (Unable to feed)', 
@@ -1613,7 +1620,7 @@ export const CBIMNCISewa: React.FC<CBIMNCISewaProps> = ({
         'कन्कने (Grunting)', 
         'तालु फुलेको (Bulging fontanelle)',
         'नाइँटो रातो भई छालासम्म फैलिएको (Umbilical redness spreading to skin)'
-      ].includes(s));
+      ].includes(s)) || hasFever || hasHypothermia;
 
       const isAge7OrLess = ageDays <= 7;
       const isRR60OrMore = breathingRate >= 60;

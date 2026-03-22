@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Plus, Trash2, Printer, Save, Calendar, CheckCircle2, Send, Clock, FileText, Eye, Search, X, AlertCircle, ChevronRight, ArrowLeft, Check, Square, Warehouse, Layers, ShieldCheck, Info, ListFilter, ClipboardList, History } from 'lucide-react';
 import { User, Option, OrganizationSettings } from '../types/coreTypes';
-import { MagItem, MagFormEntry, InventoryItem, Store, StoreKeeperSignature } from '../types/inventoryTypes';
+import { MagItem, MagFormEntry, InventoryItem, Store, StoreKeeperSignature, ItemEntry } from '../types/inventoryTypes';
 import { SearchableSelect } from './SearchableSelect';
 // @ts-ignore
 import NepaliDate from 'nepali-date-converter';

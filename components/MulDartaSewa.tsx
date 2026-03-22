@@ -680,6 +680,7 @@ export const MulDartaSewa: React.FC<MulDartaSewaProps> = ({ records = [], onSave
                     className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                   >
                     <option value="OPD">OPD</option>
+                    <option value="CBIMNCI">CBIMNCI</option>
                     <option value="Emergency">Emergency</option>
                     <option value="Vaccination">Vaccination (खोप)</option>
                     <option value="Safe Motherhood">Safe Motherhood (सुरक्षित मातृत्व)</option>
