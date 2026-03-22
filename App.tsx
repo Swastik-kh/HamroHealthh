@@ -948,6 +948,16 @@ const App: React.FC = () => {
                 };
                 updates[`${orgPath}/inventory/${itemId}`] = newItem;
             });
+        } else if (sectionId === 'item_list') {
+            data.forEach((row, idx) => {
+                const itemId = `ITEMLIST-${Date.now()}-${idx}`;
+                const newItem: ItemEntry = {
+                    id: itemId,
+                    itemName: String(row['Item Name'] || row['itemName'] || 'Unnamed Item'),
+                    unit: String(row['Unit'] || row['unit'] || 'Nos')
+                };
+                updates[`${orgPath}/itemList/${itemId}`] = newItem;
+            });
         } else {
             data.forEach((row, idx) => {
                 const entryId = `${sectionId.toUpperCase()}-${Date.now()}-${idx}`;
