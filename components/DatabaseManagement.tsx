@@ -123,38 +123,54 @@ export const DatabaseManagement: React.FC<DatabaseManagementProps> = ({
       const reader = new FileReader();
       reader.onload = async (e) => {
           try {
-              const text = e.target?.result as string;
-              if (!text) throw new Error("फाइल खाली छ।");
+              const data = e.target?.result;
+              if (!data) throw new Error("फाइल खाली छ।");
 
-              // SIMPLE CSV PARSER
-              const lines = text.split(/\r?\n/).filter(line => line.trim() !== "");
-              if (lines.length < 2) throw new Error("हेडर र कम्तिमा एउटा डाटाको लाइन आवश्यक छ।");
+              let rows: any[] = [];
 
-              const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-              
-              const rows = lines.slice(1).map(line => {
-                  // Handle commas inside quotes and potential empty values
-                  const values: string[] = [];
-                  let current = "";
-                  let inQuotes = false;
-                  for (let char of line) {
-                      if (char === '"') {
-                          inQuotes = !inQuotes;
-                      } else if (char === ',' && !inQuotes) {
-                          values.push(current.trim());
-                          current = "";
-                      } else {
-                          current += char;
-                      }
+              if (selectedFile?.name.endsWith('.xlsx') || selectedFile?.name.endsWith('.xls')) {
+                  const { read, utils } = await import('xlsx');
+                  const workbook = read(data, { type: 'binary' });
+                  const sheetName = workbook.SheetNames[0];
+                  const worksheet = workbook.Sheets[sheetName];
+                  rows = utils.sheet_to_json(worksheet);
+              } else {
+                  const text = data as string;
+                  // Check if it looks like a binary file (e.g., Excel)
+                  if (text.includes('\u0000') || text.length < 100 && text.charCodeAt(0) > 127) {
+                      throw new Error("यो फाइल CSV जस्तो देखिँदैन। कृपया Excel फाइललाई CSV (Comma Delimited) ढाँचामा सेभ गरेर अपलोड गर्नुहोस् वा .xlsx फाइल प्रयोग गर्नुहोस्।");
                   }
-                  values.push(current.trim()); // Push the last value
 
-                  const obj: any = {};
-                  headers.forEach((h, i) => {
-                      obj[h] = values[i]?.replace(/^"|"$/g, '') || "";
+                  // SIMPLE CSV PARSER
+                  const lines = text.split(/\r?\n/).filter(line => line.trim() !== "");
+                  if (lines.length < 2) throw new Error("हेडर र कम्तिमा एउटा डाटाको लाइन आवश्यक छ।");
+
+                  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+                  
+                  rows = lines.slice(1).map(line => {
+                      // Handle commas inside quotes and potential empty values
+                      const values: string[] = [];
+                      let current = "";
+                      let inQuotes = false;
+                      for (let char of line) {
+                          if (char === '"') {
+                              inQuotes = !inQuotes;
+                          } else if (char === ',' && !inQuotes) {
+                              values.push(current.trim());
+                              current = "";
+                          } else {
+                              current += char;
+                          }
+                      }
+                      values.push(current.trim()); // Push the last value
+
+                      const obj: any = {};
+                      headers.forEach((h, i) => {
+                          obj[h] = values[i]?.replace(/^"|"$/g, '') || "";
+                      });
+                      return obj;
                   });
-                  return obj;
-              });
+              }
 
               if (rows.length === 0) throw new Error("कुनै डाटाको लहर भेटिएन।");
 
@@ -176,12 +192,17 @@ export const DatabaseManagement: React.FC<DatabaseManagementProps> = ({
           }
       };
 
-      reader.onerror = () => {
-          setUploadError("फाइल लोड गर्न सकिएन।");
+      reader.onerror = (e) => {
+          console.error("FileReader error:", e);
+          setUploadError(`फाइल लोड गर्न सकिएन: ${reader.error?.message || 'अज्ञात त्रुटि'}`);
           setIsUploading(false);
       };
 
-      reader.readAsText(selectedFile);
+      if (selectedFile.name.endsWith('.xlsx') || selectedFile.name.endsWith('.xls')) {
+          reader.readAsBinaryString(selectedFile);
+      } else {
+          reader.readAsText(selectedFile);
+      }
   };
 
   const downloadCSV = (data: any[], filename: string) => {
@@ -361,7 +382,7 @@ export const DatabaseManagement: React.FC<DatabaseManagementProps> = ({
                 <div className="relative border border-slate-300 rounded-lg flex items-center bg-white px-3 py-2.5 shadow-sm">
                     <input
                         type="file"
-                        accept=".csv"
+                        accept=".csv, .xlsx, .xls"
                         onChange={(e) => setSelectedFile(e.target.files ? e.target.files[0] : null)}
                         className="absolute inset-0 opacity-0 cursor-pointer"
                     />
