@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Database, Download, Upload, HardDrive, FileText, ShoppingCart, Archive, FileUp, CheckCircle2, Info, Trash2, Lock, FileOutput, RotateCcw, Wrench, Scroll, ClipboardList, Send, Warehouse, Layers, ShieldCheck, Table as TableIcon, AlertTriangle, Loader2, X } from 'lucide-react';
 import { User } from '../types/coreTypes'; // Changed import
-import { InventoryItem, MagFormEntry, PurchaseOrderEntry, IssueReportEntry, FirmEntry, Store, DakhilaPratibedanEntry, ReturnEntry, MarmatEntry, DhuliyaunaEntry, LogBookEntry } from '../types/inventoryTypes'; // Changed import
+import { InventoryItem, MagFormEntry, PurchaseOrderEntry, IssueReportEntry, FirmEntry, Store, DakhilaPratibedanEntry, ReturnEntry, MarmatEntry, DhuliyaunaEntry, LogBookEntry, ItemEntry } from '../types/inventoryTypes'; // Changed import
 import { RabiesPatient, TBPatient } from '../types/healthTypes'; // Changed import
 import { Select } from './Select';
 
@@ -21,6 +21,7 @@ interface DatabaseManagementProps {
   marmatEntries: MarmatEntry[];
   dhuliyaunaEntries: DhuliyaunaEntry[];
   logBookEntries: LogBookEntry[];
+  itemList: ItemEntry[];
   onClearData?: (sectionId: string) => void;
   onUploadData: (sectionId: string, data: any[], extraMeta?: any) => Promise<void>;
 }
@@ -57,6 +58,10 @@ const UPLOAD_FORMATS: Record<string, { headers: string[], example: string[] }> =
             'USP Standard', 
             'Essential drug supply'
         ]
+    },
+    item_list: {
+        headers: ['Item Name', 'Unit'],
+        example: ['Paracetamol 500mg', 'Pkt']
     }
 };
 
@@ -75,6 +80,7 @@ export const DatabaseManagement: React.FC<DatabaseManagementProps> = ({
   marmatEntries,
   dhuliyaunaEntries,
   logBookEntries,
+  itemList,
   onClearData,
   onUploadData
 }) => {
@@ -223,6 +229,7 @@ export const DatabaseManagement: React.FC<DatabaseManagementProps> = ({
 
   const dataSections = [
     { id: 'inventory', title: 'जिन्सी मौज्दात', data: inventoryItems, icon: <Warehouse size={24} className="text-purple-600" />, desc: 'हालको जिन्सी सामानहरूको सूची', color: 'bg-purple-50 border-purple-200', uploadable: true, uploadFormat: 'inventory' },
+    { id: 'item_list', title: 'सामानको सूची (Item List)', data: itemList, icon: <TableIcon size={24} className="text-blue-600" />, desc: 'सामानको नाम र एकाइको सूची', color: 'bg-blue-50 border-blue-200', uploadable: true, uploadFormat: 'item_list' },
     { id: 'magForms', title: 'माग फारमहरू', data: magForms, icon: <FileText size={24} className="text-orange-600" />, desc: 'सबै माग फारमहरूको विवरण', color: 'bg-orange-50 border-orange-200' },
     { id: 'purchaseOrders', title: 'खरिद आदेशहरू', data: purchaseOrders, icon: <ShoppingCart size={24} className="text-green-600" />, desc: 'सबै खरिद आदेशहरूको विवरण', color: 'bg-green-50 border-green-200' },
     { id: 'issueReports', title: 'निकासा प्रतिवेदनहरू', data: issueReports, icon: <FileOutput size={24} className="text-indigo-600" />, desc: 'जारी गरिएका निकासा प्रतिवेदनहरू', color: 'bg-indigo-50 border-indigo-200' },

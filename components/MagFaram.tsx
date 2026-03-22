@@ -18,11 +18,12 @@ interface MagFaramProps {
   onSave: (form: MagFormEntry) => void;
   onDelete?: (formId: string) => void;
   inventoryItems: InventoryItem[];
+  itemList: ItemEntry[];
   stores?: Store[];
   generalSettings: OrganizationSettings;
 }
 
-export const MagFaram: React.FC<MagFaramProps> = ({ currentFiscalYear, currentUser, existingForms, onSave, onDelete, inventoryItems, generalSettings, stores = [] }) => {
+export const MagFaram: React.FC<MagFaramProps> = ({ currentFiscalYear, currentUser, existingForms, onSave, onDelete, inventoryItems, itemList, generalSettings, stores = [] }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isViewOnly, setIsViewOnly] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -95,8 +96,15 @@ export const MagFaram: React.FC<MagFaramProps> = ({ currentFiscalYear, currentUs
         if (existing) existing.totalQty += (item.currentQuantity || 0);
         else itemMap.set(key, { totalQty: item.currentQuantity || 0, type: item.itemType === 'Expendable' ? 'खर्च हुने' : 'खर्च नहुने', unit: item.unit });
     });
-    return Array.from(itemMap.entries()).sort((a, b) => a[0].localeCompare(b[0])).map(([name, data]) => ({ id: name, value: name, label: `${name} (${data.totalQty} ${data.unit}) [${data.type}]` }));
-  }, [inventoryItems]);
+    // Add items from itemList
+    itemList.forEach(item => {
+        const key = item.itemName.trim();
+        if (!itemMap.has(key)) {
+            itemMap.set(key, { totalQty: 0, type: 'नयाँ', unit: item.unit });
+        }
+    });
+    return Array.from(itemMap.entries()).sort((a, b) => a[0].localeCompare(b[0])).map(([name, data]) => ({ id: name, value: name, label: `${name} ${data.totalQty > 0 ? `(${data.totalQty} ${data.unit})` : ''} [${data.type}]` }));
+  }, [inventoryItems, itemList]);
 
   useEffect(() => {
     if (!editingId && !formDetails.id) {

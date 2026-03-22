@@ -1,5 +1,10 @@
 
 import { Signature } from './coreTypes'; // Ensure Signature is imported if it's in coreTypes
+export interface ItemEntry {
+  id: string;
+  itemName: string;
+  unit: string;
+}
 
 export interface MagItem {
   id: number; // Added 'id' to MagItem

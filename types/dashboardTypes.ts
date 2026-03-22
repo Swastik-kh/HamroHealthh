@@ -3,7 +3,7 @@ import { User, OrganizationSettings, LeaveApplication, LeaveStatus, LeaveBalance
 import { 
   MagFormEntry, PurchaseOrderEntry, IssueReportEntry, FirmEntry, QuotationEntry, 
   InventoryItem, Store, StockEntryRequest, DakhilaPratibedanEntry, ReturnEntry, 
-  MarmatEntry, DhuliyaunaEntry, LogBookEntry
+  MarmatEntry, DhuliyaunaEntry, LogBookEntry, ItemEntry
 } from './inventoryTypes';
 import { RabiesPatient, TBPatient, GarbhawatiPatient, ChildImmunizationRecord } from './healthTypes';
 
@@ -123,6 +123,11 @@ export interface DashboardProps {
 
   logBookEntries: LogBookEntry[];
   onSaveLogBookEntry: (entry: LogBookEntry) => void;
+
+  itemList: ItemEntry[];
+  onAddItem: (item: ItemEntry) => void;
+  onUpdateItem: (item: ItemEntry) => void;
+  onDeleteItem: (itemId: string) => void;
 
   leaveApplications: LeaveApplication[];
   onAddLeaveApplication: (app: LeaveApplication) => void;

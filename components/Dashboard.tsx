@@ -150,7 +150,7 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
   stockEntryRequests = [], onRequestStockEntry, onApproveStockEntry, onRejectStockEntry, stores = [], onAddStore, onUpdateStore, onDeleteStore,
   dakhilaReports = [], onSaveDakhilaReport, returnEntries = [], onSaveReturnEntry, 
   marmatEntries = [], onSaveMarmatEntry, dhuliyaunaEntries = [], onSaveDhuliyaunaEntry,
-  logBookEntries = [], onSaveLogBookEntry, onClearData, onUploadData,
+  logBookEntries = [], onSaveLogBookEntry, itemList = [], onAddItem, onUpdateItem, onDeleteItem, onClearData, onUploadData,
   leaveApplications = [], onAddLeaveApplication, onUpdateLeaveStatus, onDeleteLeaveApplication,
   leaveBalances = [], onSaveLeaveBalance,
   dartaEntries = [], onSaveDarta, onDeleteDarta,
@@ -712,7 +712,7 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
       case 'report_reporting_status': return <ReportingStatusReport serviceSeekerRecords={serviceSeekerRecords} currentFiscalYear={currentFiscalYear} />;
       case 'report_pariwar_niyojan': return <FamilyPlanningReport records={pariwarSewaRecords} settings={generalSettings} fiscalYear={currentFiscalYear} />;
       case 'report_gesi': return <GESIReport currentFiscalYear={currentFiscalYear} bachhaRecords={bachhaImmunizationRecords} cbimnciRecords={cbimnciRecords} serviceSeekerRecords={serviceSeekerRecords} prasutiRecords={prasutiRecords} tbPatients={tbPatients} opdRecords={opdRecords} ipdRecords={ipdRecords} />;
-      case 'mag_faram': return <MagFaram currentFiscalYear={currentFiscalYear} currentUser={currentUser} existingForms={magForms} onSave={onSaveMagForm} onDelete={onDeleteMagForm} inventoryItems={inventoryItems} stores={stores} generalSettings={generalSettings} />;
+      case 'mag_faram': return <MagFaram currentFiscalYear={currentFiscalYear} currentUser={currentUser} existingForms={magForms} onSave={onSaveMagForm} onDelete={onDeleteMagForm} inventoryItems={inventoryItems} stores={stores} generalSettings={generalSettings} itemList={itemList} />;
       case 'kharid_adesh': return <KharidAdesh orders={purchaseOrders} currentFiscalYear={currentFiscalYear} onSave={onUpdatePurchaseOrder} onDelete={onDeletePurchaseOrder} currentUser={currentUser} firms={firms} quotations={quotations} onDakhilaClick={(po) => { setActiveItem('jinshi_maujdat'); setPendingPoDakhila(po); }} generalSettings={generalSettings} inventoryItems={inventoryItems} />;
       case 'nikasha_pratibedan': return <NikashaPratibedan reports={issueReports} onSave={onUpdateIssueReport} currentUser={currentUser} currentFiscalYear={currentFiscalYear} generalSettings={generalSettings} stores={stores} />;
       case 'form_suchikaran': return <FirmListing currentFiscalYear={currentFiscalYear} firms={firms} onAddFirm={onAddFirm} />;
@@ -1156,7 +1156,7 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
                                               stockEntryRequests={stockEntryRequests} 
                                               stores={stores} 
                                             />;
-      case 'database_management': return <DatabaseManagement currentUser={currentUser} users={users} inventoryItems={inventoryItems} magForms={magForms} purchaseOrders={purchaseOrders} issueReports={issueReports} rabiesPatients={rabiesPatients} tbPatients={tbPatients} firms={firms} stores={stores} dakhilaReports={dakhilaReports} returnEntries={returnEntries} marmatEntries={marmatEntries} dhuliyaunaEntries={dhuliyaunaEntries} logBookEntries={logBookEntries} onClearData={onClearData} onUploadData={onUploadData} />;
+      case 'database_management': return <DatabaseManagement currentUser={currentUser} users={users} inventoryItems={inventoryItems} magForms={magForms} purchaseOrders={purchaseOrders} issueReports={issueReports} rabiesPatients={rabiesPatients} tbPatients={tbPatients} firms={firms} stores={stores} dakhilaReports={dakhilaReports} returnEntries={returnEntries} marmatEntries={marmatEntries} dhuliyaunaEntries={dhuliyaunaEntries} logBookEntries={logBookEntries} itemList={itemList} onClearData={onClearData} onUploadData={onUploadData} />;
       case 'general_setting': return <GeneralSetting currentUser={currentUser} settings={generalSettings} onUpdateSettings={onUpdateGeneralSettings} />;
       case 'service_settings': return <ServiceSettings 
         serviceItems={serviceItems}
