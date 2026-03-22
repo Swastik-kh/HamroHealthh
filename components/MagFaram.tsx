@@ -134,13 +134,17 @@ export const MagFaram: React.FC<MagFaramProps> = ({ currentFiscalYear, currentUs
   };
 
   const handleItemNameChange = useCallback((id: number, newName: string) => {
+    console.log("handleItemNameChange called with:", id, newName);
+    console.log("itemList:", itemList);
     setItems(prev => prev.map(item => {
         if (item.id === id) {
             let existing = inventoryItems.find(i => i.itemName.trim().toLowerCase() === newName.trim().toLowerCase());
+            console.log("Existing in inventory:", existing);
             if (existing) return { ...item, name: newName, isFromInventory: true, codeNo: existing.uniqueCode || existing.sanketNo || '', unit: existing.unit, specification: existing.specification || '' };
             
             // Check in itemList if not found in inventoryItems
             let fromItemList = itemList.find(i => i.itemName.trim().toLowerCase() === newName.trim().toLowerCase());
+            console.log("From itemList:", fromItemList);
             if (fromItemList) return { ...item, name: newName, isFromInventory: false, codeNo: '', unit: fromItemList.unit, specification: '' };
             
             return { ...item, name: newName, isFromInventory: false, codeNo: '', unit: '', specification: '' };
