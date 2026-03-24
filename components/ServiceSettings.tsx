@@ -170,7 +170,7 @@ export const ServiceSettings: React.FC<ServiceSettingsProps> = ({
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-slate-700 mb-2">Sub-tests</label>
                   {formData.subTests?.map((subTest, index) => (
-                    <div key={index} className="grid grid-cols-3 gap-2 mb-2">
+                    <div key={index} className="grid grid-cols-4 gap-2 mb-2">
                       <Input 
                         label=""
                         value={subTest.testName} 
@@ -190,6 +190,17 @@ export const ServiceSettings: React.FC<ServiceSettingsProps> = ({
                           setFormData({...formData, subTests: newSubTests});
                         }}
                         placeholder="Value Range"
+                      />
+                      <Input 
+                        label=""
+                        type="number"
+                        value={subTest.price} 
+                        onChange={e => {
+                          const newSubTests = [...(formData.subTests || [])];
+                          newSubTests[index].price = parseFloat(e.target.value) || 0;
+                          setFormData({...formData, subTests: newSubTests});
+                        }}
+                        placeholder="Price"
                       />
                       <div className="flex gap-2">
                         <Input 

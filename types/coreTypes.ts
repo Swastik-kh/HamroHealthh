@@ -355,6 +355,7 @@ export interface SubTest {
   testName: string;
   valueRange?: string;
   unit?: string;
+  price: number; // Added price
 }
 
 export interface ServiceItem {

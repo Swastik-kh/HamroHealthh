@@ -128,31 +128,58 @@ export const ServiceBilling: React.FC<ServiceBillingProps> = ({
     const serviceNames = investigation.split(/[\n,]/).map(s => s.trim()).filter(s => s);
 
     serviceNames.forEach((name, index) => {
-      // Check if already in current billingItems
-      const isAlreadyInBill = billingItems.some(item => item.serviceName.toLowerCase() === name.toLowerCase());
-      if (isAlreadyInBill) return;
-
-      // Check if already billed in previous records
-      const isAlreadyBilled = billingRecords.some(b => 
-        b.serviceSeekerId === currentPatient?.id && 
-        b.items.some(i => i.serviceName.toLowerCase() === name.toLowerCase())
-      );
-      if (isAlreadyBilled) return;
-
-      // Find service in settings to get rate
+      // Find service in settings to get rate and sub-tests
       const service = serviceItems.find(s => s.serviceName === name) || 
                       serviceItems.find(s => s.serviceName.toLowerCase() === name.toLowerCase());
       
-      const price = service ? service.rate : 0;
-      
-      const item: BillingItem = {
-        id: Date.now().toString() + '-' + index + '-' + Math.random().toString(36).substr(2, 5), // Ensure unique ID
-        serviceName: name,
-        price: price,
-        quantity: 1,
-        total: price * 1
-      };
-      itemsToAdd.push(item);
+      if (service && service.subTests && service.subTests.length > 0) {
+        // Add sub-tests as individual items
+        service.subTests.forEach((subTest, subIndex) => {
+          const subItemName = `${service.serviceName} - ${subTest.testName}`;
+          
+          // Check if already in current billingItems
+          const isAlreadyInBill = billingItems.some(item => item.serviceName.toLowerCase() === subItemName.toLowerCase());
+          if (isAlreadyInBill) return;
+
+          // Check if already billed in previous records
+          const isAlreadyBilled = billingRecords.some(b => 
+            b.serviceSeekerId === currentPatient?.id && 
+            b.items.some(i => i.serviceName.toLowerCase() === subItemName.toLowerCase())
+          );
+          if (isAlreadyBilled) return;
+          
+          const item: BillingItem = {
+            id: Date.now().toString() + '-' + index + '-' + subIndex + '-' + Math.random().toString(36).substr(2, 5),
+            serviceName: subItemName,
+            price: subTest.price,
+            quantity: 1,
+            total: subTest.price * 1
+          };
+          itemsToAdd.push(item);
+        });
+      } else {
+        // Check if already in current billingItems
+        const isAlreadyInBill = billingItems.some(item => item.serviceName.toLowerCase() === name.toLowerCase());
+        if (isAlreadyInBill) return;
+
+        // Check if already billed in previous records
+        const isAlreadyBilled = billingRecords.some(b => 
+          b.serviceSeekerId === currentPatient?.id && 
+          b.items.some(i => i.serviceName.toLowerCase() === name.toLowerCase())
+        );
+        if (isAlreadyBilled) return;
+        
+        const price = service ? service.rate : 0;
+        
+        const item: BillingItem = {
+          id: Date.now().toString() + '-' + index + '-' + Math.random().toString(36).substr(2, 5), // Ensure unique ID
+          serviceName: name,
+          price: price,
+          quantity: 1,
+          total: price * 1
+        };
+        itemsToAdd.push(item);
+      }
     });
 
     if (itemsToAdd.length === 0) {
