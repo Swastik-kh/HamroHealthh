@@ -36,122 +36,88 @@ export const PrayogsalaSewa: React.FC<PrayogsalaSewaProps> = ({
   const [currentPatient, setCurrentPatient] = useState<ServiceSeekerRecord | null>(null);
   const [pendingTests, setPendingTests] = useState<PendingTest[]>([]);
   const [currentReport, setCurrentReport] = useState<LabReport | null>(null);
-  const [currentBarcodeTest, setCurrentBarcodeTest] = useState<PendingTest | null>(null);
+  const [currentBarcodeReport, setCurrentBarcodeReport] = useState<LabReport | null>(null);
   const [activeTab, setActiveTab] = useState<'sample' | 'result'>('sample');
+  const [viewMode, setViewMode] = useState<'search' | 'dashboard'>('dashboard');
   
   const printRef = useRef<HTMLDivElement>(null);
   const barcodePrintRef = useRef<HTMLDivElement>(null);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    const query = searchId.trim().toLowerCase();
-    if (!query) return;
-
-    let patient = serviceSeekerRecords.find(r => r.uniquePatientId.toLowerCase() === query);
-    
-    if (!patient) {
-       patient = serviceSeekerRecords.find(r => r.uniquePatientId.replace(/[^0-9]/g, '') === query);
-    }
-
-    if (!patient) {
-        patient = serviceSeekerRecords.find(r => r.registrationNumber === query && r.fiscalYear === currentFiscalYear);
-    }
-
-    if (patient) {
-      setCurrentPatient(patient);
-      loadPendingTests(patient.id);
-      setCurrentReport(null);
-    } else {
-      alert('बिरामी भेटिएन (Patient not found)');
-      setCurrentPatient(null);
-      setPendingTests([]);
-    }
-  };
-
-  const loadPendingTests = (patientId: string) => {
-    // 1. Get all bills for this patient
-    const patientBills = billingRecords.filter(b => b.serviceSeekerId === patientId);
-    
-    // 2. Extract all items from bills with their invoice numbers
-    const allBilledItems = patientBills.flatMap(b => 
-      b.items.map(item => ({ ...item, invoiceNumber: b.invoiceNumber }))
-    );
-
-    // 3. Filter items that are Lab Investigations or Sub-tests
-    const labServices = serviceItems.filter(s => s.category === 'Lab');
-    const labServiceNames = new Set(labServices.map(s => s.serviceName.trim().toLowerCase()));
-    const labSubTestNames = new Set(labServices.flatMap(s => s.subTests || []).map(st => st.testName.trim().toLowerCase()));
-
-    const labItems = allBilledItems.filter(item => {
-      const itemName = item.serviceName.trim().toLowerCase();
-      return labServiceNames.has(itemName) || labSubTestNames.has(itemName);
-    });
-
-    // 4. Check existing reports
-    const existingReports = labReports.filter(r => r.serviceSeekerId === patientId);
-
-    // Filter out items that belong to completed reports
-    const activeItems = labItems.filter(item => {
-      const report = existingReports.find(r => r.invoiceNumber === item.invoiceNumber);
-      return !report || report.status !== 'Completed';
-    });
-
-    // 5. Prepare tests for the UI
-    const tests: PendingTest[] = activeItems.map((item, index) => {
-      const itemName = item.serviceName.trim().toLowerCase();
-      
-      // Find service or sub-test definition
-      let serviceDef = serviceItems.find(s => s.serviceName.trim().toLowerCase() === itemName);
-      let subTestDef = null;
-      if (!serviceDef) {
-        for (const s of serviceItems) {
-          if (s.subTests) {
-            subTestDef = s.subTests.find(st => st.testName.trim().toLowerCase() === itemName);
-            if (subTestDef) {
-              serviceDef = s;
-              break;
-            }
-          }
-        }
-      }
-      
-      // Find if this specific test from this specific invoice is already in an existing report
-      const existingReport = existingReports.find(r => 
-        r.invoiceNumber === item.invoiceNumber && 
-        r.tests?.some(t => t.testName.trim().toLowerCase() === itemName)
-      );
-      const existingTest = existingReport?.tests?.find(t => t.testName.trim().toLowerCase() === itemName);
-
-      return {
-        id: existingTest?.id || `TEST-${item.invoiceNumber}-${index}`,
-        testName: item.serviceName,
-        result: existingTest?.result || '',
-        normalRange: existingTest?.normalRange || subTestDef?.valueRange || serviceDef?.valueRange || '',
-        unit: existingTest?.unit || subTestDef?.unit || serviceDef?.unit || '',
-        remarks: existingTest?.remarks || '',
-        sampleCollected: existingTest?.sampleCollected || false,
-        sampleCollectedDate: existingTest?.sampleCollectedDate || '',
-        sampleCollectedBy: existingTest?.sampleCollectedBy || '',
-        barcodeId: existingTest?.barcodeId || '',
-        invoiceNumber: item.invoiceNumber
-      };
-    });
-
-    // Grouping: We want to show tests per invoice
-    // But for the state, we keep the flat list
-    setPendingTests(tests);
-  };
-
   const handlePrintBarcode = useReactToPrint({
     contentRef: barcodePrintRef,
-    documentTitle: `Barcode-${currentBarcodeTest?.barcodeId || 'New'}`,
+    documentTitle: `Barcode-${currentBarcodeReport?.barcodeId || 'New'}`,
   });
+
+  const handleCollectInvoiceSamples = (invoiceNumber: string) => {
+    if (!currentPatient) return;
+
+    // Generate a unique barcode ID for the entire invoice
+    const barcodeId = `BC-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`;
+    const collectionDate = new NepaliDate().format('YYYY-MM-DD HH:mm');
+    const collectedBy = currentUser?.username || 'System';
+
+    const updatedTests = pendingTests.map(t => t.invoiceNumber === invoiceNumber ? { 
+      ...t, 
+      sampleCollected: true, 
+      sampleCollectedDate: collectionDate,
+      sampleCollectedBy: collectedBy,
+      barcodeId: barcodeId
+    } : t);
+    
+    setPendingTests(updatedTests);
+
+    // Save to database
+    const invoiceTests = updatedTests.filter(t => t.invoiceNumber === invoiceNumber && t.sampleCollected);
+    
+    const existingReport = labReports.find(r => 
+      r.serviceSeekerId === currentPatient.id && 
+      r.invoiceNumber === invoiceNumber
+    );
+
+    const reportToSave: LabReport = {
+      id: existingReport?.id || Date.now().toString(),
+      fiscalYear: currentFiscalYear,
+      reportDate: existingReport?.reportDate || new NepaliDate().format('YYYY-MM-DD'),
+      serviceSeekerId: currentPatient.id,
+      patientName: currentPatient.name,
+      age: currentPatient.age,
+      gender: currentPatient.gender,
+      invoiceNumber: invoiceNumber,
+      tests: invoiceTests.map(({ invoiceNumber, ...rest }) => rest),
+      status: existingReport?.status === 'Completed' ? 'Completed' : 'Sample Collected',
+      createdBy: existingReport?.createdBy || currentUser?.username || 'Unknown',
+      barcodeId: barcodeId
+    };
+
+    onSaveRecord(reportToSave);
+    
+    // Set current barcode report and print
+    setCurrentBarcodeReport(reportToSave);
+    setTimeout(() => {
+      if (barcodePrintRef.current) {
+        handlePrintBarcode();
+      }
+    }, 300);
+
+    alert(`Invoice ${invoiceNumber} को सबै नमुना संकलन गरियो र बारकोड प्रिन्टको लागि तयार छ।`);
+    setActiveTab('result');
+  };
 
   const handleCollectSample = (id: string) => {
     if (!currentPatient) return;
 
-    // Generate a unique barcode ID
-    const barcodeId = `BC-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`;
+    const testToCollect = pendingTests.find(t => t.id === id);
+    if (!testToCollect) return;
+
+    const invoiceNumber = testToCollect.invoiceNumber;
+    
+    // Check if a barcode already exists for this invoice in existing reports
+    const existingReport = labReports.find(r => 
+      r.serviceSeekerId === currentPatient.id && 
+      r.invoiceNumber === invoiceNumber
+    );
+
+    const barcodeId = existingReport?.barcodeId || `BC-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`;
 
     const updatedTests = pendingTests.map(t => t.id === id ? { 
       ...t, 
@@ -164,46 +130,40 @@ export const PrayogsalaSewa: React.FC<PrayogsalaSewaProps> = ({
     setPendingTests(updatedTests);
 
     // Auto-save to database immediately
-    const test = updatedTests.find(t => t.id === id);
-    if (test) {
-      const invoiceNumber = test.invoiceNumber;
-      const invoiceTests = updatedTests.filter(t => t.invoiceNumber === invoiceNumber && t.sampleCollected);
-      
-      const existingReport = labReports.find(r => 
-        r.serviceSeekerId === currentPatient.id && 
-        r.invoiceNumber === invoiceNumber
-      );
+    const invoiceTests = updatedTests.filter(t => t.invoiceNumber === invoiceNumber && t.sampleCollected);
+    
+    const reportToSave: LabReport = {
+      id: existingReport?.id || Date.now().toString(),
+      fiscalYear: currentFiscalYear,
+      reportDate: existingReport?.reportDate || new NepaliDate().format('YYYY-MM-DD'),
+      serviceSeekerId: currentPatient.id,
+      patientName: currentPatient.name,
+      age: currentPatient.age,
+      gender: currentPatient.gender,
+      invoiceNumber: invoiceNumber,
+      tests: invoiceTests.map(({ invoiceNumber, ...rest }) => rest),
+      status: existingReport?.status === 'Completed' ? 'Completed' : 'Sample Collected',
+      createdBy: existingReport?.createdBy || currentUser?.username || 'Unknown',
+      barcodeId: barcodeId
+    };
 
-      const reportToSave: LabReport = {
-        id: existingReport?.id || Date.now().toString(),
-        fiscalYear: currentFiscalYear,
-        reportDate: existingReport?.reportDate || new NepaliDate().format('YYYY-MM-DD'),
-        serviceSeekerId: currentPatient.id,
-        patientName: currentPatient.name,
-        age: currentPatient.age,
-        gender: currentPatient.gender,
-        invoiceNumber: invoiceNumber,
-        tests: invoiceTests.map(({ invoiceNumber, ...rest }) => rest),
-        status: existingReport?.status === 'Completed' ? 'Completed' : 'Sample Collected',
-        createdBy: existingReport?.createdBy || currentUser?.username || 'Unknown'
-      };
-
-      onSaveRecord(reportToSave);
-      
-      // Set current barcode test and print
-      setCurrentBarcodeTest(test);
-      setTimeout(() => {
+    onSaveRecord(reportToSave);
+    
+    // Set current barcode report and print
+    setCurrentBarcodeReport(reportToSave);
+    setTimeout(() => {
+      if (barcodePrintRef.current) {
         handlePrintBarcode();
-      }, 100);
-
-      alert('नमुना सफलतापूर्वक संकलन गरियो र बारकोड प्रिन्टको लागि तयार छ।');
-
-      // Check if all samples for this invoice are collected, if so, switch to result tab
-      const allInvoiceTests = updatedTests.filter(t => t.invoiceNumber === invoiceNumber);
-      const allCollected = allInvoiceTests.every(t => t.sampleCollected);
-      if (allCollected) {
-        setActiveTab('result');
       }
+    }, 300);
+
+    alert('नमुना सफलतापूर्वक संकलन गरियो।');
+
+    // Check if all samples for this invoice are collected, if so, switch to result tab
+    const allInvoiceTests = updatedTests.filter(t => t.invoiceNumber === invoiceNumber);
+    const allCollected = allInvoiceTests.every(t => t.sampleCollected);
+    if (allCollected) {
+      setActiveTab('result');
     }
   };
 
@@ -240,6 +200,56 @@ export const PrayogsalaSewa: React.FC<PrayogsalaSewaProps> = ({
     onSaveRecord(reportToSave);
     alert(`Invoice ${invoiceNumber} को नमुना संकलन सुरक्षित गरियो।`);
     loadPendingTests(currentPatient.id);
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const patient = serviceSeekerRecords.find(p => p.uniquePatientId === searchId || p.mulDartaNo === searchId);
+    if (patient) {
+      setCurrentPatient(patient);
+      loadPendingTests(patient.id);
+    } else {
+      alert('बिरामी फेला परेन (Patient not found)');
+    }
+  };
+
+  const loadPendingTests = (patientId: string) => {
+    const labServices = serviceItems.filter(s => s.category === 'Lab');
+    const labServiceNames = new Set(labServices.map(s => s.serviceName.trim().toLowerCase()));
+    const labSubTestNames = new Set(labServices.flatMap(s => s.subTests || []).map(st => st.testName.trim().toLowerCase()));
+
+    const patientBills = billingRecords.filter(b => b.serviceSeekerId === patientId);
+    const tests: PendingTest[] = [];
+
+    patientBills.forEach(bill => {
+      const existingReport = labReports.find(r => r.invoiceNumber === bill.invoiceNumber && r.serviceSeekerId === patientId);
+      
+      bill.items.forEach(item => {
+        const itemName = item.serviceName.trim().toLowerCase();
+        const isLabService = labServiceNames.has(itemName);
+        const isLabSubTest = labSubTestNames.has(itemName);
+
+        if (isLabService || isLabSubTest) {
+          const existingTest = existingReport?.tests?.find(t => t.testName.trim().toLowerCase() === itemName);
+          
+          tests.push({
+            id: existingTest?.id || `${bill.invoiceNumber}-${item.serviceName}-${Date.now()}`,
+            testName: item.serviceName,
+            unit: existingTest?.unit || '',
+            normalRange: existingTest?.normalRange || '',
+            result: existingTest?.result || '',
+            remarks: existingTest?.remarks || '',
+            sampleCollected: existingTest?.sampleCollected || false,
+            sampleCollectedDate: existingTest?.sampleCollectedDate || '',
+            sampleCollectedBy: existingTest?.sampleCollectedBy || '',
+            invoiceNumber: bill.invoiceNumber,
+            barcodeId: existingTest?.barcodeId || existingReport?.barcodeId || ''
+          });
+        }
+      });
+    });
+
+    setPendingTests(tests);
   };
 
   const handleResultChange = (id: string, field: keyof LabTestResult, value: string) => {
@@ -279,14 +289,19 @@ export const PrayogsalaSewa: React.FC<PrayogsalaSewaProps> = ({
       invoiceNumber: invoiceNumber,
       tests: invoiceTests.map(({ invoiceNumber, ...rest }) => rest),
       status: 'Completed',
-      createdBy: currentUser?.username || 'Unknown'
+      createdBy: currentUser?.username || 'Unknown',
+      barcodeId: existingReport?.barcodeId || invoiceTests[0]?.barcodeId || ''
     };
 
     onSaveRecord(newReport);
     setCurrentReport(newReport);
     
     if (window.confirm('रिपोर्ट सुरक्षित गरियो। के तपाइँ यसलाई प्रिन्ट गर्न चाहनुहुन्छ? (Report saved. Do you want to print it?)')) {
-      setTimeout(handlePrint, 100);
+      setTimeout(() => {
+        if (printRef.current) {
+          handlePrint();
+        }
+      }, 300);
     }
   };
 
@@ -309,33 +324,178 @@ export const PrayogsalaSewa: React.FC<PrayogsalaSewaProps> = ({
     return groups;
   }, [pendingTests]);
 
+  // Global Pending Tasks Logic
+  const globalPendingTasks = useMemo(() => {
+    const labServices = serviceItems.filter(s => s.category === 'Lab');
+    const labServiceNames = new Set(labServices.map(s => s.serviceName.trim().toLowerCase()));
+    const labSubTestNames = new Set(labServices.flatMap(s => s.subTests || []).map(st => st.testName.trim().toLowerCase()));
+
+    const pendingSamples: any[] = [];
+    const pendingResults: any[] = [];
+
+    // Process all billing records to find lab items
+    billingRecords.forEach(bill => {
+      const patient = serviceSeekerRecords.find(p => p.id === bill.serviceSeekerId);
+      if (!patient) return;
+
+      const labItems = bill.items.filter(item => {
+        const itemName = item.serviceName.trim().toLowerCase();
+        return labServiceNames.has(itemName) || labSubTestNames.has(itemName);
+      });
+
+      if (labItems.length === 0) return;
+
+      const existingReport = labReports.find(r => r.invoiceNumber === bill.invoiceNumber && r.serviceSeekerId === bill.serviceSeekerId);
+
+      labItems.forEach(item => {
+        const itemName = item.serviceName.trim().toLowerCase();
+        const existingTest = existingReport?.tests?.find(t => t.testName.trim().toLowerCase() === itemName);
+
+        const taskData = {
+          patientId: patient.id,
+          patientName: patient.name,
+          patientPID: patient.uniquePatientId,
+          testName: item.serviceName,
+          invoiceNumber: bill.invoiceNumber,
+          date: bill.date,
+          status: existingTest?.sampleCollected ? (existingReport?.status === 'Completed' ? 'Completed' : 'Sample Collected') : 'Pending Sample',
+          barcodeId: existingTest?.barcodeId || ''
+        };
+
+        if (!existingTest?.sampleCollected) {
+          pendingSamples.push(taskData);
+        } else if (existingReport?.status !== 'Completed') {
+          pendingResults.push(taskData);
+        }
+      });
+    });
+
+    return { pendingSamples, pendingResults };
+  }, [billingRecords, serviceSeekerRecords, labReports, serviceItems]);
+
+  const handleSelectPatientFromDashboard = (patientId: string) => {
+    const patient = serviceSeekerRecords.find(p => p.id === patientId);
+    if (patient) {
+      setCurrentPatient(patient);
+      loadPendingTests(patient.id);
+      setViewMode('search');
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-      {/* Search Section */}
+      {/* Header & Navigation */}
       <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-        <h2 className="text-xl font-bold text-slate-800 font-nepali mb-4 flex items-center gap-2">
-          <FlaskConical className="text-primary-600" />
-          प्रयोगशाला सेवा (Lab Service)
-        </h2>
-        <form onSubmit={handleSearch} className="flex gap-4">
-          <div className="flex-1 max-w-md relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-            <input
-              type="text"
-              value={searchId}
-              onChange={(e) => setSearchId(e.target.value)}
-              placeholder="बिरामी ID (PID-XXXXXX) वा दर्ता नं. राख्नुहोस्"
-              className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              autoFocus
-            />
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <h2 className="text-xl font-bold text-slate-800 font-nepali flex items-center gap-2">
+            <FlaskConical className="text-primary-600" />
+            प्रयोगशाला सेवा (Lab Service)
+          </h2>
+          <div className="flex bg-slate-100 p-1 rounded-lg">
+            <button 
+              onClick={() => setViewMode('dashboard')}
+              className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${viewMode === 'dashboard' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Dashboard
+            </button>
+            <button 
+              onClick={() => setViewMode('search')}
+              className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${viewMode === 'search' ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              Patient Search
+            </button>
           </div>
-          <button type="submit" className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 font-medium shadow-sm">
-            खोज्नुहोस्
-          </button>
-        </form>
+        </div>
+
+        {viewMode === 'search' ? (
+          <form onSubmit={handleSearch} className="flex gap-4">
+            <div className="flex-1 max-w-md relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+              <input
+                type="text"
+                value={searchId}
+                onChange={(e) => setSearchId(e.target.value)}
+                placeholder="बिरामी ID (PID-XXXXXX) वा दर्ता नं. राख्नुहोस्"
+                className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                autoFocus
+              />
+            </div>
+            <button type="submit" className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 font-medium shadow-sm">
+              खोज्नुहोस्
+            </button>
+          </form>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-blue-800 flex items-center gap-2">
+                  <Beaker size={18} /> Pending Samples
+                </h3>
+                <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full font-bold">
+                  {globalPendingTasks.pendingSamples.length}
+                </span>
+              </div>
+              <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                {globalPendingTasks.pendingSamples.length > 0 ? (
+                  globalPendingTasks.pendingSamples.map((task, idx) => (
+                    <div 
+                      key={idx} 
+                      onClick={() => handleSelectPatientFromDashboard(task.patientId)}
+                      className="bg-white p-3 rounded-lg border border-slate-200 hover:border-blue-400 cursor-pointer transition-all hover:shadow-md group"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-bold text-slate-800 group-hover:text-blue-600">{task.patientName}</p>
+                          <p className="text-xs text-slate-500">{task.patientPID} | Inv: {task.invoiceNumber}</p>
+                        </div>
+                        <p className="text-[10px] font-bold text-slate-400">{task.date}</p>
+                      </div>
+                      <p className="text-xs mt-1 text-slate-600 font-medium">{task.testName}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-center py-8 text-slate-400 italic text-sm">No pending samples</p>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-green-50/50 p-4 rounded-xl border border-green-100">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-green-800 flex items-center gap-2">
+                  <Activity size={18} /> Pending Results
+                </h3>
+                <span className="bg-green-600 text-white text-xs px-2 py-1 rounded-full font-bold">
+                  {globalPendingTasks.pendingResults.length}
+                </span>
+              </div>
+              <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                {globalPendingTasks.pendingResults.length > 0 ? (
+                  globalPendingTasks.pendingResults.map((task, idx) => (
+                    <div 
+                      key={idx} 
+                      onClick={() => handleSelectPatientFromDashboard(task.patientId)}
+                      className="bg-white p-3 rounded-lg border border-slate-200 hover:border-green-400 cursor-pointer transition-all hover:shadow-md group"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-bold text-slate-800 group-hover:text-green-600">{task.patientName}</p>
+                          <p className="text-xs text-slate-500">{task.patientPID} | Barcode: {task.barcodeId}</p>
+                        </div>
+                        <p className="text-[10px] font-bold text-slate-400">{task.date}</p>
+                      </div>
+                      <p className="text-xs mt-1 text-slate-600 font-medium">{task.testName}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-center py-8 text-slate-400 italic text-sm">No pending results</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {currentPatient && (
+      {viewMode === 'search' && currentPatient && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column: Patient Info & History */}
           <div className="space-y-6">
@@ -431,8 +591,18 @@ export const PrayogsalaSewa: React.FC<PrayogsalaSewaProps> = ({
                             Invoice: {invoiceNumber}
                           </h4>
                           {activeTab === 'sample' ? (
-                            <div className="flex items-center gap-2 text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
-                              <Beaker size={14} /> {tests.filter(t => !t.sampleCollected).length} Pending Samples
+                            <div className="flex items-center gap-2">
+                              {tests.some(t => !t.sampleCollected) && (
+                                <button 
+                                  onClick={() => handleCollectInvoiceSamples(invoiceNumber)}
+                                  className="bg-blue-600 text-white px-4 py-1.5 rounded-lg hover:bg-blue-700 text-xs font-bold shadow-sm flex items-center gap-2"
+                                >
+                                  <Beaker size={14} /> Collect All
+                                </button>
+                              )}
+                              <div className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+                                {tests.filter(t => !t.sampleCollected).length} Pending Samples
+                              </div>
                             </div>
                           ) : (
                             <div className="flex items-center gap-2">
@@ -442,12 +612,27 @@ export const PrayogsalaSewa: React.FC<PrayogsalaSewaProps> = ({
                                 </div>
                               )}
                               {tests.some(t => t.sampleCollected) && (
-                                <button 
-                                  onClick={() => handleSaveReport(invoiceNumber)}
-                                  className="bg-green-600 text-white px-4 py-1.5 rounded-lg hover:bg-green-700 text-xs font-bold shadow-sm flex items-center gap-2"
-                                >
-                                  <Save size={14} /> Save & Print
-                                </button>
+                                <div className="flex items-center gap-2">
+                                  <button 
+                                    onClick={() => {
+                                      const report = labReports.find(r => r.invoiceNumber === invoiceNumber && r.serviceSeekerId === currentPatient?.id);
+                                      if (report) {
+                                        setCurrentBarcodeReport(report);
+                                        setTimeout(handlePrintBarcode, 100);
+                                      }
+                                    }}
+                                    className="bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-200 text-xs font-bold shadow-sm flex items-center gap-2"
+                                    title="Print Invoice Barcode"
+                                  >
+                                    <Printer size={14} /> Barcode
+                                  </button>
+                                  <button 
+                                    onClick={() => handleSaveReport(invoiceNumber)}
+                                    className="bg-green-600 text-white px-4 py-1.5 rounded-lg hover:bg-green-700 text-xs font-bold shadow-sm flex items-center gap-2"
+                                  >
+                                    <Save size={14} /> Save & Print
+                                  </button>
+                                </div>
                               )}
                             </div>
                           )}
@@ -491,23 +676,13 @@ export const PrayogsalaSewa: React.FC<PrayogsalaSewaProps> = ({
                                           onClick={() => handleCollectSample(test.id)}
                                           className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 text-xs font-bold shadow-sm"
                                         >
-                                          Collect Sample
+                                          Collect
                                         </button>
                                       ) : (
                                         <div className="flex items-center justify-center gap-2">
                                           <span className="text-green-600 flex items-center gap-1 text-xs font-bold">
                                             <CheckCircle2 size={14} /> Collected
                                           </span>
-                                          <button 
-                                            onClick={() => {
-                                              setCurrentBarcodeTest(test);
-                                              setTimeout(handlePrintBarcode, 100);
-                                            }}
-                                            className="text-primary-600 hover:text-primary-700 p-1 rounded hover:bg-primary-50"
-                                            title="Print Barcode"
-                                          >
-                                            <Printer size={14} />
-                                          </button>
                                         </div>
                                       )}
                                     </td>
@@ -548,16 +723,9 @@ export const PrayogsalaSewa: React.FC<PrayogsalaSewaProps> = ({
                                       />
                                     </td>
                                     <td className="p-3 text-center">
-                                      <button 
-                                        onClick={() => {
-                                          setCurrentBarcodeTest(test);
-                                          setTimeout(handlePrintBarcode, 100);
-                                        }}
-                                        className="text-slate-400 hover:text-primary-600"
-                                        title="Print Barcode"
-                                      >
-                                        <Printer size={16} />
-                                      </button>
+                                      <span className="text-xs font-mono text-slate-400">
+                                        {test.barcodeId}
+                                      </span>
                                     </td>
                                   </tr>
                                 ))
@@ -596,18 +764,18 @@ export const PrayogsalaSewa: React.FC<PrayogsalaSewaProps> = ({
       )}
 
       {/* Hidden Print Templates */}
-      <div style={{ display: "none" }}>
+      <div className="fixed top-0 left-0 w-0 h-0 overflow-hidden opacity-0 pointer-events-none" aria-hidden="true">
         {/* Barcode Print Template */}
         <div ref={barcodePrintRef} className="p-4 bg-white text-black print:block w-[200px] text-center font-mono">
           <div className="border-2 border-black p-2 rounded">
             <p className="text-xs font-bold mb-1">{generalSettings?.orgNameEnglish || 'LAB'}</p>
             <div className="bg-black h-8 w-full mb-1"></div>
-            <p className="text-sm font-bold tracking-widest">{currentBarcodeTest?.barcodeId}</p>
+            <p className="text-sm font-bold tracking-widest">{currentBarcodeReport?.barcodeId}</p>
             <div className="mt-2 text-[10px] text-left">
               <p>Name: {currentPatient?.name}</p>
               <p>ID: {currentPatient?.uniquePatientId}</p>
-              <p>Test: {currentBarcodeTest?.testName}</p>
-              <p>Date: {currentBarcodeTest?.sampleCollectedDate}</p>
+              <p>Inv: {currentBarcodeReport?.invoiceNumber}</p>
+              <p>Date: {currentBarcodeReport?.reportDate}</p>
             </div>
           </div>
         </div>

@@ -396,6 +396,7 @@ export interface LabReport {
   status: 'Sample Pending' | 'Sample Collected' | 'Completed';
   isViewedByDoctor?: boolean;
   createdBy?: string;
+  barcodeId?: string; // Added barcodeId to LabReport
 }
 
 export interface Medication {
