@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { Search, FileText, User, Activity, Save, Printer, History, FlaskConical, Trash2, CheckCircle2, Beaker } from 'lucide-react';
+import Barcode from 'react-barcode';
 import { ServiceSeekerRecord, BillingRecord, ServiceItem, LabReport, LabTestResult, OrganizationSettings } from '../types/coreTypes';
 // @ts-ignore
 import NepaliDate from 'nepali-date-converter';
@@ -803,7 +804,9 @@ export const PrayogsalaSewa: React.FC<PrayogsalaSewaProps> = ({
         <div ref={barcodePrintRef} className="p-4 bg-white text-black print:block w-[200px] text-center font-mono">
           <div className="border-2 border-black p-2 rounded">
             <p className="text-xs font-bold mb-1">{generalSettings?.orgNameEnglish || 'LAB'}</p>
-            <div className="bg-black h-8 w-full mb-1"></div>
+            <div className="mb-1">
+              <Barcode value={currentBarcodeReport?.barcodeId || '000000'} width={1.5} height={30} displayValue={false} />
+            </div>
             <p className="text-sm font-bold tracking-widest">{currentBarcodeReport?.barcodeId}</p>
             <div className="mt-2 text-[10px] text-left">
               <p>Name: {currentPatient?.name}</p>
