@@ -592,6 +592,23 @@ export const PrayogsalaSewa: React.FC<PrayogsalaSewaProps> = ({
                           </h4>
                           {activeTab === 'sample' ? (
                             <div className="flex items-center gap-2">
+                              {tests.some(t => t.sampleCollected) && (
+                                <button 
+                                  onClick={() => {
+                                    const report = labReports.find(r => r.invoiceNumber === invoiceNumber && r.serviceSeekerId === currentPatient?.id);
+                                    if (report) {
+                                      setCurrentBarcodeReport(report);
+                                      setTimeout(() => {
+                                        if (barcodePrintRef.current) handlePrintBarcode();
+                                      }, 300);
+                                    }
+                                  }}
+                                  className="bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-200 text-xs font-bold shadow-sm flex items-center gap-2"
+                                  title="Print Invoice Barcode"
+                                >
+                                  <Printer size={14} /> Print Invoice Barcode
+                                </button>
+                              )}
                               {tests.some(t => !t.sampleCollected) && (
                                 <button 
                                   onClick={() => handleCollectInvoiceSamples(invoiceNumber)}
@@ -618,7 +635,9 @@ export const PrayogsalaSewa: React.FC<PrayogsalaSewaProps> = ({
                                       const report = labReports.find(r => r.invoiceNumber === invoiceNumber && r.serviceSeekerId === currentPatient?.id);
                                       if (report) {
                                         setCurrentBarcodeReport(report);
-                                        setTimeout(handlePrintBarcode, 100);
+                                        setTimeout(() => {
+                                          if (barcodePrintRef.current) handlePrintBarcode();
+                                        }, 300);
                                       }
                                     }}
                                     className="bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-200 text-xs font-bold shadow-sm flex items-center gap-2"
@@ -683,6 +702,21 @@ export const PrayogsalaSewa: React.FC<PrayogsalaSewaProps> = ({
                                           <span className="text-green-600 flex items-center gap-1 text-xs font-bold">
                                             <CheckCircle2 size={14} /> Collected
                                           </span>
+                                          <button 
+                                            onClick={() => {
+                                              const report = labReports.find(r => r.invoiceNumber === test.invoiceNumber && r.serviceSeekerId === currentPatient?.id);
+                                              if (report) {
+                                                setCurrentBarcodeReport(report);
+                                                setTimeout(() => {
+                                                  if (barcodePrintRef.current) handlePrintBarcode();
+                                                }, 300);
+                                              }
+                                            }}
+                                            className="text-primary-600 hover:text-primary-700 p-1 rounded hover:bg-primary-50"
+                                            title="Print Barcode"
+                                          >
+                                            <Printer size={14} />
+                                          </button>
                                         </div>
                                       )}
                                     </td>
