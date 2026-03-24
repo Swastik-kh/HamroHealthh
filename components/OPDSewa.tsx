@@ -266,9 +266,11 @@ export const OPDSewa: React.FC<OPDSewaProps> = ({
     const currentInv = opdData.investigation || '';
     const separator = currentInv ? '\n' : '';
     
-    let investigationText = service.serviceName;
+    let investigationText = '';
     if (service.subTests && service.subTests.length > 0) {
-      investigationText += ` (${service.subTests.map(t => t.testName).join(', ')})`;
+      investigationText = service.subTests.map(t => t.testName).join(', ');
+    } else {
+      investigationText = service.serviceName;
     }
     
     setOpdData({

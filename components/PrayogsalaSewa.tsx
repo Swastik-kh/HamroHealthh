@@ -36,9 +36,11 @@ export const PrayogsalaSewa: React.FC<PrayogsalaSewaProps> = ({
   const [currentPatient, setCurrentPatient] = useState<ServiceSeekerRecord | null>(null);
   const [pendingTests, setPendingTests] = useState<PendingTest[]>([]);
   const [currentReport, setCurrentReport] = useState<LabReport | null>(null);
+  const [currentBarcodeTest, setCurrentBarcodeTest] = useState<PendingTest | null>(null);
   const [activeTab, setActiveTab] = useState<'sample' | 'result'>('sample');
   
   const printRef = useRef<HTMLDivElement>(null);
+  const barcodePrintRef = useRef<HTMLDivElement>(null);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,17 +77,14 @@ export const PrayogsalaSewa: React.FC<PrayogsalaSewaProps> = ({
       b.items.map(item => ({ ...item, invoiceNumber: b.invoiceNumber }))
     );
 
-    // 3. Filter items that are Lab Investigations
-    const labServiceNames = new Set(
-      serviceItems
-        .filter(s => s.category === 'Lab')
-        .map(s => s.serviceName.trim().toLowerCase())
-    );
+    // 3. Filter items that are Lab Investigations or Sub-tests
+    const labServices = serviceItems.filter(s => s.category === 'Lab');
+    const labServiceNames = new Set(labServices.map(s => s.serviceName.trim().toLowerCase()));
+    const labSubTestNames = new Set(labServices.flatMap(s => s.subTests || []).map(st => st.testName.trim().toLowerCase()));
 
     const labItems = allBilledItems.filter(item => {
       const itemName = item.serviceName.trim().toLowerCase();
-      return labServiceNames.has(itemName) || 
-             serviceItems.some(s => s.serviceName.trim().toLowerCase() === itemName && s.category === 'Lab');
+      return labServiceNames.has(itemName) || labSubTestNames.has(itemName);
     });
 
     // 4. Check existing reports
@@ -100,7 +99,21 @@ export const PrayogsalaSewa: React.FC<PrayogsalaSewaProps> = ({
     // 5. Prepare tests for the UI
     const tests: PendingTest[] = activeItems.map((item, index) => {
       const itemName = item.serviceName.trim().toLowerCase();
-      const serviceDef = serviceItems.find(s => s.serviceName.trim().toLowerCase() === itemName);
+      
+      // Find service or sub-test definition
+      let serviceDef = serviceItems.find(s => s.serviceName.trim().toLowerCase() === itemName);
+      let subTestDef = null;
+      if (!serviceDef) {
+        for (const s of serviceItems) {
+          if (s.subTests) {
+            subTestDef = s.subTests.find(st => st.testName.trim().toLowerCase() === itemName);
+            if (subTestDef) {
+              serviceDef = s;
+              break;
+            }
+          }
+        }
+      }
       
       // Find if this specific test from this specific invoice is already in an existing report
       const existingReport = existingReports.find(r => 
@@ -113,12 +126,13 @@ export const PrayogsalaSewa: React.FC<PrayogsalaSewaProps> = ({
         id: existingTest?.id || `TEST-${item.invoiceNumber}-${index}`,
         testName: item.serviceName,
         result: existingTest?.result || '',
-        normalRange: existingTest?.normalRange || serviceDef?.valueRange || '',
-        unit: existingTest?.unit || serviceDef?.unit || '',
+        normalRange: existingTest?.normalRange || subTestDef?.valueRange || serviceDef?.valueRange || '',
+        unit: existingTest?.unit || subTestDef?.unit || serviceDef?.unit || '',
         remarks: existingTest?.remarks || '',
         sampleCollected: existingTest?.sampleCollected || false,
         sampleCollectedDate: existingTest?.sampleCollectedDate || '',
         sampleCollectedBy: existingTest?.sampleCollectedBy || '',
+        barcodeId: existingTest?.barcodeId || '',
         invoiceNumber: item.invoiceNumber
       };
     });
@@ -128,14 +142,23 @@ export const PrayogsalaSewa: React.FC<PrayogsalaSewaProps> = ({
     setPendingTests(tests);
   };
 
+  const handlePrintBarcode = useReactToPrint({
+    contentRef: barcodePrintRef,
+    documentTitle: `Barcode-${currentBarcodeTest?.barcodeId || 'New'}`,
+  });
+
   const handleCollectSample = (id: string) => {
     if (!currentPatient) return;
+
+    // Generate a unique barcode ID
+    const barcodeId = `BC-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`;
 
     const updatedTests = pendingTests.map(t => t.id === id ? { 
       ...t, 
       sampleCollected: true, 
       sampleCollectedDate: new NepaliDate().format('YYYY-MM-DD HH:mm'),
-      sampleCollectedBy: currentUser?.username || 'System'
+      sampleCollectedBy: currentUser?.username || 'System',
+      barcodeId: barcodeId
     } : t);
     
     setPendingTests(updatedTests);
@@ -166,7 +189,14 @@ export const PrayogsalaSewa: React.FC<PrayogsalaSewaProps> = ({
       };
 
       onSaveRecord(reportToSave);
-      alert('नमुना सफलतापूर्वक संकलन गरियो (Sample collected successfully)');
+      
+      // Set current barcode test and print
+      setCurrentBarcodeTest(test);
+      setTimeout(() => {
+        handlePrintBarcode();
+      }, 100);
+
+      alert('नमुना सफलतापूर्वक संकलन गरियो र बारकोड प्रिन्टको लागि तयार छ।');
 
       // Check if all samples for this invoice are collected, if so, switch to result tab
       const allInvoiceTests = updatedTests.filter(t => t.invoiceNumber === invoiceNumber);
@@ -430,33 +460,56 @@ export const PrayogsalaSewa: React.FC<PrayogsalaSewaProps> = ({
                                 <tr>
                                   <th className="p-3">Test Name</th>
                                   <th className="p-3">Invoice</th>
+                                  <th className="p-3">Barcode ID</th>
                                   <th className="p-3 text-center">Action</th>
                                 </tr>
                               ) : (
                                 <tr>
-                                  <th className="p-3 w-1/4">Test Name</th>
-                                  <th className="p-3 w-1/4">Result</th>
+                                  <th className="p-3 w-1/5">Test Name</th>
+                                  <th className="p-3 w-1/5">Result</th>
                                   <th className="p-3 w-1/6">Unit</th>
                                   <th className="p-3 w-1/6">Normal Range</th>
                                   <th className="p-3 w-1/6">Remarks</th>
+                                  <th className="p-3 w-1/12 text-center">Barcode</th>
                                 </tr>
                               )}
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                               {activeTab === 'sample' ? (
-                                tests.filter(t => !t.sampleCollected).map((test) => (
+                                tests.map((test) => (
                                   <tr key={test.id} className="hover:bg-slate-50">
                                     <td className="p-3 font-medium">{test.testName}</td>
                                     <td className="p-3 text-xs text-slate-500">
                                       {test.invoiceNumber}
                                     </td>
+                                    <td className="p-3 text-xs font-mono text-slate-600">
+                                      {test.barcodeId || '-'}
+                                    </td>
                                     <td className="p-3 text-center">
-                                      <button 
-                                        onClick={() => handleCollectSample(test.id)}
-                                        className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 text-xs font-bold shadow-sm"
-                                      >
-                                        Collect Sample
-                                      </button>
+                                      {!test.sampleCollected ? (
+                                        <button 
+                                          onClick={() => handleCollectSample(test.id)}
+                                          className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 text-xs font-bold shadow-sm"
+                                        >
+                                          Collect Sample
+                                        </button>
+                                      ) : (
+                                        <div className="flex items-center justify-center gap-2">
+                                          <span className="text-green-600 flex items-center gap-1 text-xs font-bold">
+                                            <CheckCircle2 size={14} /> Collected
+                                          </span>
+                                          <button 
+                                            onClick={() => {
+                                              setCurrentBarcodeTest(test);
+                                              setTimeout(handlePrintBarcode, 100);
+                                            }}
+                                            className="text-primary-600 hover:text-primary-700 p-1 rounded hover:bg-primary-50"
+                                            title="Print Barcode"
+                                          >
+                                            <Printer size={14} />
+                                          </button>
+                                        </div>
+                                      )}
                                     </td>
                                   </tr>
                                 ))
@@ -494,19 +547,31 @@ export const PrayogsalaSewa: React.FC<PrayogsalaSewaProps> = ({
                                         placeholder="Remarks"
                                       />
                                     </td>
+                                    <td className="p-3 text-center">
+                                      <button 
+                                        onClick={() => {
+                                          setCurrentBarcodeTest(test);
+                                          setTimeout(handlePrintBarcode, 100);
+                                        }}
+                                        className="text-slate-400 hover:text-primary-600"
+                                        title="Print Barcode"
+                                      >
+                                        <Printer size={16} />
+                                      </button>
+                                    </td>
                                   </tr>
                                 ))
                               )}
-                              {activeTab === 'sample' && tests.filter(t => !t.sampleCollected).length === 0 && (
+                              {activeTab === 'sample' && tests.length === 0 && (
                                 <tr>
-                                  <td colSpan={3} className="p-8 text-center text-green-600 font-medium bg-green-50/30 italic">
-                                    सबै नमुना संकलन भइसकेको छ (All samples collected for this invoice)
+                                  <td colSpan={4} className="p-8 text-center text-slate-400 italic">
+                                    कुनै परीक्षण भेटिएन।
                                   </td>
                                 </tr>
                               )}
                               {activeTab === 'result' && tests.filter(t => t.sampleCollected).length === 0 && (
                                 <tr>
-                                  <td colSpan={5} className="p-8 text-center text-slate-400 italic">
+                                  <td colSpan={6} className="p-8 text-center text-slate-400 italic">
                                     कृपया पहिला नमुना संकलन (Sample Collection) गर्नुहोस्।
                                   </td>
                                 </tr>
@@ -530,8 +595,24 @@ export const PrayogsalaSewa: React.FC<PrayogsalaSewaProps> = ({
         </div>
       )}
 
-      {/* Hidden Print Template */}
+      {/* Hidden Print Templates */}
       <div style={{ display: "none" }}>
+        {/* Barcode Print Template */}
+        <div ref={barcodePrintRef} className="p-4 bg-white text-black print:block w-[200px] text-center font-mono">
+          <div className="border-2 border-black p-2 rounded">
+            <p className="text-xs font-bold mb-1">{generalSettings?.orgNameEnglish || 'LAB'}</p>
+            <div className="bg-black h-8 w-full mb-1"></div>
+            <p className="text-sm font-bold tracking-widest">{currentBarcodeTest?.barcodeId}</p>
+            <div className="mt-2 text-[10px] text-left">
+              <p>Name: {currentPatient?.name}</p>
+              <p>ID: {currentPatient?.uniquePatientId}</p>
+              <p>Test: {currentBarcodeTest?.testName}</p>
+              <p>Date: {currentBarcodeTest?.sampleCollectedDate}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Lab Report Print Template */}
         <div ref={printRef} className="p-8 bg-white text-slate-900 print:block font-sans">
           {/* Header */}
           <div className="flex justify-between items-center border-b-2 border-slate-800 pb-4 mb-6">

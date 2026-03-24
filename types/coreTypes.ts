@@ -379,6 +379,7 @@ export interface LabTestResult {
   sampleCollected?: boolean;
   sampleCollectedDate?: string;
   sampleCollectedBy?: string;
+  barcodeId?: string; // Added barcodeId
 }
 
 export interface LabReport {

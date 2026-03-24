@@ -83,8 +83,49 @@ export const ServiceBilling: React.FC<ServiceBillingProps> = ({
   };
 
   const handleAddItem = () => {
-    if (!newItem.serviceName || !newItem.price) return;
+    if (!newItem.serviceName) return;
     
+    // Find service in settings to check for sub-tests
+    const service = serviceItems.find(s => s.serviceName.toLowerCase() === newItem.serviceName.toLowerCase());
+    
+    if (service && service.subTests && service.subTests.length > 0) {
+      const itemsToAdd: BillingItem[] = [];
+      
+      service.subTests.forEach((subTest, subIndex) => {
+        const subItemName = subTest.testName;
+        
+        // Check for duplicates in current bill
+        const isAlreadyInBill = billingItems.some(item => item.serviceName.toLowerCase() === subItemName.toLowerCase());
+        if (isAlreadyInBill) return;
+
+        // Check if already billed in previous records
+        const isAlreadyBilled = billingRecords.some(b => 
+          b.serviceSeekerId === currentPatient?.id && 
+          b.items.some(i => i.serviceName.toLowerCase() === subItemName.toLowerCase())
+        );
+        if (isAlreadyBilled) return;
+
+        const item: BillingItem = {
+          id: Date.now().toString() + '-' + subIndex + '-' + Math.random().toString(36).substr(2, 5),
+          serviceName: subItemName,
+          price: subTest.price || 0,
+          quantity: 1,
+          total: (subTest.price || 0) * 1
+        };
+        itemsToAdd.push(item);
+      });
+
+      if (itemsToAdd.length > 0) {
+        setBillingItems([...billingItems, ...itemsToAdd]);
+        setNewItem({ serviceName: '', price: '', quantity: '1' });
+      } else {
+        alert('यी उप-परीक्षणहरू पहिले नै बिलमा थपिसकिएका छन्।');
+      }
+      return;
+    }
+
+    // Normal add logic if not a main service with sub-tests
+    if (!newItem.price) return;
     const price = parseFloat(newItem.price);
     const quantity = parseInt(newItem.quantity);
     
@@ -135,7 +176,7 @@ export const ServiceBilling: React.FC<ServiceBillingProps> = ({
       if (service && service.subTests && service.subTests.length > 0) {
         // Add sub-tests as individual items
         service.subTests.forEach((subTest, subIndex) => {
-          const subItemName = `${service.serviceName} - ${subTest.testName}`;
+          const subItemName = subTest.testName; // Changed from `${service.serviceName} - ${subTest.testName}`
           
           // Check if already in current billingItems
           const isAlreadyInBill = billingItems.some(item => item.serviceName.toLowerCase() === subItemName.toLowerCase());
@@ -151,9 +192,9 @@ export const ServiceBilling: React.FC<ServiceBillingProps> = ({
           const item: BillingItem = {
             id: Date.now().toString() + '-' + index + '-' + subIndex + '-' + Math.random().toString(36).substr(2, 5),
             serviceName: subItemName,
-            price: subTest.price,
+            price: subTest.price || 0,
             quantity: 1,
-            total: subTest.price * 1
+            total: (subTest.price || 0) * 1
           };
           itemsToAdd.push(item);
         });
@@ -169,7 +210,16 @@ export const ServiceBilling: React.FC<ServiceBillingProps> = ({
         );
         if (isAlreadyBilled) return;
         
-        const price = service ? service.rate : 0;
+        // If not found as main service, check if it's a sub-test of any service
+        let foundSubTest: any = null;
+        for (const s of serviceItems) {
+            if (s.subTests) {
+                foundSubTest = s.subTests.find(st => st.testName === name || st.testName.toLowerCase() === name.toLowerCase());
+                if (foundSubTest) break;
+            }
+        }
+
+        const price = foundSubTest ? (foundSubTest.price || 0) : (service ? service.rate : 0);
         
         const item: BillingItem = {
           id: Date.now().toString() + '-' + index + '-' + Math.random().toString(36).substr(2, 5), // Ensure unique ID
@@ -434,7 +484,28 @@ export const ServiceBilling: React.FC<ServiceBillingProps> = ({
                   <input
                     type="text"
                     value={newItem.serviceName}
-                    onChange={(e) => setNewItem({...newItem, serviceName: e.target.value})}
+                    onChange={(e) => {
+                      const name = e.target.value;
+                      let price = newItem.price;
+                      
+                      const service = serviceItems.find(s => s.serviceName.toLowerCase() === name.toLowerCase());
+                      if (service) {
+                        price = service.rate.toString();
+                      } else {
+                        // Check sub-tests
+                        for (const s of serviceItems) {
+                          if (s.subTests) {
+                            const st = s.subTests.find(st => st.testName.toLowerCase() === name.toLowerCase());
+                            if (st) {
+                              price = (st.price || 0).toString();
+                              break;
+                            }
+                          }
+                        }
+                      }
+                      
+                      setNewItem({...newItem, serviceName: name, price});
+                    }}
                     className="w-full p-2 border border-slate-300 rounded text-sm"
                     placeholder="Ex: CBC, X-Ray Chest"
                   />
