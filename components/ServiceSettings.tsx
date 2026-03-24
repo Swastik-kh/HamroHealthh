@@ -36,7 +36,8 @@ export const ServiceSettings: React.FC<ServiceSettingsProps> = ({
     category: 'OPD',
     rate: 0,
     valueRange: '',
-    unit: ''
+    unit: '',
+    subTests: []
   });
 
   const resetForm = () => {
@@ -45,7 +46,8 @@ export const ServiceSettings: React.FC<ServiceSettingsProps> = ({
       category: 'OPD',
       rate: 0,
       valueRange: '',
-      unit: ''
+      unit: '',
+      subTests: []
     });
     setEditingId(null);
     setShowForm(false);
@@ -57,7 +59,8 @@ export const ServiceSettings: React.FC<ServiceSettingsProps> = ({
       category: item.category,
       rate: item.rate,
       valueRange: item.valueRange || '',
-      unit: item.unit || ''
+      unit: item.unit || '',
+      subTests: item.subTests || []
     });
     setEditingId(item.id);
     setShowForm(true);
@@ -148,18 +151,66 @@ export const ServiceSettings: React.FC<ServiceSettingsProps> = ({
 
             {formData.category === 'Lab' && (
               <div className="md:col-span-2 bg-purple-50 p-4 rounded-xl border border-purple-100 grid md:grid-cols-2 gap-4">
-                <Input 
-                  label="Value Range (For Lab Reports)" 
-                  value={formData.valueRange || ''} 
-                  onChange={e => setFormData({...formData, valueRange: e.target.value})} 
-                  placeholder="Ex: 4.0 - 11.0"
-                />
-                <Input 
-                  label="Unit (For Lab Reports)" 
-                  value={formData.unit || ''} 
-                  onChange={e => setFormData({...formData, unit: e.target.value})} 
-                  placeholder="Ex: x 10^9/L, mg/dL"
-                />
+                {(!formData.subTests || formData.subTests.length === 0) && (
+                  <>
+                    <Input 
+                      label="Value Range (For Lab Reports)" 
+                      value={formData.valueRange || ''} 
+                      onChange={e => setFormData({...formData, valueRange: e.target.value})} 
+                      placeholder="Ex: 4.0 - 11.0"
+                    />
+                    <Input 
+                      label="Unit (For Lab Reports)" 
+                      value={formData.unit || ''} 
+                      onChange={e => setFormData({...formData, unit: e.target.value})} 
+                      placeholder="Ex: x 10^9/L, mg/dL"
+                    />
+                  </>
+                )}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Sub-tests</label>
+                  {formData.subTests?.map((subTest, index) => (
+                    <div key={index} className="grid grid-cols-3 gap-2 mb-2">
+                      <Input 
+                        label=""
+                        value={subTest.testName} 
+                        onChange={e => {
+                          const newSubTests = [...(formData.subTests || [])];
+                          newSubTests[index].testName = e.target.value;
+                          setFormData({...formData, subTests: newSubTests});
+                        }}
+                        placeholder="Sub-test Name"
+                      />
+                      <Input 
+                        label=""
+                        value={subTest.valueRange || ''} 
+                        onChange={e => {
+                          const newSubTests = [...(formData.subTests || [])];
+                          newSubTests[index].valueRange = e.target.value;
+                          setFormData({...formData, subTests: newSubTests});
+                        }}
+                        placeholder="Value Range"
+                      />
+                      <div className="flex gap-2">
+                        <Input 
+                          label=""
+                          value={subTest.unit || ''} 
+                          onChange={e => {
+                            const newSubTests = [...(formData.subTests || [])];
+                            newSubTests[index].unit = e.target.value;
+                            setFormData({...formData, subTests: newSubTests});
+                          }}
+                          placeholder="Unit"
+                        />
+                        <button type="button" onClick={() => {
+                          const newSubTests = formData.subTests?.filter((_, i) => i !== index);
+                          setFormData({...formData, subTests: newSubTests});
+                        }} className="text-red-500"><Trash2 size={20}/></button>
+                      </div>
+                    </div>
+                  ))}
+                  <button type="button" onClick={() => setFormData({...formData, subTests: [...(formData.subTests || []), { id: Date.now().toString(), testName: '', valueRange: '', unit: '' }]})} className="text-primary-600 text-sm flex items-center gap-1"><Plus size={16}/> Add Sub-test</button>
+                </div>
                 <p className="md:col-span-2 text-xs text-purple-600">Note: These details will appear on lab reports.</p>
               </div>
             )}

@@ -350,6 +350,13 @@ export interface BillingRecord {
   createdBy?: string;
 }
 
+export interface SubTest {
+  id: string;
+  testName: string;
+  valueRange?: string;
+  unit?: string;
+}
+
 export interface ServiceItem {
   id: string;
   serviceName: string;
@@ -357,6 +364,7 @@ export interface ServiceItem {
   rate: number;
   valueRange?: string; // Only for Lab Investigation
   unit?: string; // Only for Lab Investigation
+  subTests?: SubTest[]; // Added sub-tests
   fiscalYear: string;
 }
 

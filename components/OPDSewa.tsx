@@ -262,12 +262,18 @@ export const OPDSewa: React.FC<OPDSewaProps> = ({
     setPrescriptionItems(prescriptionItems.filter(item => item.id !== id));
   };
 
-  const handleAddInvestigation = (serviceName: string) => {
+  const handleAddInvestigation = (service: ServiceItem) => {
     const currentInv = opdData.investigation || '';
     const separator = currentInv ? '\n' : '';
+    
+    let investigationText = service.serviceName;
+    if (service.subTests && service.subTests.length > 0) {
+      investigationText += ` (${service.subTests.map(t => t.testName).join(', ')})`;
+    }
+    
     setOpdData({
       ...opdData,
-      investigation: `${currentInv}${separator}${serviceName}`
+      investigation: `${currentInv}${separator}${investigationText}`
     });
     setInvestigationSearch('');
     setShowInvestigationResults(false);
@@ -467,7 +473,7 @@ export const OPDSewa: React.FC<OPDSewaProps> = ({
                              filteredServices.map(service => (
                                <div 
                                  key={service.id}
-                                 onClick={() => handleAddInvestigation(service.serviceName)}
+                                 onClick={() => handleAddInvestigation(service)}
                                  className="p-2 hover:bg-blue-50 cursor-pointer text-sm border-b border-slate-50 last:border-0"
                                >
                                  <div className="font-medium text-slate-700">{service.serviceName}</div>
