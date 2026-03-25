@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { LoginForm } from './components/LoginForm';
 import { Dashboard } from './components/Dashboard';
+import { ECGWave } from './components/ECGWave';
 import { APP_NAME, ORG_NAME, AVAILABLE_SERVICES } from './constants';
 import { Landmark, ShieldCheck, AlertCircle, Database, ShieldAlert, Lock, Unlock } from 'lucide-react';
 import { 
@@ -1156,6 +1157,7 @@ const App: React.FC = () => {
             )}
             <div className="bg-white rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.08)] overflow-hidden border border-slate-100">
               <div className="bg-primary-600 p-12 text-center text-white relative overflow-hidden">
+                <ECGWave />
                 <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
                     <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
                         <path d="M0 100 C 20 0 50 0 100 100 Z" fill="currentColor"></path>

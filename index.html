@@ -129,6 +129,15 @@
       ::-webkit-scrollbar-thumb:hover {
         background: #94a3b8;
       }
+
+      @keyframes ecg-wave {
+        0% { stroke-dashoffset: 1000; }
+        100% { stroke-dashoffset: 0; }
+      }
+      .animate-ecg-wave {
+        animation: ecg-wave 10s linear infinite;
+        stroke-dasharray: 1000;
+      }
     </style>
   <script type="importmap">
 {

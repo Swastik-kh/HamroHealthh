@@ -189,7 +189,7 @@ export interface USGRecord {
   age: string;
   address: string;
   phone: string;
-  usgType: string; // e.g., Abdomen, Pelvis, Obstetric, etc.
+  usgType: string[]; // e.g., Abdomen, Pelvis, Obstetric, etc.
   result?: string;
   referredBy?: string;
   isViewedByDoctor?: boolean;

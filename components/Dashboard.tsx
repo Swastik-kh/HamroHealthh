@@ -1130,6 +1130,7 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
                                   opdRecords={opdRecords}
                                   emergencyRecords={emergencyRecords}
                                   cbimnciRecords={cbimnciRecords}
+                                  billingRecords={billingRecords}
                                   onSave={onSaveUSGRecord}
                                   onDelete={onDeleteUSGRecord}
                                   currentFiscalYear={currentFiscalYear}

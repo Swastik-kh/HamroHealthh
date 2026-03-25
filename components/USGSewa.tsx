@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { USGRecord, ServiceSeekerRecord, OPDRecord, EmergencyRecord, CBIMNCIRecord } from '../types';
+import { USGRecord, ServiceSeekerRecord, OPDRecord, EmergencyRecord, CBIMNCIRecord, BillingRecord } from '../types';
 import { Plus, Search, Edit2, Trash2, Activity, AlertCircle, FileText } from 'lucide-react';
 // @ts-ignore
 import NepaliDate from 'nepali-date-converter';
@@ -10,6 +10,7 @@ interface USGSewaProps {
   opdRecords: OPDRecord[];
   emergencyRecords: EmergencyRecord[];
   cbimnciRecords: CBIMNCIRecord[];
+  billingRecords: BillingRecord[];
   onSave: (record: USGRecord) => void;
   onDelete: (id: string) => void;
   currentFiscalYear: string;
@@ -21,6 +22,7 @@ export const USGSewa: React.FC<USGSewaProps> = ({
   opdRecords,
   emergencyRecords,
   cbimnciRecords,
+  billingRecords,
   onSave,
   onDelete,
   currentFiscalYear
@@ -33,7 +35,7 @@ export const USGSewa: React.FC<USGSewaProps> = ({
 
   const [formData, setFormData] = useState<Partial<USGRecord>>({
     dateBs: new NepaliDate().format('YYYY-MM-DD'),
-    usgType: '',
+    usgType: [],
     result: '',
     referredBy: '',
     remarks: ''
@@ -100,7 +102,7 @@ export const USGSewa: React.FC<USGSewaProps> = ({
       age: formData.age || '',
       address: formData.address || '',
       phone: formData.phone || '',
-      usgType: formData.usgType || '',
+      usgType: Array.isArray(formData.usgType) ? formData.usgType : [formData.usgType as string],
       result: formData.result,
       referredBy: formData.referredBy,
       remarks: formData.remarks
@@ -113,7 +115,7 @@ export const USGSewa: React.FC<USGSewaProps> = ({
     setReferralInfo(null);
     setFormData({
       dateBs: new NepaliDate().format('YYYY-MM-DD'),
-      usgType: '',
+      usgType: [],
       result: '',
       referredBy: '',
       remarks: ''
@@ -122,7 +124,10 @@ export const USGSewa: React.FC<USGSewaProps> = ({
 
   const handleEdit = (record: USGRecord) => {
     setEditingRecord(record);
-    setFormData(record);
+    setFormData({
+      ...record,
+      usgType: Array.isArray(record.usgType) ? record.usgType : [record.usgType]
+    });
     setPatientSearchInput(record.patientName);
     setIsFormOpen(true);
   };
@@ -147,7 +152,7 @@ export const USGSewa: React.FC<USGSewaProps> = ({
             setReferralInfo(null);
             setFormData({
               dateBs: new NepaliDate().format('YYYY-MM-DD'),
-              usgType: '',
+              usgType: [],
               result: '',
               referredBy: '',
               remarks: ''
@@ -278,8 +283,8 @@ export const USGSewa: React.FC<USGSewaProps> = ({
                   type="text"
                   required
                   placeholder="उदा: Abdomen, Pelvis, Obstetric"
-                  value={formData.usgType || ''}
-                  onChange={e => setFormData({...formData, usgType: e.target.value})}
+                  value={Array.isArray(formData.usgType) ? formData.usgType.join(', ') : ''}
+                  onChange={e => setFormData({...formData, usgType: e.target.value.split(',').map(s => s.trim()).filter(s => s !== '')})}
                   className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                 />
               </div>
@@ -364,6 +369,7 @@ export const USGSewa: React.FC<USGSewaProps> = ({
                 <th className="p-4 font-medium">सेवाग्राही</th>
                 <th className="p-4 font-medium">उमेर/ठेगाना</th>
                 <th className="p-4 font-medium">यु.एस.जी. प्रकार</th>
+                <th className="p-4 font-medium">बिल स्थिति</th>
                 <th className="p-4 font-medium">सिफारिस</th>
                 <th className="p-4 font-medium text-right">कार्य</th>
               </tr>
@@ -383,7 +389,14 @@ export const USGSewa: React.FC<USGSewaProps> = ({
                     <div className="text-sm text-gray-800">{record.age}</div>
                     <div className="text-xs text-gray-500">{record.address}</div>
                   </td>
-                  <td className="p-4 text-sm text-gray-800 font-medium">{record.usgType}</td>
+                  <td className="p-4 text-sm text-gray-800 font-medium">{Array.isArray(record.usgType) ? record.usgType.join(', ') : record.usgType}</td>
+                  <td className="p-4">
+                    {billingRecords.some(b => b.serviceSeekerId === record.serviceSeekerId && b.billDate === record.dateBs) ? (
+                      <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-[10px] font-bold uppercase">Billed</span>
+                    ) : (
+                      <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-[10px] font-bold uppercase">Not Billed</span>
+                    )}
+                  </td>
                   <td className="p-4 text-sm text-gray-600">
                     {record.referredBy ? (
                       <span className="px-2 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-bold uppercase">

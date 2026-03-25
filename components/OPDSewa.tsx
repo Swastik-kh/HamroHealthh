@@ -662,7 +662,7 @@ export const OPDSewa: React.FC<OPDSewaProps> = ({
                                 )}
                               </div>
                               <p className="text-xs text-slate-500">
-                                {report.type === 'Lab' ? `Invoice: #${report.invoiceNumber}` : `Type: ${report.xrayType || report.ecgType || report.usgType || report.treatmentType}`}
+                                {report.type === 'Lab' ? `Invoice: #${report.invoiceNumber}` : `Type: ${Array.isArray(report.xrayType) ? report.xrayType.join(', ') : report.xrayType || report.ecgType || (Array.isArray(report.usgType) ? report.usgType.join(', ') : report.usgType) || report.treatmentType}`}
                               </p>
                             </div>
                             <button 
@@ -759,7 +759,7 @@ export const OPDSewa: React.FC<OPDSewaProps> = ({
                     ) : (
                       <div className="border border-slate-300 rounded p-4 min-h-[200px]">
                         <h3 className="font-bold border-b pb-2 mb-2">
-                          {selectedReport.xrayType || selectedReport.ecgType || selectedReport.usgType || selectedReport.treatmentType} Findings
+                          {Array.isArray(selectedReport.xrayType) ? selectedReport.xrayType.join(', ') : selectedReport.xrayType || selectedReport.ecgType || (Array.isArray(selectedReport.usgType) ? selectedReport.usgType.join(', ') : selectedReport.usgType) || selectedReport.treatmentType} Findings
                         </h3>
                         <p className="whitespace-pre-wrap">{selectedReport.result || selectedReport.diagnosis}</p>
                         {selectedReport.remarks && (
