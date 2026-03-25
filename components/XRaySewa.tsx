@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { XRayRecord, ServiceSeekerRecord, OPDRecord, EmergencyRecord, CBIMNCIRecord } from '../types';
+import React, { useState, useMemo, useEffect } from 'react';
+import { XRayRecord, ServiceSeekerRecord, OPDRecord, EmergencyRecord, CBIMNCIRecord, BillingRecord } from '../types';
 import { Plus, Search, Edit2, Trash2, Calendar, User, Activity, AlertCircle, FileText } from 'lucide-react';
 // @ts-ignore
 import NepaliDate from 'nepali-date-converter';
@@ -10,6 +10,7 @@ interface XRaySewaProps {
   opdRecords: OPDRecord[];
   emergencyRecords: EmergencyRecord[];
   cbimnciRecords: CBIMNCIRecord[];
+  billingRecords: BillingRecord[];
   onSave: (record: XRayRecord) => void;
   onDelete: (id: string) => void;
   currentFiscalYear: string;
@@ -21,6 +22,7 @@ export const XRaySewa: React.FC<XRaySewaProps> = ({
   opdRecords,
   emergencyRecords,
   cbimnciRecords,
+  billingRecords,
   onSave,
   onDelete,
   currentFiscalYear
@@ -33,7 +35,7 @@ export const XRaySewa: React.FC<XRaySewaProps> = ({
 
   const [formData, setFormData] = useState<Partial<XRayRecord>>({
     dateBs: new NepaliDate().format('YYYY-MM-DD'),
-    xrayType: '',
+    xrayType: [],
     filmSize: '',
     quantity: 1,
     result: '',
@@ -41,7 +43,20 @@ export const XRaySewa: React.FC<XRaySewaProps> = ({
     remarks: ''
   });
 
-  const [referralInfo, setReferralInfo] = useState<{ source: string; investigation: string } | null>(null);
+  const [referralInfo, setReferralInfo] = useState<{ source: string; investigation: string; billing?: BillingRecord } | null>(null);
+
+  useEffect(() => {
+    if (formData.serviceSeekerId) {
+      const hasXRayBilling = billingRecords.some(bill => 
+        bill.serviceSeekerId === formData.serviceSeekerId &&
+        bill.items.some(item => item.serviceName.toLowerCase().includes('x-ray') || item.serviceName.toLowerCase().includes('xray'))
+      );
+      
+      if (hasXRayBilling) {
+        alert('यो बिरामीको लागि X-Ray सेवाको बिल काटिएको छ।');
+      }
+    }
+  }, [formData.serviceSeekerId, billingRecords]);
 
   const handlePatientSelect = (patient: ServiceSeekerRecord) => {
     setFormData(prev => ({
@@ -56,20 +71,31 @@ export const XRaySewa: React.FC<XRaySewaProps> = ({
     setPatientSearchInput(patient.name);
     setShowPatientDropdown(false);
 
+    // Auto-fill X-Ray type from latest billing record
+    const latestXRayBill = billingRecords
+      .filter(b => b.serviceSeekerId === patient.id)
+      .sort((a, b) => new Date(b.billDate).getTime() - new Date(a.billDate).getTime())[0];
+
+    if (latestXRayBill) {
+      const xrayItem = latestXRayBill.items.find(i => 
+        i.serviceName.toLowerCase().includes('x-ray') || 
+        i.serviceName.toLowerCase().includes('xray')
+      );
+      if (xrayItem) {
+        setFormData(prev => ({ ...prev, xrayType: [xrayItem.serviceName] }));
+      }
+    }
+
     // Check for referrals in OPD, Emergency, CBIMNCI
     const opdRef = opdRecords.find(r => r.serviceSeekerId === patient.id && (r.investigation?.toLowerCase().includes('x-ray') || r.investigation?.toLowerCase().includes('xray')));
     const erRef = emergencyRecords.find(r => r.serviceSeekerId === patient.id && (r.investigation?.toLowerCase().includes('x-ray') || r.investigation?.toLowerCase().includes('xray')));
     const cbimnciRef = cbimnciRecords.find(r => r.serviceSeekerId === patient.id && (r.investigation?.toLowerCase().includes('x-ray') || r.investigation?.toLowerCase().includes('xray')));
 
-    if (opdRef) {
-      setReferralInfo({ source: 'OPD', investigation: opdRef.investigation });
-      setFormData(prev => ({ ...prev, referredBy: 'OPD' }));
-    } else if (erRef) {
-      setReferralInfo({ source: 'Emergency', investigation: erRef.investigation });
-      setFormData(prev => ({ ...prev, referredBy: 'Emergency' }));
-    } else if (cbimnciRef) {
-      setReferralInfo({ source: 'CBIMNCI', investigation: cbimnciRef.investigation });
-      setFormData(prev => ({ ...prev, referredBy: 'CBIMNCI' }));
+    if (opdRef || erRef || cbimnciRef) {
+      const source = opdRef ? 'OPD' : erRef ? 'Emergency' : 'CBIMNCI';
+      const investigation = (opdRef?.investigation || erRef?.investigation || cbimnciRef?.investigation) || '';
+      setReferralInfo({ source, investigation, billing: latestXRayBill });
+      setFormData(prev => ({ ...prev, referredBy: source }));
     } else {
       setReferralInfo(null);
     }
@@ -89,6 +115,16 @@ export const XRaySewa: React.FC<XRaySewaProps> = ({
     e.preventDefault();
     if (!formData.serviceSeekerId) {
       alert('कृपया सेवाग्राही छान्नुहोस्');
+      return;
+    }
+
+    const hasXRayBilling = billingRecords.some(bill => 
+      bill.serviceSeekerId === formData.serviceSeekerId &&
+      bill.items.some(item => item.serviceName.toLowerCase().includes('x-ray') || item.serviceName.toLowerCase().includes('xray'))
+    );
+
+    if (!hasXRayBilling) {
+      alert('यो बिरामीको लागि X-Ray सेवाको बिल काटिएको छैन। कृपया पहिले बिल काट्नुहोस्।');
       return;
     }
 
@@ -117,7 +153,7 @@ export const XRaySewa: React.FC<XRaySewaProps> = ({
     setReferralInfo(null);
     setFormData({
       dateBs: new NepaliDate().format('YYYY-MM-DD'),
-      xrayType: '',
+      xrayType: [],
       filmSize: '',
       quantity: 1,
       result: '',
@@ -128,7 +164,10 @@ export const XRaySewa: React.FC<XRaySewaProps> = ({
 
   const handleEdit = (record: XRayRecord) => {
     setEditingRecord(record);
-    setFormData(record);
+    setFormData({
+      ...record,
+      xrayType: Array.isArray(record.xrayType) ? record.xrayType : [record.xrayType]
+    });
     setPatientSearchInput(record.patientName);
     setIsFormOpen(true);
   };
@@ -153,7 +192,7 @@ export const XRaySewa: React.FC<XRaySewaProps> = ({
             setReferralInfo(null);
             setFormData({
               dateBs: new NepaliDate().format('YYYY-MM-DD'),
-              xrayType: '',
+              xrayType: [],
               filmSize: '',
               quantity: 1,
               result: '',
@@ -275,6 +314,33 @@ export const XRaySewa: React.FC<XRaySewaProps> = ({
                   <p className="text-xs text-blue-600 mt-1 italic">
                     जाँच विवरण: {referralInfo.investigation}
                   </p>
+                  {referralInfo.billing ? (
+                    <div className="mt-2">
+                      <div className="text-xs font-bold text-green-700 bg-green-100 px-2 py-1 rounded">
+                        बिल काटिएको छ: {referralInfo.billing.invoiceNumber}
+                      </div>
+                      <div className="text-[10px] text-green-800 mt-1">
+                        (X-Ray प्रकार छान्नुहोस्):
+                      </div>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {referralInfo.billing.items
+                          .filter(i => i.serviceName.toLowerCase().includes('x-ray') || i.serviceName.toLowerCase().includes('xray'))
+                          .map((xrayItem, index) => (
+                            <button
+                              key={index}
+                              onClick={() => setFormData(prev => ({ ...prev, xrayType: [...(prev.xrayType || []), xrayItem.serviceName] }))}
+                              className="text-[10px] font-bold text-blue-700 bg-blue-100 px-2 py-1 rounded hover:bg-blue-200"
+                            >
+                              {xrayItem.serviceName}
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-red-600 mt-1 font-bold">
+                      बिल काटिएको छैन।
+                    </p>
+                  )}
                 </div>
               </div>
             )}
@@ -286,8 +352,8 @@ export const XRaySewa: React.FC<XRaySewaProps> = ({
                   type="text"
                   required
                   placeholder="उदा: Chest, Limb, Spine"
-                  value={formData.xrayType || ''}
-                  onChange={e => setFormData({...formData, xrayType: e.target.value})}
+                  value={formData.xrayType?.join(', ') || ''}
+                  onChange={e => setFormData({...formData, xrayType: e.target.value.split(',').map(s => s.trim()).filter(s => s !== '')})}
                   className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                 />
               </div>
@@ -410,7 +476,7 @@ export const XRaySewa: React.FC<XRaySewaProps> = ({
                     <div className="text-sm text-gray-800">{record.age}</div>
                     <div className="text-xs text-gray-500">{record.address}</div>
                   </td>
-                  <td className="p-4 text-sm text-gray-800 font-medium">{record.xrayType}</td>
+                  <td className="p-4 text-sm text-gray-800 font-medium">{record.xrayType.join(', ')}</td>
                   <td className="p-4 text-sm text-gray-600">
                     {record.filmSize} | Qty: {record.quantity}
                   </td>

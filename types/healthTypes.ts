@@ -153,7 +153,7 @@ export interface XRayRecord {
   age: string;
   address: string;
   phone: string;
-  xrayType: string; // e.g., Chest, Limb, etc.
+  xrayType: string[]; // e.g., Chest, Limb, etc.
   filmSize: string; // e.g., 8x10, 10x12, 12x15, 14x17
   quantity: number;
   result?: string;
