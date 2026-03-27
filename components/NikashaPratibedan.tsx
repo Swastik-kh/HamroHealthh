@@ -8,7 +8,7 @@ import NepaliDate from 'nepali-date-converter';
 
 interface NikashaPratibedanProps {
     reports: IssueReportEntry[];
-    onSave: (report: IssueReportEntry) => void;
+    onSave: (report: IssueReportEntry) => Promise<void> | void;
     currentUser: User;
     currentFiscalYear: string;
     generalSettings: OrganizationSettings;
@@ -50,27 +50,31 @@ export const NikashaPratibedan: React.FC<NikashaPratibedanProps> = ({ reports, o
         setEditingItems(newItems);
     };
 
-    const handleAction = (status: 'Pending Approval' | 'Issued' | 'Rejected') => {
+    const handleAction = async (status: 'Pending Approval' | 'Issued' | 'Rejected') => {
         if (!selectedReport) return;
-        if (status === 'Issued' && !selectedStoreId) {
+        if ((status === 'Issued' || status === 'Pending Approval') && !selectedStoreId) {
             alert('कृपया एउटा स्टोर चयन गर्नुहोस्।');
             return;
         }
         setIsProcessing(true);
-        const updatedReport: IssueReportEntry = {
-            ...selectedReport,
-            status,
-            items: editingItems,
-            selectedStoreId: status === 'Issued' ? selectedStoreId : selectedReport.selectedStoreId,
-            issueDate: new NepaliDate().format('YYYY-MM-DD'),
-            approvedBy: status === 'Issued' ? { name: currentUser.fullName, designation: currentUser.designation, date: new NepaliDate().format('YYYY-MM-DD') } : selectedReport.approvedBy,
-            preparedBy: status === 'Pending Approval' ? { name: currentUser.fullName, designation: currentUser.designation, date: new NepaliDate().format('YYYY-MM-DD') } : selectedReport.preparedBy
-        };
-        onSave(updatedReport);
-        setTimeout(() => {
+        try {
+            const updatedReport: IssueReportEntry = {
+                ...selectedReport,
+                status,
+                items: editingItems,
+                selectedStoreId: (status === 'Issued' || status === 'Pending Approval') ? selectedStoreId : selectedReport.selectedStoreId,
+                issueDate: new NepaliDate().format('YYYY-MM-DD'),
+                approvedBy: status === 'Issued' ? { name: currentUser.fullName, designation: currentUser.designation, date: new NepaliDate().format('YYYY-MM-DD') } : selectedReport.approvedBy,
+                preparedBy: status === 'Pending Approval' ? { name: currentUser.fullName, designation: currentUser.designation, date: new NepaliDate().format('YYYY-MM-DD') } : selectedReport.preparedBy
+            };
+            await onSave(updatedReport);
             setIsProcessing(false);
             handleBack();
-        }, 1000);
+        } catch (error) {
+            console.error("Error saving report:", error);
+            alert("रिपोर्ट सुरक्षित गर्दा त्रुटि भयो।");
+            setIsProcessing(false);
+        }
     };
 
     const actionableReports = reports.filter(r => {
@@ -93,9 +97,21 @@ export const NikashaPratibedan: React.FC<NikashaPratibedanProps> = ({ reports, o
                         {!isViewOnlyMode && (
                             <>
                                 {isStoreKeeper && selectedReport.status === 'Pending' && (
-                                    <button onClick={() => handleAction('Pending Approval')} disabled={isProcessing} className="bg-primary-600 text-white px-6 py-2 rounded-lg flex items-center gap-2 font-bold text-sm">
-                                        <Send size={18} /> पेश गर्नुहोस्
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        <select 
+                                            value={selectedStoreId} 
+                                            onChange={(e) => setSelectedStoreId(e.target.value)}
+                                            className="border border-slate-300 rounded-lg px-3 py-2 text-sm font-bold"
+                                        >
+                                            <option value="">स्टोर चयन गर्नुहोस्</option>
+                                            {stores.map(store => (
+                                                <option key={store.id} value={store.id}>{store.name}</option>
+                                            ))}
+                                        </select>
+                                        <button onClick={() => handleAction('Pending Approval')} disabled={isProcessing} className="bg-primary-600 text-white px-6 py-2 rounded-lg flex items-center gap-2 font-bold text-sm">
+                                            <Send size={18} /> पेश गर्नुहोस्
+                                        </button>
+                                    </div>
                                 )}
                                 {isApprover && selectedReport.status === 'Pending Approval' && (
                                     <div className="flex items-center gap-2">
@@ -207,11 +223,12 @@ export const NikashaPratibedan: React.FC<NikashaPratibedanProps> = ({ reports, o
                                 const total = rate * qty;
 
                                 // Find matching inventory items for batch selection
-                                const matchingInventory = inventoryItems.filter(inv => 
-                                    inv.storeId === selectedStoreId && 
-                                    (inv.itemName === item.name || inv.uniqueCode === item.codeNo || inv.sanketNo === item.codeNo) &&
-                                    inv.currentQuantity > 0
-                                );
+                                const matchingInventory = inventoryItems.filter(inv => {
+                                    const nameMatches = inv.itemName.trim().toLowerCase() === item.name.trim().toLowerCase();
+                                    const storeMatches = inv.storeId === selectedStoreId;
+                                    const codeMatches = item.codeNo ? (inv.uniqueCode === item.codeNo || inv.sanketNo === item.codeNo) : true;
+                                    return nameMatches && storeMatches && codeMatches && inv.currentQuantity > 0;
+                                });
 
                                 return (
                                     <tr key={idx}>
@@ -219,23 +236,29 @@ export const NikashaPratibedan: React.FC<NikashaPratibedanProps> = ({ reports, o
                                         <td className="border border-slate-900 p-1 text-left px-2">
                                             <div>{item.name}</div>
                                             {/* Batch Selection UI - Only visible during processing and if matches exist */}
-                                            {!isViewOnlyMode && isApprover && selectedReport.status === 'Pending Approval' && matchingInventory.length > 0 && (
+                                            {!isViewOnlyMode && (isApprover || isStoreKeeper) && (selectedReport.status === 'Pending Approval' || selectedReport.status === 'Pending') && (
                                                 <div className="mt-1 no-print">
-                                                    <select 
-                                                        className="text-[10px] p-1 border rounded w-full bg-yellow-50 border-yellow-200"
-                                                        value={item.batchNo ? `${item.batchNo}|${item.expiryDate}` : ""}
-                                                        onChange={(e) => {
-                                                            const [batch, expiry] = e.target.value.split('|');
-                                                            handleItemBatchChange(idx, batch, expiry);
-                                                        }}
-                                                    >
-                                                        <option value="">ब्याच चयन गर्नुहोस्</option>
-                                                        {matchingInventory.map((inv, i) => (
-                                                            <option key={i} value={`${inv.batchNo}|${inv.expiryDateBs || inv.expiryDateAd}`}>
-                                                                Batch: {inv.batchNo || 'N/A'} (Exp: {inv.expiryDateBs || inv.expiryDateAd || 'N/A'}) - Qty: {inv.currentQuantity}
-                                                            </option>
-                                                        ))}
-                                                    </select>
+                                                    {!selectedStoreId ? (
+                                                        <div className="text-[9px] text-red-500 italic font-bold">कृपया पहिले स्टोर चयन गर्नुहोस्</div>
+                                                    ) : matchingInventory.length > 0 ? (
+                                                        <select 
+                                                            className="text-[10px] p-1 border rounded w-full bg-yellow-50 border-yellow-200"
+                                                            value={item.batchNo ? `${item.batchNo}|${item.expiryDate}` : ""}
+                                                            onChange={(e) => {
+                                                                const [batch, expiry] = e.target.value.split('|');
+                                                                handleItemBatchChange(idx, batch, expiry);
+                                                            }}
+                                                        >
+                                                            <option value="">ब्याच चयन गर्नुहोस्</option>
+                                                            {matchingInventory.map((inv, i) => (
+                                                                <option key={i} value={`${inv.batchNo}|${inv.expiryDateBs || inv.expiryDateAd}`}>
+                                                                    Batch: {inv.batchNo || 'N/A'} (Exp: {inv.expiryDateBs || inv.expiryDateAd || 'N/A'}) - Qty: {inv.currentQuantity}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    ) : (
+                                                        <div className="text-[9px] text-red-500 italic font-bold">यस स्टोरमा यो सामान उपलब्ध छैन</div>
+                                                    )}
                                                 </div>
                                             )}
                                             {/* Display selected batch/expiry in view mode but hide in print */}
