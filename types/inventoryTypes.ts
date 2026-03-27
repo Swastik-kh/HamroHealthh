@@ -17,6 +17,8 @@ export interface MagItem {
   rate?: number;
   totalAmount?: number;
   model?: string; // Added model field
+  batchNo?: string; // Added for batch selection
+  expiryDate?: string; // Added for expiry selection
 }
 
 export interface StoreKeeperSignature {

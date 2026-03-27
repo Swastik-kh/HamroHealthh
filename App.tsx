@@ -827,7 +827,11 @@ const App: React.FC = () => {
                       const storeMatches = inv.storeId === report.selectedStoreId;
                       const typeMatches = inv.itemType === report.itemType;
                       const codeMatches = issueItem.codeNo ? (inv.uniqueCode === issueItem.codeNo || inv.sanketNo === issueItem.codeNo) : true;
-                      return nameMatches && storeMatches && typeMatches && codeMatches;
+                      
+                      // If a specific batch was selected, prioritize it
+                      const batchMatches = issueItem.batchNo ? inv.batchNo === issueItem.batchNo : true;
+                      
+                      return nameMatches && storeMatches && typeMatches && codeMatches && batchMatches;
                   });
                   potentialInventoryItems.sort((a, b) => {
                       const dateA = a.expiryDateAd ? new Date(a.expiryDateAd).getTime() : Infinity;

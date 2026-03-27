@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { FileOutput, ArrowLeft, Printer, CheckCircle2, X, Clock, Eye, Send, AlertCircle } from 'lucide-react';
 // Corrected import path to use the types folder's index file explicitly to avoid shadowing by root types.ts
-import { IssueReportEntry, MagItem, User, OrganizationSettings, Store } from '../types/index';
+import { IssueReportEntry, MagItem, User, OrganizationSettings, Store, InventoryItem } from '../types/index';
 // @ts-ignore
 import NepaliDate from 'nepali-date-converter';
 
@@ -13,13 +13,15 @@ interface NikashaPratibedanProps {
     currentFiscalYear: string;
     generalSettings: OrganizationSettings;
     stores: Store[];
+    inventoryItems: InventoryItem[];
 }
 
-export const NikashaPratibedan: React.FC<NikashaPratibedanProps> = ({ reports, onSave, currentUser, currentFiscalYear, generalSettings, stores }) => {
+export const NikashaPratibedan: React.FC<NikashaPratibedanProps> = ({ reports, onSave, currentUser, currentFiscalYear, generalSettings, stores, inventoryItems }) => {
     const [selectedReport, setSelectedReport] = useState<IssueReportEntry | null>(null);
     const [isViewOnlyMode, setIsViewOnlyMode] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [selectedStoreId, setSelectedStoreId] = useState<string>('');
+    const [editingItems, setEditingItems] = useState<MagItem[]>([]);
 
     const isStoreKeeper = currentUser.role === 'STOREKEEPER';
     const isApprover = ['ADMIN', 'SUPER_ADMIN', 'APPROVAL'].includes(currentUser.role);
@@ -28,12 +30,24 @@ export const NikashaPratibedan: React.FC<NikashaPratibedanProps> = ({ reports, o
         setSelectedReport(report);
         setIsViewOnlyMode(viewOnly);
         setSelectedStoreId(report.selectedStoreId || '');
+        setEditingItems(report.items || []);
     };
 
     const handleBack = () => {
         setSelectedReport(null);
         setIsViewOnlyMode(false);
         setSelectedStoreId('');
+        setEditingItems([]);
+    };
+
+    const handleItemBatchChange = (idx: number, batchNo: string, expiryDate: string) => {
+        const newItems = [...editingItems];
+        newItems[idx] = {
+            ...newItems[idx],
+            batchNo,
+            expiryDate
+        };
+        setEditingItems(newItems);
     };
 
     const handleAction = (status: 'Pending Approval' | 'Issued' | 'Rejected') => {
@@ -46,6 +60,7 @@ export const NikashaPratibedan: React.FC<NikashaPratibedanProps> = ({ reports, o
         const updatedReport: IssueReportEntry = {
             ...selectedReport,
             status,
+            items: editingItems,
             selectedStoreId: status === 'Issued' ? selectedStoreId : selectedReport.selectedStoreId,
             issueDate: new NepaliDate().format('YYYY-MM-DD'),
             approvedBy: status === 'Issued' ? { name: currentUser.fullName, designation: currentUser.designation, date: new NepaliDate().format('YYYY-MM-DD') } : selectedReport.approvedBy,
@@ -186,14 +201,51 @@ export const NikashaPratibedan: React.FC<NikashaPratibedanProps> = ({ reports, o
                             </tr>
                         </thead>
                         <tbody>
-                            {selectedReport.items.map((item, idx) => {
+                            {editingItems.map((item, idx) => {
                                 const rate = item.rate || 0;
                                 const qty = parseFloat(item.quantity) || 0;
                                 const total = rate * qty;
+
+                                // Find matching inventory items for batch selection
+                                const matchingInventory = inventoryItems.filter(inv => 
+                                    inv.storeId === selectedStoreId && 
+                                    (inv.itemName === item.name || inv.uniqueCode === item.codeNo || inv.sanketNo === item.codeNo) &&
+                                    inv.currentQuantity > 0
+                                );
+
                                 return (
                                     <tr key={idx}>
                                         <td className="border border-slate-900 p-1">{idx + 1}</td>
-                                        <td className="border border-slate-900 p-1 text-left px-2">{item.name}</td>
+                                        <td className="border border-slate-900 p-1 text-left px-2">
+                                            <div>{item.name}</div>
+                                            {/* Batch Selection UI - Only visible during processing and if matches exist */}
+                                            {!isViewOnlyMode && isApprover && selectedReport.status === 'Pending Approval' && matchingInventory.length > 0 && (
+                                                <div className="mt-1 no-print">
+                                                    <select 
+                                                        className="text-[10px] p-1 border rounded w-full bg-yellow-50 border-yellow-200"
+                                                        value={item.batchNo ? `${item.batchNo}|${item.expiryDate}` : ""}
+                                                        onChange={(e) => {
+                                                            const [batch, expiry] = e.target.value.split('|');
+                                                            handleItemBatchChange(idx, batch, expiry);
+                                                        }}
+                                                    >
+                                                        <option value="">ब्याच चयन गर्नुहोस्</option>
+                                                        {matchingInventory.map((inv, i) => (
+                                                            <option key={i} value={`${inv.batchNo}|${inv.expiryDateBs || inv.expiryDateAd}`}>
+                                                                Batch: {inv.batchNo || 'N/A'} (Exp: {inv.expiryDateBs || inv.expiryDateAd || 'N/A'}) - Qty: {inv.currentQuantity}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            )}
+                                            {/* Display selected batch/expiry in view mode but hide in print */}
+                                            {(item.batchNo || item.expiryDate) && (
+                                                <div className="text-[9px] text-slate-500 no-print mt-0.5">
+                                                    {item.batchNo && <span>Batch: {item.batchNo} </span>}
+                                                    {item.expiryDate && <span>Exp: {item.expiryDate}</span>}
+                                                </div>
+                                            )}
+                                        </td>
                                         <td className="border border-slate-900 p-1">{item.codeNo}</td>
                                         <td className="border border-slate-900 p-1">{item.specification}</td>
                                         <td className="border border-slate-900 p-1">{item.unit}</td>
@@ -208,7 +260,7 @@ export const NikashaPratibedan: React.FC<NikashaPratibedanProps> = ({ reports, o
                             <tr>
                                 <td className="border border-slate-900 p-1 font-bold text-right" colSpan={7}>कुल जम्मा</td>
                                 <td className="border border-slate-900 p-1 font-bold text-right px-2">
-                                    {selectedReport.items.reduce((sum, item) => sum + ((item.rate || 0) * (parseFloat(item.quantity) || 0)), 0).toFixed(2)}
+                                    {editingItems.reduce((sum, item) => sum + ((item.rate || 0) * (parseFloat(item.quantity) || 0)), 0).toFixed(2)}
                                 </td>
                                 <td className="border border-slate-900 p-1"></td>
                             </tr>
