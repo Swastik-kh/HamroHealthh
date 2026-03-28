@@ -200,17 +200,30 @@ export const MagFaram: React.FC<MagFaramProps> = ({ currentFiscalYear, currentUs
         }
         
         if (formDetails.storeKeeper?.inStock) {
+            const today = new NepaliDate().format('YYYY-MM-DD');
             for (const item of items) {
                 if (item.name.trim() === '') continue;
                 
-                const totalStock = inventoryItems
-                    .filter(inv => inv.itemName.trim().toLowerCase() === item.name.trim().toLowerCase())
+                const matchingInventory = inventoryItems.filter(inv => inv.itemName.trim().toLowerCase() === item.name.trim().toLowerCase());
+                
+                const totalStock = matchingInventory.reduce((sum, inv) => sum + (inv.currentQuantity || 0), 0);
+                const nonExpiredStock = matchingInventory
+                    .filter(inv => !inv.expiryDateBs || inv.expiryDateBs > today)
                     .reduce((sum, inv) => sum + (inv.currentQuantity || 0), 0);
                 
                 const requestedQty = parseFloat(item.quantity) || 0;
                 
                 if (requestedQty > totalStock) {
                     setValidationError(`सामान '${item.name}' को लागि पर्याप्त मौज्दात छैन। माग गरिएको: ${requestedQty}, उपलब्ध: ${totalStock}`);
+                    return;
+                }
+
+                if (requestedQty > nonExpiredStock) {
+                    if (nonExpiredStock === 0) {
+                        setValidationError(`सामान '${item.name}' को मौज्दात म्याद नाघेको (Expired) छ र अन्य ब्याच उपलब्ध छैन। कृपया प्रमाणित नगर्नुहोस्।`);
+                    } else {
+                        setValidationError(`सामान '${item.name}' को लागि पर्याप्त म्याद ननाघेको (Non-Expired) मौज्दात छैन। उपलब्ध म्याद ननाघेको मौज्दात: ${nonExpiredStock}`);
+                    }
                     return;
                 }
             }
