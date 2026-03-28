@@ -356,6 +356,7 @@ export const DhuliyaunaFaram: React.FC<DhuliyaunaFaramProps> = ({
                                     onSelect={(opt) => {
                                         const inv = opt.itemData as InventoryItem;
                                         if (inv) {
+                                            updateItem(item.id, 'inventoryId', inv.id);
                                             updateItem(item.id, 'codeNo', inv.uniqueCode || inv.sanketNo || '');
                                             updateItem(item.id, 'unit', inv.unit);
                                             updateItem(item.id, 'rate', inv.rate || 0);
