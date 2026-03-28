@@ -1,5 +1,5 @@
 
-import { User, OrganizationSettings, LeaveApplication, LeaveStatus, LeaveBalance, Darta, Chalani, BharmanAdeshEntry } from './coreTypes';
+import { User, OrganizationSettings, LeaveApplication, LeaveStatus, LeaveBalance, Darta, Chalani, BharmanAdeshEntry, SubscriptionRequest } from './coreTypes';
 import { 
   MagFormEntry, PurchaseOrderEntry, IssueReportEntry, FirmEntry, QuotationEntry, 
   InventoryItem, Store, StockEntryRequest, DakhilaPratibedanEntry, ReturnEntry, 
@@ -151,4 +151,10 @@ export interface DashboardProps {
 
   onClearData: (sectionId: string) => void; 
   onUploadData?: (sectionId: string, data: any[]) => void;
+
+  // Subscription Management
+  subscriptionRequests: SubscriptionRequest[];
+  onSendSubscriptionRequest: (request: SubscriptionRequest) => Promise<void>;
+  onApproveSubscription: (requestId: string, durationDays: number) => Promise<void>;
+  onRejectSubscription: (requestId: string) => Promise<void>;
 }

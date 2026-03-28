@@ -36,6 +36,9 @@ export interface User {
   serviceType?: 'Permanent' | 'Temporary' | 'Contract';
   readNotifications?: string[];
   parentId?: string; // ID of the user who created this user
+  createdAt?: string; // ISO date string
+  subscriptionExpiryDate?: string; // ISO date string
+  isSubscribed?: boolean;
 }
 
 export interface WardConfig {
@@ -65,6 +68,19 @@ export interface OrganizationSettings {
   vaccinationSessions?: number[]; 
   vaccinationCenters?: string[]; // Added for managing centers
   ipdWards?: WardConfig[]; 
+  isSubscribed?: boolean;
+  subscriptionExpiryDate?: string;
+}
+
+export interface SubscriptionRequest {
+  id: string;
+  userId: string;
+  username: string;
+  organizationName: string;
+  requestDate: string;
+  status: 'Pending' | 'Approved' | 'Rejected';
+  durationDays?: number;
+  approvedDate?: string;
 }
 
 export interface Signature {

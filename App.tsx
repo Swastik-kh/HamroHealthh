@@ -10,7 +10,7 @@ import {
   IssueReportEntry, FirmEntry, QuotationEntry, InventoryItem, Store, StockEntryRequest, 
   DakhilaPratibedanEntry, ReturnEntry, MarmatEntry, DhuliyaunaEntry, LogBookEntry, 
   DakhilaItem, TBPatient, GarbhawatiPatient, ChildImmunizationRecord, LeaveApplication, LeaveStatus, LeaveBalance, Darta, Chalani, BharmanAdeshEntry,
-  GarbhawotiRecord, PrasutiRecord, ServiceSeekerRecord, OPDRecord, EmergencyRecord, CBIMNCIRecord, BillingRecord, ServiceItem, LabReport, PariwarSewaRecord, XRayRecord, ECGRecord, USGRecord, PhysiotherapyRecord, IPDRecord, ItemEntry
+  GarbhawotiRecord, PrasutiRecord, ServiceSeekerRecord, OPDRecord, EmergencyRecord, CBIMNCIRecord, BillingRecord, ServiceItem, LabReport, PariwarSewaRecord, XRayRecord, ECGRecord, USGRecord, PhysiotherapyRecord, IPDRecord, ItemEntry, SubscriptionRequest
 } from './types';
 import { db } from './firebase';
 import { ref, onValue, set, remove, update, get, Unsubscribe, off, push } from "firebase/database";
@@ -93,6 +93,7 @@ const App: React.FC = () => {
   const [physiotherapyRecords, setPhysiotherapyRecords] = useState<PhysiotherapyRecord[]>([]);
   const [ipdRecords, setIpdRecords] = useState<IPDRecord[]>([]);
   const [itemList, setItemList] = useState<ItemEntry[]>([]);
+  const [subscriptionRequests, setSubscriptionRequests] = useState<SubscriptionRequest[]>([]);
 
   const managedOrgs = useMemo(() => {
       if (currentUser?.role !== 'HEALTH_SECTION') return [];
@@ -131,11 +132,71 @@ const App: React.FC = () => {
         }
     });
 
+    const subRequestsRef = ref(db, 'subscriptionRequests');
+    const unsubSubRequests = onValue(subRequestsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.keys(data).map(key => ({
+          ...data[key],
+          id: key
+        }));
+        setSubscriptionRequests(list);
+      } else {
+        setSubscriptionRequests([]);
+      }
+    });
+
     return () => {
         off(connectedRef, 'value', onConnect);
         unsubUsers();
+        unsubSubRequests();
     };
   }, []);
+
+  const handleSendSubscriptionRequest = async (request: SubscriptionRequest) => {
+    const newRequestRef = push(ref(db, 'subscriptionRequests'));
+    await set(newRequestRef, { ...request, id: newRequestRef.key });
+  };
+
+  const handleApproveSubscription = async (requestId: string, durationDays: number) => {
+    const request = subscriptionRequests.find(r => r.id === requestId);
+    if (!request) return;
+
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + durationDays);
+    const expiryDateStr = expiryDate.toISOString();
+
+    const safeOrgName = request.organizationName.trim().replace(/[.#$[\]]/g, "_");
+
+    // Update Organization Settings
+    const orgSettingsRef = ref(db, `orgData/${safeOrgName}/settings`);
+    await update(orgSettingsRef, {
+      isSubscribed: true,
+      subscriptionExpiryDate: expiryDateStr
+    });
+
+    // Update User (Admin)
+    const userRef = ref(db, `users/${request.userId}`);
+    await update(userRef, {
+      isSubscribed: true,
+      subscriptionExpiryDate: expiryDateStr
+    });
+
+    // Update Request Status
+    const requestRef = ref(db, `subscriptionRequests/${requestId}`);
+    await update(requestRef, {
+      status: 'Approved',
+      durationDays,
+      approvedDate: new NepaliDate().format('YYYY-MM-DD')
+    });
+  };
+
+  const handleRejectSubscription = async (requestId: string) => {
+    const requestRef = ref(db, `subscriptionRequests/${requestId}`);
+    await update(requestRef, {
+      status: 'Rejected'
+    });
+  };
 
   useEffect(() => {
     if (!currentUser) {
@@ -1145,6 +1206,10 @@ const App: React.FC = () => {
     activeOrgName={activeOrgName}
     onSetActiveOrgName={setActiveOrgName}
     allUsers={allUsers}
+    subscriptionRequests={subscriptionRequests}
+    onSendSubscriptionRequest={handleSendSubscriptionRequest}
+    onApproveSubscription={handleApproveSubscription}
+    onRejectSubscription={handleRejectSubscription}
         />
       ) : (
         <div className="min-h-screen w-full bg-[#f8fafc] flex items-center justify-center p-6 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:20px_20px]">
