@@ -69,7 +69,7 @@ const PERMISSION_STRUCTURE = [
         ]
     },
     { 
-        id: 'report', 
+        id: 'reports', 
         label: 'रिपोर्ट (Report)',
         children: [
             { id: 'report_tb_leprosy', label: 'क्षयरोग/कुष्ठरोग रिपोर्ट (TB/Leprosy)' },
@@ -79,6 +79,8 @@ const PERMISSION_STRUCTURE = [
             { id: 'report_reporting_status', label: 'रिपोर्टिङ स्थिति (Reporting Status)' },
             { id: 'report_pariwar_niyojan', label: 'परिवार नियोजन रिपोर्ट (Family Planning)' },
             { id: 'report_gesi', label: 'GESI रिपोर्ट (GESI Report)' },
+            { id: 'report_gesi_opd', label: 'GESI OPD सेवा रिपोर्ट (GESI OPD Report)' },
+            { id: 'report_gesi_cbimnci', label: 'GESI CBIMNCI रिपोर्ट (GESI CBIMNCI Report)' },
             { id: 'report_mch', label: 'MCH रिपोर्ट (MCH Report)' },
             { id: 'report_inventory_monthly', label: 'जिन्सी मासिक प्रतिवेदन (Monthly Report)' }
         ]

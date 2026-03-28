@@ -66,6 +66,8 @@ import { USGSewa } from './USGSewa';
 import { PhysiotherapySewa } from './PhysiotherapySewa';
 import { FamilyPlanningReport } from './FamilyPlanningReport';
 import { GESIReport } from './GESIReport';
+import { GESIOPDReport } from './GESIOPDReport';
+import { GESICBIMNCIReport } from './GESICBIMNCIReport';
 import { MCHReport } from './MCHReport';
 // @ts-ignore
 import NepaliDate from 'nepali-date-converter';
@@ -494,6 +496,8 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
         { id: 'report_reporting_status', label: 'रिपोर्टिङ स्थिति', icon: <FileText size={16} /> },
         { id: 'report_pariwar_niyojan', label: 'परिवार नियोजन रिपोर्ट', icon: <Users size={16} /> },
         { id: 'report_gesi', label: 'Gender Equity and social inclusion', icon: <FileText size={16} /> },
+        { id: 'report_gesi_opd', label: 'GESI OPD सेवा रिपोर्ट', icon: <FileText size={16} /> },
+        { id: 'report_gesi_cbimnci', label: 'GESI CBIMNCI रिपोर्ट', icon: <FileText size={16} /> },
         { id: 'report_mch', label: 'MCH रिपोर्ट', icon: <Baby size={16} /> },
         { id: 'report_inventory_monthly', label: 'जिन्सी मासिक रिपोर्ट', icon: <FileText size={16} /> },
       ]
@@ -711,9 +715,11 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
       case 'rabies': return <RabiesRegistration currentFiscalYear={currentFiscalYear} patients={rabiesPatients} onAddPatient={onAddRabiesPatient} onUpdatePatient={onUpdatePatient} onDeletePatient={onDeletePatient} currentUser={currentUser} />;
       case 'report_rabies': return <RabiesReport currentFiscalYear={currentFiscalYear} currentUser={currentUser} patients={rabiesPatients} />;
       case 'report_cbimnci': return <CBIMNCIReport cbimnciRecords={cbimnciRecords} serviceSeekerRecords={serviceSeekerRecords} currentFiscalYear={currentFiscalYear} />;
-      case 'report_reporting_status': return <ReportingStatusReport serviceSeekerRecords={serviceSeekerRecords} currentFiscalYear={currentFiscalYear} />;
+      case 'report_reporting_status': return <ReportingStatusReport serviceSeekerRecords={serviceSeekerRecords} bachhaImmunizationRecords={bachhaImmunizationRecords} currentFiscalYear={currentFiscalYear} generalSettings={generalSettings} />;
       case 'report_pariwar_niyojan': return <FamilyPlanningReport records={pariwarSewaRecords} settings={generalSettings} fiscalYear={currentFiscalYear} />;
       case 'report_gesi': return <GESIReport currentFiscalYear={currentFiscalYear} bachhaRecords={bachhaImmunizationRecords} cbimnciRecords={cbimnciRecords} serviceSeekerRecords={serviceSeekerRecords} prasutiRecords={prasutiRecords} tbPatients={tbPatients} opdRecords={opdRecords} ipdRecords={ipdRecords} />;
+      case 'report_gesi_opd': return <GESIOPDReport currentFiscalYear={currentFiscalYear} serviceSeekerRecords={serviceSeekerRecords} opdRecords={opdRecords} />;
+      case 'report_gesi_cbimnci': return <GESICBIMNCIReport currentFiscalYear={currentFiscalYear} serviceSeekerRecords={serviceSeekerRecords} cbimnciRecords={cbimnciRecords} />;
       case 'report_mch': return <MCHReport currentFiscalYear={currentFiscalYear} garbhawotiRecords={garbhawotiRecords} prasutiRecords={prasutiRecords} generalSettings={generalSettings} />;
       case 'mag_faram': return <MagFaram currentFiscalYear={currentFiscalYear} currentUser={currentUser} existingForms={magForms} onSave={onSaveMagForm} onDelete={onDeleteMagForm} inventoryItems={inventoryItems} stores={stores} generalSettings={generalSettings} itemList={itemList} />;
       case 'kharid_adesh': return <KharidAdesh orders={purchaseOrders} currentFiscalYear={currentFiscalYear} onSave={onUpdatePurchaseOrder} onDelete={onDeletePurchaseOrder} currentUser={currentUser} firms={firms} quotations={quotations} onDakhilaClick={(po) => { setActiveItem('jinshi_maujdat'); setPendingPoDakhila(po); }} generalSettings={generalSettings} inventoryItems={inventoryItems} />;

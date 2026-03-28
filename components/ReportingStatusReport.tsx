@@ -6,12 +6,16 @@ import { FileText, Printer } from 'lucide-react';
 
 interface ReportingStatusReportProps {
   serviceSeekerRecords: ServiceSeekerRecord[];
+  bachhaImmunizationRecords: any[];
   currentFiscalYear: string;
+  generalSettings: any;
 }
 
 export const ReportingStatusReport: React.FC<ReportingStatusReportProps> = ({
   serviceSeekerRecords,
-  currentFiscalYear
+  bachhaImmunizationRecords,
+  currentFiscalYear,
+  generalSettings
 }) => {
   const [reportType, setReportType] = useState<'Daily' | 'Monthly' | 'FiscalYear'>('Monthly');
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -35,6 +39,58 @@ export const ReportingStatusReport: React.FC<ReportingStatusReportProps> = ({
       }
     });
   }, [serviceSeekerRecords, reportType, selectedDate, selectedMonth, currentFiscalYear]);
+
+  const filteredImmRecords = useMemo(() => {
+    return (bachhaImmunizationRecords || []).filter(record => {
+      if (reportType === 'FiscalYear') {
+        return record.fiscalYear === currentFiscalYear;
+      } else if (reportType === 'Monthly') {
+        const recordMonth = record.date.split('-')[1];
+        const recordYear = record.date.split('-')[0];
+        const currentYear = selectedDate.split('-')[0];
+        return recordMonth === selectedMonth && recordYear === currentYear;
+      } else {
+        return record.date === selectedDate;
+      }
+    });
+  }, [bachhaImmunizationRecords, reportType, selectedDate, selectedMonth, currentFiscalYear]);
+
+  // Calculate Immunization Clinic Stats
+  const immClinicStats = useMemo(() => {
+    // 1. Total service seekers
+    const totalSeekers = filteredImmRecords.length;
+
+    // 2. Operated clinics (unique date + center)
+    const operatedClinics = new Set();
+    filteredImmRecords.forEach(r => {
+        if (r.date && r.vaccinationCenter) {
+            operatedClinics.add(`${r.date}_${r.vaccinationCenter}`);
+        }
+    });
+
+    // 3. Planned clinics
+    const sessionDays = generalSettings?.vaccinationSessions || [];
+    const centers = generalSettings?.vaccinationCenters || [];
+    const basePlanned = sessionDays.length * centers.length;
+
+    let plannedClinics = 0;
+    if (reportType === 'Monthly') {
+        plannedClinics = basePlanned;
+    } else if (reportType === 'FiscalYear') {
+        plannedClinics = basePlanned * 12;
+    } else if (reportType === 'Daily') {
+        const day = parseInt(selectedDate.split('-')[2]);
+        if (sessionDays.includes(day)) {
+            plannedClinics = centers.length;
+        }
+    }
+
+    return {
+        totalSeekers,
+        operatedClinics: operatedClinics.size,
+        plannedClinics
+    };
+  }, [filteredImmRecords, reportType, selectedMonth, generalSettings]);
 
   // Helper to calculate age in years
   const getAgeInYears = (record: ServiceSeekerRecord) => {
@@ -193,14 +249,35 @@ export const ReportingStatusReport: React.FC<ReportingStatusReportProps> = ({
                 </tr>
               </thead>
               <tbody>
-                {['गाउँघर क्लिनिक', 'खोप क्लिनिक', 'खोप सेसन', 'सरसफाई सेसन (पटक)', 'म. स्वा. स्व. से.'].map(item => (
-                  <tr key={item}>
-                    <td className="border border-slate-300 p-2 font-medium text-left">{item}</td>
-                    <td className="border border-slate-300 p-2"><input type="number" className="w-full text-center outline-none bg-transparent" /></td>
-                    <td className="border border-slate-300 p-2"><input type="number" className="w-full text-center outline-none bg-transparent" /></td>
-                    <td className="border border-slate-300 p-2"><input type="number" className="w-full text-center outline-none bg-transparent" /></td>
-                  </tr>
-                ))}
+                {['गाउँघर क्लिनिक', 'खोप क्लिनिक', 'खोप सेसन', 'सरसफाई सेसन (पटक)', 'म. स्वा. स्व. से.'].map(item => {
+                  const isImmClinic = item === 'खोप क्लिनिक' || item === 'खोप सेसन';
+                  return (
+                    <tr key={item}>
+                      <td className="border border-slate-300 p-2 font-medium text-left">{item}</td>
+                      <td className="border border-slate-300 p-2">
+                        {isImmClinic ? (
+                          <span className="font-bold">{immClinicStats.plannedClinics || ''}</span>
+                        ) : (
+                          <input type="number" className="w-full text-center outline-none bg-transparent" />
+                        )}
+                      </td>
+                      <td className="border border-slate-300 p-2">
+                        {isImmClinic ? (
+                          <span className="font-bold">{immClinicStats.operatedClinics || ''}</span>
+                        ) : (
+                          <input type="number" className="w-full text-center outline-none bg-transparent" />
+                        )}
+                      </td>
+                      <td className="border border-slate-300 p-2">
+                        {isImmClinic ? (
+                          <span className="font-bold">{immClinicStats.totalSeekers || ''}</span>
+                        ) : (
+                          <input type="number" className="w-full text-center outline-none bg-transparent" />
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
