@@ -103,7 +103,7 @@ export const DhuliyaunaFaram: React.FC<DhuliyaunaFaramProps> = ({
   };
 
   const updateItem = (id: number, field: keyof DhuliyaunaItem, value: any) => {
-    setItems(items.map(item => {
+    setItems(prev => prev.map(item => {
       if (item.id === id) {
         const updated = { ...item, [field]: value };
         // Auto calculate total

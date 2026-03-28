@@ -116,7 +116,7 @@ export const MarmatAdesh: React.FC<MarmatAdeshProps> = ({
   };
 
   const updateItem = (id: number, field: keyof MarmatItem, value: any) => {
-    setItems(items.map(item => {
+    setItems(prev => prev.map(item => {
       if (item.id === id) {
         return { ...item, [field]: value };
       }
@@ -409,11 +409,9 @@ export const MarmatAdesh: React.FC<MarmatAdeshProps> = ({
                                     className="!border-none !bg-transparent !text-sm !p-0"
                                 />
                             ) : (
-                                <input 
-                                    disabled={true} 
-                                    value={item.name} 
-                                    className="w-full bg-transparent text-left px-2 outline-none disabled:cursor-not-allowed" 
-                                />
+                                <div className="w-full text-left px-2 py-1">
+                                    {item.name}
+                                </div>
                             )}
                         </td>
                         <td className="border border-slate-900 p-1">

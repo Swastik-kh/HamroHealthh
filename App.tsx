@@ -993,8 +993,7 @@ const App: React.FC = () => {
               const currentInvList: InventoryItem[] = Object.keys(currentInvData).map(k => ({ ...currentInvData[k], id: k }));
 
               for (const returnedItem of entry.items) {
-                  if (returnedItem.itemType !== 'Non-Expendable') continue; 
-
+                  // Allowing both Expendable and Non-Expendable items to be added back to stock upon return approval.
                   const existingItem = currentInvList.find(i => 
                       i.id === returnedItem.inventoryId || 
                       (i.itemName.trim().toLowerCase() === returnedItem.name.trim().toLowerCase() && 
