@@ -21,17 +21,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({ users, onLoginSuccess, ini
 
   const passwordInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    const speak = () => {
-      const utterance = new SpeechSynthesisUtterance("Please enter your username and password");
-      utterance.lang = 'en-US';
-      window.speechSynthesis.speak(utterance);
-    };
-
-    const interval = setInterval(speak, 10000);
-    return () => clearInterval(interval);
-  }, []);
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
