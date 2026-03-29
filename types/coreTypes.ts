@@ -204,6 +204,35 @@ export interface PrasutiRecord {
   newbornGender: 'Male' | 'Female' | 'Other';
   newbornWeight: number;
   complications: string;
+  birthTime: string;
+  transportAllowanceEligible: boolean;
+  transportAllowanceReceived: boolean;
+  incentiveAllowanceEligible: boolean;
+  incentiveAllowanceReceived: boolean;
+}
+
+export interface UttarPrasutiRecord {
+  id: string;
+  fiscalYear: string;
+  prasutiId?: string; // Link to PrasutiRecord, now optional
+  name: string;
+  visitDate: string;
+  findings: string;
+  remarks?: string;
+  // Mother's Health
+  motherBp?: string;
+  motherWeight?: number;
+  motherTemp?: string;
+  motherBreastfeeding?: string;
+  motherLochia?: string;
+  motherUterineInvolution?: string;
+  motherGeneralCondition?: string;
+  // Baby's Health
+  babyWeight?: number;
+  babyTemp?: string;
+  babyBreastfeeding?: string;
+  babyUmbilicalCord?: string;
+  babyGeneralCondition?: string;
 }
 
 export interface ServiceSeekerRecord {

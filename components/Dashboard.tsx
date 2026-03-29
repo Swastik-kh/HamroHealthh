@@ -12,7 +12,7 @@ import {
 import { APP_NAME, FISCAL_YEARS } from '../constants';
 import { DashboardProps } from '../types/dashboardTypes'; 
 import { PurchaseOrderEntry, InventoryItem, MagFormEntry, StockEntryRequest, DakhilaPratibedanEntry } from '../types/inventoryTypes';
-import { User, LeaveApplication, LeaveStatus, Darta, Chalani, BharmanAdeshEntry, GarbhawotiRecord, PrasutiRecord, ServiceSeekerRecord, OPDRecord, EmergencyRecord, CBIMNCIRecord, BillingRecord, ServiceItem, LabReport, DispensaryRecord, PariwarSewaRecord, XRayRecord, ECGRecord, USGRecord, PhysiotherapyRecord, IPDRecord } from '../types';
+import { User, LeaveApplication, LeaveStatus, Darta, Chalani, BharmanAdeshEntry, GarbhawotiRecord, PrasutiRecord, UttarPrasutiRecord, ServiceSeekerRecord, OPDRecord, EmergencyRecord, CBIMNCIRecord, BillingRecord, ServiceItem, LabReport, DispensaryRecord, PariwarSewaRecord, XRayRecord, ECGRecord, USGRecord, PhysiotherapyRecord, IPDRecord } from '../types';
 import { UserManagement } from './UserManagement';
 import { ChangePassword } from './ChangePassword';
 import { TBPatientRegistration } from './TBPatientRegistration';
@@ -51,6 +51,7 @@ import { SafeMotherhoodService } from './SafeMotherhoodService';
 import { IPDSewa } from './IPDSewa';
 import { GarbhawotiSewa } from './GarbhawotiSewa';
 import { PrasutiSewa } from './PrasutiSewa';
+import { UttarPrasutiSewa } from './UttarPrasutiSewa';
 import { MulDartaSewa } from './MulDartaSewa';
 import { OPDSewa } from './OPDSewa';
 import { EmergencySewa } from './EmergencySewa';
@@ -80,6 +81,9 @@ interface ExtendedDashboardProps extends DashboardProps {
   prasutiRecords: PrasutiRecord[];
   onSavePrasutiRecord: (record: PrasutiRecord) => void;
   onDeletePrasutiRecord: (recordId: string) => void;
+  uttarPrasutiRecords: UttarPrasutiRecord[];
+  onSaveUttarPrasutiRecord: (record: UttarPrasutiRecord) => void;
+  onDeleteUttarPrasutiRecord: (recordId: string) => void;
   serviceSeekerRecords: ServiceSeekerRecord[];
   onSaveServiceSeekerRecord: (record: ServiceSeekerRecord) => void;
   onDeleteServiceSeekerRecord: (recordId: string) => void;
@@ -161,6 +165,7 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
   bharmanAdeshEntries = [], onSaveBharmanAdesh, onDeleteBharmanAdesh,
   garbhawotiRecords = [], onSaveGarbhawotiRecord, onDeleteGarbhawotiRecord,
   prasutiRecords = [], onSavePrasutiRecord, onDeletePrasutiRecord,
+  uttarPrasutiRecords = [], onSaveUttarPrasutiRecord, onDeleteUttarPrasutiRecord,
   serviceSeekerRecords = [], onSaveServiceSeekerRecord, onDeleteServiceSeekerRecord,
   opdRecords = [], onSaveOPDRecord, onDeleteOPDRecord,
   emergencyRecords = [], onSaveEmergencyRecord, onDeleteEmergencyRecord,
@@ -459,6 +464,7 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
           subItems: [
             { id: 'garbhawoti_sewa', label: 'गर्भवती सेवा', icon: <HeartHandshake size={16} /> },
             { id: 'prasuti_sewa', label: 'प्रसूति सेवा', icon: <Baby size={16} /> },
+            { id: 'uttar_prasuti_sewa', label: 'उत्तर प्रसूति सेवा', icon: <Baby size={16} /> },
           ]
         },
         { id: 'immunization_tracking', label: 'खोप अनुगमन', icon: <Baby size={16} /> } 
@@ -1006,6 +1012,13 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
         onSaveRecord={onSavePrasutiRecord}
         onDeleteRecord={onDeletePrasutiRecord}
         currentFiscalYear={currentFiscalYear}
+      />;
+      case 'uttar_prasuti_sewa': return <UttarPrasutiSewa 
+        currentFiscalYear={currentFiscalYear}
+        prasutiRecords={prasutiRecords}
+        uttarPrasutiRecords={uttarPrasutiRecords}
+        onSave={onSaveUttarPrasutiRecord}
+        onDelete={onDeleteUttarPrasutiRecord}
       />;
       case 'mul_darta': return <MulDartaSewa 
         records={serviceSeekerRecords}

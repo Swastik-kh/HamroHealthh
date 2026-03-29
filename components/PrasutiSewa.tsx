@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Baby, Plus, X, Pencil, Trash2 } from 'lucide-react';
-import { PrasutiRecord, GarbhawotiRecord } from '../types/coreTypes';
+import { PrasutiRecord, GarbhawotiRecord, Option } from '../types/coreTypes';
 import { Input } from './Input';
+import { Select } from './Select';
 import { NepaliDatePicker } from './NepaliDatePicker';
 
 interface PrasutiSewaProps {
@@ -22,7 +23,21 @@ const initialFormData: Omit<PrasutiRecord, 'id' | 'fiscalYear'> = {
   newbornGender: 'Male',
   newbornWeight: 0,
   complications: '',
+  birthTime: '',
+  transportAllowanceEligible: false,
+  transportAllowanceReceived: false,
+  incentiveAllowanceEligible: false,
+  incentiveAllowanceReceived: false,
 };
+
+const complicationOptions: Option[] = [
+  { id: '1', value: 'None', label: 'कुनै पनि छैन' },
+  { id: '2', value: 'Postpartum Hemorrhage', label: 'सुत्केरीपछिको रक्तश्राव' },
+  { id: '3', value: 'Eclampsia', label: 'एक्लाम्पसिया' },
+  { id: '4', value: 'Sepsis', label: 'सेप्सिस' },
+  { id: '5', value: 'Obstructed Labor', label: 'अवरुद्ध प्रसव' },
+  { id: '6', value: 'Other', label: 'अन्य' },
+];
 
 export const PrasutiSewa: React.FC<PrasutiSewaProps> = ({ garbhawotiRecords = [], prasutiRecords = [], onSaveRecord, onDeleteRecord, currentFiscalYear }) => {
   const [showForm, setShowForm] = useState(false);
@@ -60,7 +75,14 @@ export const PrasutiSewa: React.FC<PrasutiSewaProps> = ({ garbhawotiRecords = []
         setFormData(prev => ({ ...prev, garbhawotiId: value, name: selectedGarbhawoti?.name || '' }));
       }
     } else {
-      setFormData(prev => ({ ...prev, [name]: (e.target as HTMLInputElement).type === 'number' ? parseFloat(value) || 0 : value }));
+      setFormData(prev => ({ 
+        ...prev, 
+        [name]: type === 'number' 
+          ? parseFloat(value) || 0 
+          : type === 'checkbox' 
+            ? (e.target as HTMLInputElement).checked 
+            : value 
+      }));
     }
   };
 
@@ -193,9 +215,29 @@ export const PrasutiSewa: React.FC<PrasutiSewaProps> = ({ garbhawotiRecords = []
                     </div>
                     
                     <Input label="शिशुको तौल (kg)" name="newbornWeight" type="number" step="0.01" value={formData.newbornWeight} onChange={handleChange} />
+                    <Input label="जन्म समय" name="birthTime" type="time" value={formData.birthTime} onChange={handleChange} />
+                    
+                    <div className="md:col-span-3 grid grid-cols-2 gap-4">
+                        <label className="flex items-center gap-2">
+                            <input type="checkbox" name="transportAllowanceEligible" checked={formData.transportAllowanceEligible} onChange={handleChange} className="rounded border-slate-300 text-primary-600 focus:ring-primary-500" />
+                            <span className="text-sm text-slate-700">यातायात खर्च पाउनु पर्ने</span>
+                        </label>
+                        <label className="flex items-center gap-2">
+                            <input type="checkbox" name="transportAllowanceReceived" checked={formData.transportAllowanceReceived} onChange={handleChange} className="rounded border-slate-300 text-primary-600 focus:ring-primary-500" />
+                            <span className="text-sm text-slate-700">यातायात खर्च पाएको</span>
+                        </label>
+                        <label className="flex items-center gap-2">
+                            <input type="checkbox" name="incentiveAllowanceEligible" checked={formData.incentiveAllowanceEligible} onChange={handleChange} className="rounded border-slate-300 text-primary-600 focus:ring-primary-500" />
+                            <span className="text-sm text-slate-700">उत्प्रेरणा भत्ता पाउनु पर्ने</span>
+                        </label>
+                        <label className="flex items-center gap-2">
+                            <input type="checkbox" name="incentiveAllowanceReceived" checked={formData.incentiveAllowanceReceived} onChange={handleChange} className="rounded border-slate-300 text-primary-600 focus:ring-primary-500" />
+                            <span className="text-sm text-slate-700">उत्प्रेरणा भत्ता पाएको</span>
+                        </label>
+                    </div>
                     
                     <div className="md:col-span-3">
-                        <Input label="जटिलताहरू" name="complications" value={formData.complications} onChange={handleChange} />
+                        <Select label="जटिलताहरू" name="complications" options={complicationOptions} value={formData.complications} onChange={handleChange} />
                     </div>
                     
                     <div className="md:col-span-3 flex justify-end gap-4 pt-6 border-t border-slate-200 sticky bottom-0 bg-white pb-2">

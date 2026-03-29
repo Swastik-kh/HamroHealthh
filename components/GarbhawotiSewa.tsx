@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { HeartHandshake, Plus, X, Pencil, Trash2 } from 'lucide-react';
-import { GarbhawotiRecord } from '../types/coreTypes';
+import { GarbhawotiRecord, Option } from '../types/coreTypes';
 import { Input } from './Input';
+import { Select } from './Select';
 import { NepaliDatePicker } from './NepaliDatePicker';
 
 interface GarbhawotiSewaProps {
@@ -26,6 +27,12 @@ const initialFormData: Omit<GarbhawotiRecord, 'id' | 'fiscalYear'> = {
   ironTablets: 0,
   ttDose: '',
 };
+
+const ttDoseOptions: Option[] = [
+  { id: '1', value: 'TD1', label: 'TD1' },
+  { id: '2', value: 'TD2', label: 'TD2' },
+  { id: '3', value: 'TD Booster', label: 'TD Booster' },
+];
 
 export const GarbhawotiSewa: React.FC<GarbhawotiSewaProps> = ({ records = [], onSaveRecord, onDeleteRecord, currentFiscalYear }) => {
   const [showForm, setShowForm] = useState(false);
@@ -53,7 +60,7 @@ export const GarbhawotiSewa: React.FC<GarbhawotiSewaProps> = ({ records = [], on
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     setFormData(prev => ({ ...prev, [name]: type === 'number' ? parseFloat(value) || 0 : value }));
   };
@@ -161,7 +168,7 @@ export const GarbhawotiSewa: React.FC<GarbhawotiSewaProps> = ({ records = [], on
                     <Input label="रक्तचाप (BP)" name="bp" value={formData.bp} onChange={handleChange} />
                     <Input label="हेमोग्लोबिन (Hb)" name="hb" value={formData.hb} onChange={handleChange} />
                     <Input label="आइरन चक्की" name="ironTablets" type="number" value={formData.ironTablets} onChange={handleChange} />
-                    <Input label="टी.टी. डोज" name="ttDose" value={formData.ttDose} onChange={handleChange} />
+                    <Select label="टी.टी. डोज" name="ttDose" options={ttDoseOptions} value={formData.ttDose} onChange={handleChange} />
                     
                     <div className="md:col-span-3 flex justify-end gap-4 pt-6 border-t border-slate-200 sticky bottom-0 bg-white pb-2">
                         <button type="button" onClick={handleCloseForm} className="px-6 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium">रद्द</button>

@@ -30,9 +30,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
           ref={ref}
           id={inputId}
           className={`
-            w-full rounded-lg border bg-white px-3 py-2.5 text-sm outline-none transition-all
+            w-full rounded-lg border bg-slate-50 px-3 py-2.5 text-sm outline-none transition-all
             placeholder:text-slate-400
-            focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10
+            focus:border-primary-500 focus:bg-white focus:ring-4 focus:ring-primary-500/10
             disabled:cursor-not-allowed disabled:opacity-50
             ${icon ? 'pl-10' : ''}
             ${error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/10' : 'border-slate-300 hover:border-slate-400'}

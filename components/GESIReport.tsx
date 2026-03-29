@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Printer } from 'lucide-react';
 import { 
   ChildImmunizationRecord, 
@@ -10,6 +10,8 @@ import {
   IPDRecord 
 } from '../types';
 import { useReactToPrint } from 'react-to-print';
+import { NepaliDatePicker } from './NepaliDatePicker';
+import NepaliDate from 'nepali-date-converter';
 
 interface GESIReportProps {
   currentFiscalYear: string;
@@ -66,6 +68,49 @@ export const GESIReport: React.FC<GESIReportProps> = ({
     documentTitle: 'GESI_Report',
   });
 
+  const [reportType, setReportType] = useState<'Daily' | 'Monthly' | 'Quarterly' | 'HalfYearly' | 'FiscalYear'>('Monthly');
+  const [selectedDate, setSelectedDate] = useState(() => {
+    try { return new NepaliDate().format('YYYY-MM-DD'); } catch (e) { return ''; }
+  });
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    try { return new NepaliDate().format('MM'); } catch (e) { return '01'; }
+  });
+  const [selectedQuarter, setSelectedQuarter] = useState('1');
+  const [selectedHalfYear, setSelectedHalfYear] = useState('1');
+
+  const filterRecords = (records: any[], dateField: string) => {
+    return records.filter(record => {
+      const date = record[dateField];
+      if (!date) return false;
+      
+      if (reportType === 'FiscalYear') {
+        return record.fiscalYear === currentFiscalYear;
+      } else if (reportType === 'Monthly') {
+        const recordMonth = date.split('-')[1];
+        const recordYear = date.split('-')[0];
+        const currentYear = selectedDate.split('-')[0];
+        return recordMonth === selectedMonth && recordYear === currentYear;
+      } else if (reportType === 'Quarterly') {
+        const m = parseInt(date.split('-')[1]);
+        const q = m >= 4 && m <= 6 ? '1' : m >= 7 && m <= 9 ? '2' : m >= 10 && m <= 12 ? '3' : '4';
+        return q === selectedQuarter && record.fiscalYear === currentFiscalYear;
+      } else if (reportType === 'HalfYearly') {
+        const m = parseInt(date.split('-')[1]);
+        const h = (m >= 4 && m <= 9) ? '1' : '2';
+        return h === selectedHalfYear && record.fiscalYear === currentFiscalYear;
+      } else {
+        return date === selectedDate;
+      }
+    });
+  };
+
+  const filteredBachha = useMemo(() => filterRecords(bachhaRecords, 'date'), [bachhaRecords, reportType, selectedDate, selectedMonth, selectedQuarter, selectedHalfYear, currentFiscalYear]);
+  const filteredCbimnci = useMemo(() => filterRecords(cbimnciRecords, 'visitDate'), [cbimnciRecords, reportType, selectedDate, selectedMonth, selectedQuarter, selectedHalfYear, currentFiscalYear]);
+  const filteredPrasuti = useMemo(() => filterRecords(prasutiRecords, 'date'), [prasutiRecords, reportType, selectedDate, selectedMonth, selectedQuarter, selectedHalfYear, currentFiscalYear]);
+  const filteredTb = useMemo(() => filterRecords(tbPatients, 'date'), [tbPatients, reportType, selectedDate, selectedMonth, selectedQuarter, selectedHalfYear, currentFiscalYear]);
+  const filteredOpd = useMemo(() => filterRecords(opdRecords, 'date'), [opdRecords, reportType, selectedDate, selectedMonth, selectedQuarter, selectedHalfYear, currentFiscalYear]);
+  const filteredIpd = useMemo(() => filterRecords(ipdRecords, 'date'), [ipdRecords, reportType, selectedDate, selectedMonth, selectedQuarter, selectedHalfYear, currentFiscalYear]);
+
   const getPatient = (id: string) => serviceSeekerRecords.find(p => p.id === id);
 
   const reportData = useMemo(() => {
@@ -90,8 +135,7 @@ export const GESIReport: React.FC<GESIReportProps> = ({
     });
 
     // 1. Fully Immunized within 23 months
-    bachhaRecords.forEach(record => {
-      if (record.fiscalYear === currentFiscalYear) {
+    filteredBachha.forEach(record => {
         const caste = getCasteId(record.jatCode);
         const gender = record.gender === 'Male' ? 'm' : 'f';
         // Simplified check for fully immunized (assuming if they have measles 2 or typhoid, they are fully immunized)
@@ -99,12 +143,10 @@ export const GESIReport: React.FC<GESIReportProps> = ({
         if (isFullyImmunized && data[caste]) {
           data[caste][`khop_${gender}`]++;
         }
-      }
     });
 
     // 2. IMNCI Services & 3. Underweight
-    cbimnciRecords.forEach(record => {
-      if (record.fiscalYear === currentFiscalYear) {
+    filteredCbimnci.forEach(record => {
         const patient = getPatient(record.serviceSeekerId);
         if (patient) {
           const caste = getCasteId(patient.casteCode);
@@ -119,33 +161,26 @@ export const GESIReport: React.FC<GESIReportProps> = ({
 
             // Underweight check
             if (record.assessmentData?.weight) {
-              const weight = parseFloat(record.assessmentData.weight);
-              // Simple check for underweight (e.g., < 2.5kg for infant, or zScore < -2)
-              // Since we don't have zScore easily available here, we'll use a simplified proxy or just check if diagnosis contains 'Underweight' or 'Malnutrition'
               if (record.diagnosis?.includes('Underweight') || record.diagnosis?.includes('Malnutrition')) {
                  data[caste][`underweight_${gender}`]++;
               }
             }
           }
         }
-      }
     });
 
     // 4. Institutional Delivery
-    prasutiRecords.forEach(record => {
-      if (record.fiscalYear === currentFiscalYear) {
+    filteredPrasuti.forEach(record => {
         // PrasutiRecord doesn't have casteCode directly, we would need to link to GarbhawotiRecord, which also doesn't have it.
         // Defaulting to '6' (Other) for now unless we add it.
         const caste = getCasteId((record as any).casteCode);
         if (data[caste] && (record.deliveryPlace === 'Health Facility' || record.deliveryPlace === 'Hospital')) {
           data[caste].delivery++;
         }
-      }
     });
 
     // 5. Safe Abortion, 6. HIV, 11. GBV (From OPD)
-    opdRecords.forEach(record => {
-      if (record.fiscalYear === currentFiscalYear) {
+    filteredOpd.forEach(record => {
         const patient = getPatient(record.serviceSeekerId);
         if (patient) {
           const caste = getCasteId(patient.casteCode);
@@ -172,12 +207,10 @@ export const GESIReport: React.FC<GESIReportProps> = ({
             }
           }
         }
-      }
     });
 
     // 7. Leprosy & 8. TB
-    tbPatients.forEach(record => {
-      if (record.fiscalYear === currentFiscalYear) {
+    filteredTb.forEach(record => {
         const caste = getCasteId(record.ethnicity);
         const gender = record.gender === 'Male' ? 'm' : 'f';
         
@@ -188,12 +221,11 @@ export const GESIReport: React.FC<GESIReportProps> = ({
             data[caste][`tb_${gender}`]++;
           }
         }
-      }
     });
 
     // 10. Discharged Patients
-    ipdRecords.forEach(record => {
-      if (record.fiscalYear === currentFiscalYear && record.status === 'Discharged') {
+    filteredIpd.forEach(record => {
+      if (record.status === 'Discharged') {
         const patient = getPatient(record.serviceSeekerId);
         if (patient) {
           const caste = getCasteId(patient.casteCode);
@@ -206,7 +238,7 @@ export const GESIReport: React.FC<GESIReportProps> = ({
     });
 
     return data;
-  }, [currentFiscalYear, bachhaRecords, cbimnciRecords, serviceSeekerRecords, prasutiRecords, tbPatients, opdRecords, ipdRecords]);
+  }, [filteredBachha, filteredCbimnci, filteredPrasuti, filteredTb, filteredOpd, filteredIpd, serviceSeekerRecords]);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
@@ -221,6 +253,87 @@ export const GESIReport: React.FC<GESIReportProps> = ({
         >
           <Printer size={18} /> प्रिन्ट गर्नुहोस्
         </button>
+      </div>
+
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm print:hidden flex flex-wrap gap-4 items-end">
+        <div>
+          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">रिपोर्टको प्रकार</label>
+          <select 
+            value={reportType} 
+            onChange={(e) => setReportType(e.target.value as any)}
+            className="p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+          >
+            <option value="Daily">दैनिक (Daily)</option>
+            <option value="Monthly">मासिक (Monthly)</option>
+            <option value="Quarterly">त्रैमासिक (Quarterly)</option>
+            <option value="HalfYearly">अर्ध-वार्षिक (Half Yearly)</option>
+            <option value="FiscalYear">आर्थिक वर्ष (Fiscal Year)</option>
+          </select>
+        </div>
+
+        {reportType === 'Daily' && (
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">मिति</label>
+            <NepaliDatePicker value={selectedDate} onChange={setSelectedDate} />
+          </div>
+        )}
+
+        {reportType === 'Monthly' && (
+          <>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">वर्ष</label>
+              <select 
+                value={selectedDate.split('-')[0]} 
+                onChange={(e) => setSelectedDate(`${e.target.value}-${selectedMonth}-01`)}
+                className="p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+              >
+                {[2080, 2081, 2082, 2083].map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">महिना</label>
+              <select 
+                value={selectedMonth} 
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+              >
+                {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map((m, i) => (
+                  <option key={m} value={m}>{['बैशाख', 'जेठ', 'असार', 'साउन', 'भदौ', 'असोज', 'कार्तिक', 'मंसिर', 'पुष', 'माघ', 'फागुन', 'चैत'][i]}</option>
+                ))}
+              </select>
+            </div>
+          </>
+        )}
+
+        {reportType === 'Quarterly' && (
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">त्रैमासिक (Quarter)</label>
+            <select 
+              value={selectedQuarter} 
+              onChange={(e) => setSelectedQuarter(e.target.value)}
+              className="p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+            >
+              <option value="1">प्रथम त्रैमासिक (Q1)</option>
+              <option value="2">द्वितीय त्रैमासिक (Q2)</option>
+              <option value="3">तृतीय त्रैमासिक (Q3)</option>
+              <option value="4">चौथो त्रैमासिक (Q4)</option>
+            </select>
+          </div>
+        )}
+
+        {reportType === 'HalfYearly' && (
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">अर्ध-वार्षिक (Half Year)</label>
+            <select 
+              value={selectedHalfYear} 
+              onChange={(e) => setSelectedHalfYear(e.target.value)}
+              className="p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+            >
+              <option value="1">प्रथम अर्ध-वार्षिक (H1)</option>
+              <option value="2">द्वितीय अर्ध-वार्षिक (H2)</option>
+            </select>
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">

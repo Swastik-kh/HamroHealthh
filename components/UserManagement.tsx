@@ -43,6 +43,7 @@ const PERMISSION_STRUCTURE = [
                 children: [
                     { id: 'garbhawoti_sewa', label: 'गर्भवती सेवा (Pregnancy Service)' },
                     { id: 'prasuti_sewa', label: 'प्रसूति सेवा (Delivery Service)' },
+                    { id: 'uttar_prasuti_sewa', label: 'उत्तर प्रसूति सेवा (Post-Natal Service)' },
                 ]
             },
             { id: 'immunization_tracking', label: 'खोप अनुगमन (Immunization Tracking)' }

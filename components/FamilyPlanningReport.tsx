@@ -1,7 +1,8 @@
-
 import React, { useMemo, useState } from 'react';
 import { PariwarSewaRecord, OrganizationSettings } from '../types';
-import { Printer, FileDown, Calendar, Building2 } from 'lucide-react';
+import { Printer, Calendar, Filter } from 'lucide-react';
+import { NepaliDatePicker } from './NepaliDatePicker';
+import NepaliDate from 'nepali-date-converter';
 
 interface FamilyPlanningReportProps {
   records: PariwarSewaRecord[];
@@ -10,18 +11,41 @@ interface FamilyPlanningReportProps {
 }
 
 export const FamilyPlanningReport: React.FC<FamilyPlanningReportProps> = ({ records, settings, fiscalYear }) => {
-  const [selectedMonth, setSelectedMonth] = useState<string>('All');
-
-  const months = [
-    'All', 'साउन', 'भदौ', 'असोज', 'कात्तिक', 'मंसिर', 'पुस', 'माघ', 'फागुन', 'चैत', 'वैशाख', 'जेठ', 'असार'
-  ];
+  const [reportType, setReportType] = useState<'Daily' | 'Monthly' | 'Quarterly' | 'HalfYearly' | 'FiscalYear'>('Monthly');
+  const [selectedDate, setSelectedDate] = useState(() => {
+    try { return new NepaliDate().format('YYYY-MM-DD'); } catch (e) { return ''; }
+  });
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    try { return new NepaliDate().format('MM'); } catch (e) { return '01'; }
+  });
+  const [selectedQuarter, setSelectedQuarter] = useState('1');
+  const [selectedHalfYear, setSelectedHalfYear] = useState('1');
 
   const filteredRecords = useMemo(() => {
-    return records.filter(r => {
-      if (selectedMonth === 'All') return true;
-      return r.dateBs.includes(selectedMonth);
+    return records.filter(record => {
+      const date = record.dateBs;
+      if (!date) return false;
+      
+      if (reportType === 'FiscalYear') {
+        return record.fiscalYear === fiscalYear;
+      } else if (reportType === 'Monthly') {
+        const recordMonth = date.split('-')[1];
+        const recordYear = date.split('-')[0];
+        const currentYear = selectedDate.split('-')[0];
+        return recordMonth === selectedMonth && recordYear === currentYear;
+      } else if (reportType === 'Quarterly') {
+        const m = parseInt(date.split('-')[1]);
+        const q = m >= 4 && m <= 6 ? '1' : m >= 7 && m <= 9 ? '2' : m >= 10 && m <= 12 ? '3' : '4';
+        return q === selectedQuarter && record.fiscalYear === fiscalYear;
+      } else if (reportType === 'HalfYearly') {
+        const m = parseInt(date.split('-')[1]);
+        const h = (m >= 4 && m <= 9) ? '1' : '2';
+        return h === selectedHalfYear && record.fiscalYear === fiscalYear;
+      } else {
+        return date === selectedDate;
+      }
     });
-  }, [records, selectedMonth]);
+  }, [records, reportType, selectedDate, selectedMonth, selectedQuarter, selectedHalfYear, fiscalYear]);
 
   const parseAge = (ageStr: string): number => {
     const age = parseInt(ageStr);
@@ -57,31 +81,96 @@ export const FamilyPlanningReport: React.FC<FamilyPlanningReportProps> = ({ reco
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center no-print">
-        <div className="flex items-center gap-4">
-          <div className="bg-white p-2 rounded-lg border border-slate-200 flex items-center gap-2">
-            <Calendar size={18} className="text-primary-600" />
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm print:hidden flex flex-wrap gap-4 items-end">
+        <div>
+          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">रिपोर्टको प्रकार</label>
+          <select 
+            value={reportType} 
+            onChange={(e) => setReportType(e.target.value as any)}
+            className="p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+          >
+            <option value="Daily">दैनिक (Daily)</option>
+            <option value="Monthly">मासिक (Monthly)</option>
+            <option value="Quarterly">त्रैमासिक (Quarterly)</option>
+            <option value="HalfYearly">अर्ध-वार्षिक (Half Yearly)</option>
+            <option value="FiscalYear">आर्थिक वर्ष (Fiscal Year)</option>
+          </select>
+        </div>
+
+        {reportType === 'Daily' && (
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">मिति</label>
+            <NepaliDatePicker value={selectedDate} onChange={setSelectedDate} />
+          </div>
+        )}
+
+        {reportType === 'Monthly' && (
+          <>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">वर्ष</label>
+              <select 
+                value={selectedDate.split('-')[0]} 
+                onChange={(e) => setSelectedDate(`${e.target.value}-${selectedMonth}-01`)}
+                className="p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+              >
+                {[2080, 2081, 2082, 2083].map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">महिना</label>
+              <select 
+                value={selectedMonth} 
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+              >
+                {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map((m, i) => (
+                  <option key={m} value={m}>{['बैशाख', 'जेठ', 'असार', 'साउन', 'भदौ', 'असोज', 'कार्तिक', 'मंसिर', 'पुष', 'माघ', 'फागुन', 'चैत'][i]}</option>
+                ))}
+              </select>
+            </div>
+          </>
+        )}
+
+        {reportType === 'Quarterly' && (
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">त्रैमासिक (Quarter)</label>
             <select 
-              value={selectedMonth} 
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="text-sm font-bold text-slate-700 focus:outline-none bg-transparent"
+              value={selectedQuarter} 
+              onChange={(e) => setSelectedQuarter(e.target.value)}
+              className="p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
             >
-              {months.map(m => <option key={m} value={m}>{m === 'All' ? 'सबै महिना' : m}</option>)}
+              <option value="1">प्रथम त्रैमासिक (Q1)</option>
+              <option value="2">द्वितीय त्रैमासिक (Q2)</option>
+              <option value="3">तृतीय त्रैमासिक (Q3)</option>
+              <option value="4">चौथो त्रैमासिक (Q4)</option>
             </select>
           </div>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={handlePrint} className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-all shadow-sm">
-            <Printer size={18} /> प्रिन्ट गर्नुहोस्
-          </button>
-        </div>
+        )}
+
+        {reportType === 'HalfYearly' && (
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">अर्ध-वार्षिक (Half Year)</label>
+            <select 
+              value={selectedHalfYear} 
+              onChange={(e) => setSelectedHalfYear(e.target.value)}
+              className="p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 outline-none"
+            >
+              <option value="1">प्रथम अर्ध-वार्षिक (H1)</option>
+              <option value="2">द्वितीय अर्ध-वार्षिक (H2)</option>
+            </select>
+          </div>
+        )}
+        
+        <button onClick={handlePrint} className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-all shadow-sm ml-auto">
+          <Printer size={18} /> प्रिन्ट गर्नुहोस्
+        </button>
       </div>
 
       <div className="bg-white p-8 rounded-xl border border-slate-200 shadow-sm print:shadow-none print:border-none print:p-0">
         <div className="text-center space-y-1 mb-8">
           <h1 className="text-xl font-bold font-nepali">{settings.orgNameNepali}</h1>
           <h2 className="text-lg font-bold font-nepali">परिवार नियोजन कार्यक्रम प्रतिवेदन</h2>
-          <p className="text-sm text-slate-500 font-nepali">आ.व. {fiscalYear} | महिना: {selectedMonth === 'All' ? 'सबै' : selectedMonth}</p>
+          <p className="text-sm text-slate-500 font-nepali">आ.व. {fiscalYear} | रिपोर्ट: {reportType}</p>
         </div>
 
         <div className="space-y-8">

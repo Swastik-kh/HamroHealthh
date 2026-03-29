@@ -10,7 +10,7 @@ import {
   DakhilaPratibedanEntry, ReturnEntry, MarmatEntry, DhuliyaunaEntry, LogBookEntry, 
   DakhilaItem, TBPatient, GarbhawatiPatient, ChildImmunizationRecord,
   ServiceSeekerRecord, OPDRecord, EmergencyRecord, CBIMNCIRecord, BillingRecord,
-  DispensaryRecord, ServiceItem, LabReport, GarbhawotiRecord, PrasutiRecord,
+  DispensaryRecord, ServiceItem, LabReport, GarbhawotiRecord, PrasutiRecord, UttarPrasutiRecord,
   LeaveApplication, LeaveBalance
 } from '../types';
 import { db } from '../firebase';
@@ -81,6 +81,7 @@ const App: React.FC = () => {
   const [labReports, setLabReports] = useState<LabReport[]>([]);
   const [garbhawotiRecords, setGarbhawotiRecords] = useState<GarbhawotiRecord[]>([]);
   const [prasutiRecords, setPrasutiRecords] = useState<PrasutiRecord[]>([]);
+  const [uttarPrasutiRecords, setUttarPrasutiRecords] = useState<UttarPrasutiRecord[]>([]);
   const [leaveApplications, setLeaveApplications] = useState<LeaveApplication[]>([]);
   const [leaveBalances, setLeaveBalances] = useState<LeaveBalance[]>([]);
 
@@ -175,6 +176,7 @@ const App: React.FC = () => {
     setupOrgListener('labReports', setLabReports);
     setupOrgListener('garbhawotiRecords', setGarbhawotiRecords);
     setupOrgListener('prasutiRecords', setPrasutiRecords);
+    setupOrgListener('uttarPrasutiRecords', setUttarPrasutiRecords);
     setupOrgListener('leaveApplications', setLeaveApplications);
     setupOrgListener('leaveBalances', setLeaveBalances);
 
@@ -548,6 +550,7 @@ const App: React.FC = () => {
           labReports={labReports} onSaveLabReport={(r) => set(getOrgRef(`labReports/${r.id}`), r)} onDeleteLabReport={(id) => remove(getOrgRef(`labReports/${id}`))}
           garbhawotiRecords={garbhawotiRecords} onSaveGarbhawotiRecord={(r) => set(getOrgRef(`garbhawotiRecords/${r.id}`), r)} onDeleteGarbhawotiRecord={(id) => remove(getOrgRef(`garbhawotiRecords/${id}`))}
           prasutiRecords={prasutiRecords} onSavePrasutiRecord={(r) => set(getOrgRef(`prasutiRecords/${r.id}`), r)} onDeletePrasutiRecord={(id) => remove(getOrgRef(`prasutiRecords/${id}`))}
+          uttarPrasutiRecords={uttarPrasutiRecords} onSaveUttarPrasutiRecord={(r) => set(getOrgRef(`uttarPrasutiRecords/${r.id}`), r)} onDeleteUttarPrasutiRecord={(id) => remove(getOrgRef(`uttarPrasutiRecords/${id}`))}
           leaveApplications={leaveApplications} onAddLeaveApplication={(a) => set(getOrgRef(`leaveApplications/${a.id}`), a)}
           onUpdateLeaveStatus={(id, status, rejectionReason) => {
               if (!currentUser) return;
