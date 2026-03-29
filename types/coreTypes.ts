@@ -192,6 +192,27 @@ export interface GarbhawotiRecord {
   ttDose: string;
 }
 
+export interface PartographEntry {
+  id: string;
+  time: string;
+  fetalHeartRate: number;
+  amnioticFluid: string; // I, C, M, B
+  moulding: string; // 0, +, ++, +++
+  cervicalDilation: number;
+  descentOfHead: number;
+  contractionsPer10Min: number;
+  contractionDuration: number;
+  oxytocinUUnitsPerMin?: string;
+  oxytocinDropsPerMin?: string;
+  drugsAndFluids?: string;
+  maternalPulse: number;
+  maternalBp: string;
+  maternalTemp: number;
+  urineProtein?: string;
+  urineAcetone?: string;
+  urineVolume?: string;
+}
+
 export interface PrasutiRecord {
   id: string;
   fiscalYear: string;
@@ -209,6 +230,7 @@ export interface PrasutiRecord {
   transportAllowanceReceived: boolean;
   incentiveAllowanceEligible: boolean;
   incentiveAllowanceReceived: boolean;
+  partograph?: PartographEntry[];
 }
 
 export interface UttarPrasutiRecord {

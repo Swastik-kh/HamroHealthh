@@ -404,6 +404,7 @@ export const MulDartaSewa: React.FC<MulDartaSewaProps> = ({ records = [], onSave
     r.fiscalYear === currentFiscalYear &&
     (r.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
      r.registrationNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+     (r.mulDartaNo && r.mulDartaNo.toLowerCase().includes(searchQuery.toLowerCase())) ||
      r.phone.includes(searchQuery))
   ).sort((a, b) => parseInt(b.id) - parseInt(a.id));
 

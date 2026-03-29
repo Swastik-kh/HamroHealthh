@@ -1002,6 +1002,7 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
       case 'surakshit_matritwo': return <SafeMotherhoodService />;
       case 'garbhawoti_sewa': return <GarbhawotiSewa 
         records={garbhawotiRecords}
+        serviceSeekerRecords={serviceSeekerRecords}
         onSaveRecord={onSaveGarbhawotiRecord}
         onDeleteRecord={onDeleteGarbhawotiRecord}
         currentFiscalYear={currentFiscalYear}
@@ -1009,6 +1010,7 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
       case 'prasuti_sewa': return <PrasutiSewa 
         garbhawotiRecords={garbhawotiRecords}
         prasutiRecords={prasutiRecords}
+        serviceSeekerRecords={serviceSeekerRecords}
         onSaveRecord={onSavePrasutiRecord}
         onDeleteRecord={onDeletePrasutiRecord}
         currentFiscalYear={currentFiscalYear}
@@ -1017,6 +1019,7 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
         currentFiscalYear={currentFiscalYear}
         prasutiRecords={prasutiRecords}
         uttarPrasutiRecords={uttarPrasutiRecords}
+        serviceSeekerRecords={serviceSeekerRecords}
         onSave={onSaveUttarPrasutiRecord}
         onDelete={onDeleteUttarPrasutiRecord}
       />;

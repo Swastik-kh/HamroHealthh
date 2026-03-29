@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { HeartHandshake, Plus, X, Pencil, Trash2 } from 'lucide-react';
-import { GarbhawotiRecord, Option } from '../types/coreTypes';
+import { GarbhawotiRecord, Option, ServiceSeekerRecord } from '../types/coreTypes';
 import { Input } from './Input';
 import { Select } from './Select';
 import { NepaliDatePicker } from './NepaliDatePicker';
 
 interface GarbhawotiSewaProps {
   records: GarbhawotiRecord[];
+  serviceSeekerRecords: ServiceSeekerRecord[];
   onSaveRecord: (record: GarbhawotiRecord) => void;
   onDeleteRecord: (recordId: string) => void;
   currentFiscalYear: string;
@@ -34,15 +35,43 @@ const ttDoseOptions: Option[] = [
   { id: '3', value: 'TD Booster', label: 'TD Booster' },
 ];
 
-export const GarbhawotiSewa: React.FC<GarbhawotiSewaProps> = ({ records = [], onSaveRecord, onDeleteRecord, currentFiscalYear }) => {
+export const GarbhawotiSewa: React.FC<GarbhawotiSewaProps> = ({ records = [], serviceSeekerRecords = [], onSaveRecord, onDeleteRecord, currentFiscalYear }) => {
   const [showForm, setShowForm] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchError, setSearchError] = useState('');
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [formData, setFormData] = useState(initialFormData);
 
   const handleAddNew = () => {
-    setIsEditing(null);
-    setFormData(initialFormData);
-    setShowForm(true);
+    setShowSearch(true);
+  };
+
+  const handleSearch = () => {
+    const query = searchQuery.trim();
+    if (!query) return;
+
+    const patient = serviceSeekerRecords.find(
+      (p) => 
+        (p.uniquePatientId && p.uniquePatientId.trim() === query) || 
+        (p.mulDartaNo && p.mulDartaNo.trim() === query) ||
+        (p.registrationNumber && p.registrationNumber.trim() === query)
+    );
+
+    if (patient) {
+      setIsEditing(null);
+      setFormData({
+        ...initialFormData,
+        name: patient.name,
+        address: patient.address,
+      });
+      setShowSearch(false);
+      setShowForm(true);
+      setSearchQuery('');
+      setSearchError('');
+    } else {
+      setSearchError('बिरामी फेला परेन। कृपया सही ID वा दर्ता नम्बर प्रविष्ट गर्नुहोस्।');
+    }
   };
 
   const handleEdit = (record: GarbhawotiRecord) => {
@@ -140,6 +169,35 @@ export const GarbhawotiSewa: React.FC<GarbhawotiSewaProps> = ({ records = [], on
         </table>
       </div>
 
+      {showSearch && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md p-6 animate-in zoom-in-95">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-slate-800">बिरामी खोज्नुहोस्</h3>
+              <button onClick={() => { setShowSearch(false); setSearchError(''); }} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <Input 
+                label="मुल दर्ता नं. वा Patient ID" 
+                value={searchQuery} 
+                onChange={(e) => setSearchQuery(e.target.value)} 
+                placeholder="ID प्रविष्ट गर्नुहोस्..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSearch();
+                  }
+                }}
+              />
+              {searchError && <p className="text-red-500 text-sm">{searchError}</p>}
+              <button onClick={handleSearch} className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg font-semibold hover:bg-primary-700">
+                खोज्नुहोस्
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {showForm && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 flex items-center justify-center p-0 sm:p-4 animate-in fade-in">
           <div className="bg-white rounded-none sm:rounded-2xl border border-slate-200 shadow-2xl w-full max-w-5xl h-full sm:h-auto max-h-screen flex flex-col relative animate-in zoom-in-95 slide-in-from-bottom-4">
