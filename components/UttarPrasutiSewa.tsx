@@ -190,80 +190,80 @@ export const UttarPrasutiSewa: React.FC<UttarPrasutiSewaProps> = ({
       )}
 
       {showForm && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 flex items-center justify-center p-0 sm:p-4 animate-in fade-in">
-          <div className="bg-white rounded-none sm:rounded-2xl border border-slate-200 shadow-2xl w-full max-w-5xl h-full sm:h-auto max-h-screen flex flex-col relative animate-in zoom-in-95 slide-in-from-bottom-4">
-            <div className="p-6 border-b border-slate-200 flex justify-between items-center">
-                <h3 className="text-2xl font-bold text-slate-800 font-nepali">{isEditing ? 'रेकर्ड सम्पादन गर्नुहोस्' : 'नयाँ उत्तर प्रसूति रेकर्ड'}</h3>
-                <button onClick={handleCloseForm} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full">
-                    <X size={20} />
-                </button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-8">
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div>
-                            <label className="text-sm font-medium text-slate-600 mb-1 block">प्रसूति छान्नुहोस् (वैकल्पिक)</label>
-                            <select 
-                                value={formData.prasutiId || ''} 
-                                onChange={(e) => {
-                                    const prasuti = prasutiRecords.find(p => p.id === e.target.value);
-                                    setFormData({...formData, prasutiId: e.target.value || undefined, name: prasuti?.name || formData.name});
-                                }}
-                                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                            >
-                                <option value="">छान्नुहोस्</option>
-                                {prasutiRecords.map(p => <option key={p.id} value={p.id}>{p.name} ({p.deliveryDate})</option>)}
-                            </select>
-                        </div>
-                        <Input label="नाम" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} required />
-                        <NepaliDatePicker label="मिति" value={formData.visitDate} onChange={(value) => handleDateChange('visitDate', value)} />
-                    </div>
+        <div className="fixed inset-0 bg-white z-50 flex flex-col animate-in fade-in slide-in-from-bottom-4">
+          <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+            <h3 className="text-2xl font-bold text-slate-800 font-nepali">{isEditing ? 'रेकर्ड सम्पादन गर्नुहोस्' : 'नयाँ उत्तर प्रसूति रेकर्ड'}</h3>
+            <button onClick={handleCloseForm} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full">
+              <X size={24} />
+            </button>
+          </div>
 
-                    <div className="border-t border-slate-100 pt-4">
-                        <h4 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
-                            <User size={18} className="text-primary-500" /> आमाको स्वास्थ्य रेकर्ड (Mother's Health Record)
-                        </h4>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <Input label="BP" icon={<Activity size={16} />} value={formData.motherBp || ''} onChange={(e) => setFormData({...formData, motherBp: e.target.value})} />
-                            <Input label="तौल (Weight)" icon={<Scale size={16} />} type="number" value={formData.motherWeight || ''} onChange={(e) => setFormData({...formData, motherWeight: parseFloat(e.target.value) || undefined})} />
-                            <Input label="तापक्रम (Temp)" icon={<Thermometer size={16} />} value={formData.motherTemp || ''} onChange={(e) => setFormData({...formData, motherTemp: e.target.value})} />
-                            <Input label="स्तनपान" icon={<Baby size={16} />} value={formData.motherBreastfeeding || ''} onChange={(e) => setFormData({...formData, motherBreastfeeding: e.target.value})} />
-                            <Input label="लोचिया" icon={<Droplets size={16} />} value={formData.motherLochia || ''} onChange={(e) => setFormData({...formData, motherLochia: e.target.value})} />
-                            <Input label="Uterine Involution" icon={<Circle size={16} />} value={formData.motherUterineInvolution || ''} onChange={(e) => setFormData({...formData, motherUterineInvolution: e.target.value})} />
-                            <Input label="सामान्य स्थिति" icon={<UserCircle size={16} />} value={formData.motherGeneralCondition || ''} onChange={(e) => setFormData({...formData, motherGeneralCondition: e.target.value})} />
-                        </div>
-                    </div>
+          <div className="flex-1 overflow-y-auto p-8">
+            <div className="max-w-6xl mx-auto">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="text-sm font-medium text-slate-600 mb-1 block">प्रसूति छान्नुहोस् (वैकल्पिक)</label>
+                    <select
+                      value={formData.prasutiId || ''}
+                      onChange={(e) => {
+                        const prasuti = prasutiRecords.find(p => p.id === e.target.value);
+                        setFormData({ ...formData, prasutiId: e.target.value || undefined, name: prasuti?.name || formData.name });
+                      }}
+                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                    >
+                      <option value="">छान्नुहोस्</option>
+                      {prasutiRecords.map(p => <option key={p.id} value={p.id}>{p.name} ({p.deliveryDate})</option>)}
+                    </select>
+                  </div>
+                  <Input label="नाम" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
+                  <NepaliDatePicker label="मिति" value={formData.visitDate} onChange={(value) => handleDateChange('visitDate', value)} />
+                </div>
 
-                    <div className="border-t border-slate-100 pt-4">
-                        <h4 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
-                            <Baby size={18} className="text-primary-500" /> शिशुको स्वास्थ्य रेकर्ड (Baby's Health Record)
-                        </h4>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <Input label="तौल (Weight)" icon={<Scale size={16} />} type="number" value={formData.babyWeight || ''} onChange={(e) => setFormData({...formData, babyWeight: parseFloat(e.target.value) || undefined})} />
-                            <Input label="तापक्रम (Temp)" icon={<Thermometer size={16} />} value={formData.babyTemp || ''} onChange={(e) => setFormData({...formData, babyTemp: e.target.value})} />
-                            <Input label="स्तनपान" icon={<Baby size={16} />} value={formData.babyBreastfeeding || ''} onChange={(e) => setFormData({...formData, babyBreastfeeding: e.target.value})} />
-                            <Input label="नाल (Umbilical Cord)" icon={<Circle size={16} />} value={formData.babyUmbilicalCord || ''} onChange={(e) => setFormData({...formData, babyUmbilicalCord: e.target.value})} />
-                            <Input label="सामान्य स्थिति" icon={<UserCircle size={16} />} value={formData.babyGeneralCondition || ''} onChange={(e) => setFormData({...formData, babyGeneralCondition: e.target.value})} />
-                        </div>
-                    </div>
+                <div className="border-t border-slate-100 pt-4">
+                  <h4 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                    <User size={18} className="text-primary-500" /> आमाको स्वास्थ्य रेकर्ड (Mother's Health Record)
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <Input label="BP" icon={<Activity size={16} />} value={formData.motherBp || ''} onChange={(e) => setFormData({ ...formData, motherBp: e.target.value })} />
+                    <Input label="तौल (Weight)" icon={<Scale size={16} />} type="number" value={formData.motherWeight || ''} onChange={(e) => setFormData({ ...formData, motherWeight: parseFloat(e.target.value) || undefined })} />
+                    <Input label="तापक्रम (Temp)" icon={<Thermometer size={16} />} value={formData.motherTemp || ''} onChange={(e) => setFormData({ ...formData, motherTemp: e.target.value })} />
+                    <Input label="स्तनपान" icon={<Baby size={16} />} value={formData.motherBreastfeeding || ''} onChange={(e) => setFormData({ ...formData, motherBreastfeeding: e.target.value })} />
+                    <Input label="लोचिया" icon={<Droplets size={16} />} value={formData.motherLochia || ''} onChange={(e) => setFormData({ ...formData, motherLochia: e.target.value })} />
+                    <Input label="Uterine Involution" icon={<Circle size={16} />} value={formData.motherUterineInvolution || ''} onChange={(e) => setFormData({ ...formData, motherUterineInvolution: e.target.value })} />
+                    <Input label="सामान्य स्थिति" icon={<UserCircle size={16} />} value={formData.motherGeneralCondition || ''} onChange={(e) => setFormData({ ...formData, motherGeneralCondition: e.target.value })} />
+                  </div>
+                </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-slate-100 pt-4">
-                        <div>
-                            <label className="text-sm font-medium text-slate-600 mb-1 block">निष्कर्ष (Findings)</label>
-                            <textarea value={formData.findings} onChange={(e) => setFormData({...formData, findings: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm h-24" required />
-                        </div>
-                        <div>
-                            <label className="text-sm font-medium text-slate-600 mb-1 block">कैफियत (Remarks)</label>
-                            <textarea value={formData.remarks || ''} onChange={(e) => setFormData({...formData, remarks: e.target.value})} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm h-24" />
-                        </div>
-                    </div>
+                <div className="border-t border-slate-100 pt-4">
+                  <h4 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                    <Baby size={18} className="text-primary-500" /> शिशुको स्वास्थ्य रेकर्ड (Baby's Health Record)
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <Input label="तौल (Weight)" icon={<Scale size={16} />} type="number" value={formData.babyWeight || ''} onChange={(e) => setFormData({ ...formData, babyWeight: parseFloat(e.target.value) || undefined })} />
+                    <Input label="तापक्रम (Temp)" icon={<Thermometer size={16} />} value={formData.babyTemp || ''} onChange={(e) => setFormData({ ...formData, babyTemp: e.target.value })} />
+                    <Input label="स्तनपान" icon={<Baby size={16} />} value={formData.babyBreastfeeding || ''} onChange={(e) => setFormData({ ...formData, babyBreastfeeding: e.target.value })} />
+                    <Input label="नाल (Umbilical Cord)" icon={<Circle size={16} />} value={formData.babyUmbilicalCord || ''} onChange={(e) => setFormData({ ...formData, babyUmbilicalCord: e.target.value })} />
+                    <Input label="सामान्य स्थिति" icon={<UserCircle size={16} />} value={formData.babyGeneralCondition || ''} onChange={(e) => setFormData({ ...formData, babyGeneralCondition: e.target.value })} />
+                  </div>
+                </div>
 
-                    <div className="flex justify-end gap-4 pt-6 border-t border-slate-200 sticky bottom-0 bg-white pb-2">
-                        <button type="button" onClick={handleCloseForm} className="px-6 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium">रद्द</button>
-                        <button type="submit" className="px-6 py-2 bg-primary-600 text-white rounded-lg font-medium shadow-sm hover:bg-primary-700">सुरक्षित गर्नुहोस्</button>
-                    </div>
-                </form>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-slate-100 pt-4">
+                  <div>
+                    <label className="text-sm font-medium text-slate-600 mb-1 block">निष्कर्ष (Findings)</label>
+                    <textarea value={formData.findings} onChange={(e) => setFormData({ ...formData, findings: e.target.value })} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm h-24" required />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-600 mb-1 block">कैफियत (Remarks)</label>
+                    <textarea value={formData.remarks || ''} onChange={(e) => setFormData({ ...formData, remarks: e.target.value })} className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm h-24" />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-4 pt-6 border-t border-slate-200 sticky bottom-0 bg-white pb-4">
+                  <button type="button" onClick={handleCloseForm} className="px-6 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium">रद्द</button>
+                  <button type="submit" className="px-6 py-2 bg-primary-600 text-white rounded-lg font-medium shadow-sm hover:bg-primary-700">सुरक्षित गर्नुहोस्</button>
+                </div>
+              </form>
             </div>
           </div>
         </div>

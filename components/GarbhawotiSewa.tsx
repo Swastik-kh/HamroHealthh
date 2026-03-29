@@ -199,42 +199,42 @@ export const GarbhawotiSewa: React.FC<GarbhawotiSewaProps> = ({ records = [], se
         </div>
       )}
       {showForm && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 flex items-center justify-center p-0 sm:p-4 animate-in fade-in">
-          <div className="bg-white rounded-none sm:rounded-2xl border border-slate-200 shadow-2xl w-full max-w-5xl h-full sm:h-auto max-h-screen flex flex-col relative animate-in zoom-in-95 slide-in-from-bottom-4">
-            <div className="p-6 border-b border-slate-200 flex justify-between items-center">
+        <div className="fixed inset-0 bg-white z-50 flex flex-col animate-in fade-in slide-in-from-bottom-4">
+            <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
                 <h3 className="text-2xl font-bold text-slate-800 font-nepali">{isEditing ? 'रेकर्ड सम्पादन गर्नुहोस्' : 'नयाँ गर्भवती रेकर्ड'}</h3>
                 <button onClick={handleCloseForm} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full">
-                    <X size={20} />
+                    <X size={24} />
                 </button>
             </div>
             
             <div className="flex-1 overflow-y-auto p-8">
-                <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <Input label="नाम" name="name" value={formData.name} onChange={handleChange} required />
-                    <Input label="श्रीमानको नाम" name="husbandName" value={formData.husbandName} onChange={handleChange} required />
-                    <Input label="ठेगाना" name="address" value={formData.address} onChange={handleChange} required />
-                    <Input label="उमेर" name="age" type="number" value={formData.age} onChange={handleChange} required />
-                    
-                    <NepaliDatePicker label="LMP (पछिल्लो महिनावारी)" value={formData.lmp} onChange={(val) => handleDateChange('lmp', val)} />
-                    <NepaliDatePicker label="EDD (अनुमानित मिति)" value={formData.edd} onChange={(val) => handleDateChange('edd', val)} />
-                    
-                    <Input label="Gravida" name="gravida" type="number" value={formData.gravida} onChange={handleChange} required />
-                    
-                    <NepaliDatePicker label="ANC मिति" value={formData.ancDate} onChange={(val) => handleDateChange('ancDate', val)} />
-                    
-                    <Input label="तौल (kg)" name="weight" type="number" step="0.1" value={formData.weight} onChange={handleChange} />
-                    <Input label="रक्तचाप (BP)" name="bp" value={formData.bp} onChange={handleChange} />
-                    <Input label="हेमोग्लोबिन (Hb)" name="hb" value={formData.hb} onChange={handleChange} />
-                    <Input label="आइरन चक्की" name="ironTablets" type="number" value={formData.ironTablets} onChange={handleChange} />
-                    <Select label="टी.टी. डोज" name="ttDose" options={ttDoseOptions} value={formData.ttDose} onChange={handleChange} />
-                    
-                    <div className="md:col-span-3 flex justify-end gap-4 pt-6 border-t border-slate-200 sticky bottom-0 bg-white pb-2">
-                        <button type="button" onClick={handleCloseForm} className="px-6 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium">रद्द</button>
-                        <button type="submit" className="px-6 py-2 bg-primary-600 text-white rounded-lg font-medium shadow-sm hover:bg-primary-700">सुरक्षित गर्नुहोस्</button>
-                    </div>
-                </form>
+                <div className="max-w-6xl mx-auto">
+                    <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <Input label="नाम" name="name" value={formData.name} onChange={handleChange} required />
+                        <Input label="श्रीमानको नाम" name="husbandName" value={formData.husbandName} onChange={handleChange} required />
+                        <Input label="ठेगाना" name="address" value={formData.address} onChange={handleChange} required />
+                        <Input label="उमेर" name="age" type="number" value={formData.age} onChange={handleChange} required />
+                        
+                        <NepaliDatePicker label="LMP (पछिल्लो महिनावारी)" value={formData.lmp} onChange={(val) => handleDateChange('lmp', val)} />
+                        <NepaliDatePicker label="EDD (अनुमानित मिति)" value={formData.edd} onChange={(val) => handleDateChange('edd', val)} />
+                        
+                        <Input label="Gravida" name="gravida" type="number" value={formData.gravida} onChange={handleChange} required />
+                        
+                        <NepaliDatePicker label="ANC मिति" value={formData.ancDate} onChange={(val) => handleDateChange('ancDate', val)} />
+                        
+                        <Input label="तौल (kg)" name="weight" type="number" step="0.1" value={formData.weight} onChange={handleChange} />
+                        <Input label="रक्तचाप (BP)" name="bp" value={formData.bp} onChange={handleChange} />
+                        <Input label="हेमोग्लोबिन (Hb)" name="hb" value={formData.hb} onChange={handleChange} />
+                        <Input label="आइरन चक्की" name="ironTablets" type="number" value={formData.ironTablets} onChange={handleChange} />
+                        <Select label="टी.टी. डोज" name="ttDose" options={ttDoseOptions} value={formData.ttDose} onChange={handleChange} />
+                        
+                        <div className="md:col-span-3 flex justify-end gap-4 pt-6 border-t border-slate-200 sticky bottom-0 bg-white pb-4">
+                            <button type="button" onClick={handleCloseForm} className="px-6 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium">रद्द</button>
+                            <button type="submit" className="px-6 py-2 bg-primary-600 text-white rounded-lg font-medium shadow-sm hover:bg-primary-700">सुरक्षित गर्नुहोस्</button>
+                        </div>
+                    </form>
+                </div>
             </div>
-          </div>
         </div>
       )}
     </div>

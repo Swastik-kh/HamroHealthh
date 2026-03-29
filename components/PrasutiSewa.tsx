@@ -275,261 +275,263 @@ export const PrasutiSewa: React.FC<PrasutiSewaProps> = ({ garbhawotiRecords = []
       )}
 
       {showForm && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 flex items-center justify-center p-4 animate-in fade-in overflow-y-auto">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-4xl my-8 animate-in zoom-in-95">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-2xl">
-              <h3 className="text-xl font-bold text-slate-800 font-nepali">
-                {isEditing ? 'रेकर्ड सम्पादन गर्नुहोस्' : 'नयाँ प्रसूति रेकर्ड'}
-              </h3>
-              <button onClick={handleCloseForm} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors">
-                <X size={20} />
-              </button>
-            </div>
+        <div className="fixed inset-0 bg-white z-50 flex flex-col animate-in fade-in slide-in-from-bottom-4">
+          <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+            <h3 className="text-2xl font-bold text-slate-800 font-nepali">
+              {isEditing ? 'रेकर्ड सम्पादन गर्नुहोस्' : 'नयाँ प्रसूति रेकर्ड'}
+            </h3>
+            <button onClick={handleCloseForm} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors">
+              <X size={24} />
+            </button>
+          </div>
 
-            <form onSubmit={handleSubmit} className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="md:col-span-1">
+          <div className="flex-1 overflow-y-auto p-8">
+            <div className="max-w-6xl mx-auto">
+              <form onSubmit={handleSubmit}>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="md:col-span-1">
+                    <Select
+                      label="गर्भवती रेकर्ड"
+                      name="garbhawotiId"
+                      value={formData.garbhawotiId}
+                      onChange={handleChange}
+                      options={[
+                        { id: 'other', value: 'other', label: 'अन्य (सूचीमा नभएको)' },
+                        ...garbhawotiRecords.map(r => ({ id: r.id, value: r.id, label: r.name }))
+                      ]}
+                      required
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Input
+                      label="सुत्केरीको नाम"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      required
+                      disabled={formData.garbhawotiId !== 'other'}
+                    />
+                  </div>
+
+                  <NepaliDatePicker
+                    label="प्रसूति मिति"
+                    value={formData.deliveryDate}
+                    onChange={(val) => handleDateChange('deliveryDate', val)}
+                    required
+                  />
+
+                  <Input
+                    label="प्रसूति समय"
+                    name="birthTime"
+                    type="time"
+                    value={formData.birthTime}
+                    onChange={handleChange}
+                  />
+
                   <Select
-                    label="गर्भवती रेकर्ड"
-                    name="garbhawotiId"
-                    value={formData.garbhawotiId}
+                    label="प्रसूति स्थान"
+                    name="deliveryPlace"
+                    value={formData.deliveryPlace}
                     onChange={handleChange}
                     options={[
-                      { id: 'other', value: 'other', label: 'अन्य (सूचीमा नभएको)' },
-                      ...garbhawotiRecords.map(r => ({ id: r.id, value: r.id, label: r.name }))
+                      { id: '1', value: 'Health Facility', label: 'स्वास्थ्य संस्था' },
+                      { id: '2', value: 'Home', label: 'घर' },
+                      { id: '3', value: 'On the way', label: 'बाटोमा' },
                     ]}
                     required
                   />
-                </div>
-                <div className="md:col-span-2">
+
                   <Input
-                    label="सुत्केरीको नाम"
-                    name="name"
-                    value={formData.name}
+                    label="प्रसूति गराउने व्यक्ति"
+                    name="deliveredBy"
+                    value={formData.deliveredBy}
                     onChange={handleChange}
                     required
-                    disabled={formData.garbhawotiId !== 'other'}
+                  />
+
+                  <Select
+                    label="प्रसूति नतिजा"
+                    name="deliveryOutcome"
+                    value={formData.deliveryOutcome}
+                    onChange={handleChange}
+                    options={[
+                      { id: '1', value: 'Live birth', label: 'जीवित जन्म' },
+                      { id: '2', value: 'Still birth', label: 'मृत जन्म' },
+                    ]}
+                  />
+
+                  <Select
+                    label="शिशुको लिङ्ग"
+                    name="newbornGender"
+                    value={formData.newbornGender}
+                    onChange={handleChange}
+                    options={[
+                      { id: '1', value: 'Male', label: 'छोरा' },
+                      { id: '2', value: 'Female', label: 'छोरी' },
+                      { id: '3', value: 'Other', label: 'अन्य' },
+                    ]}
+                  />
+
+                  <Input
+                    label="शिशुको तौल (kg)"
+                    name="newbornWeight"
+                    type="number"
+                    step="0.1"
+                    value={formData.newbornWeight}
+                    onChange={handleChange}
+                    required
+                  />
+
+                  <Select
+                    label="जटिलता"
+                    name="complications"
+                    value={formData.complications}
+                    onChange={handleChange}
+                    options={complicationOptions}
                   />
                 </div>
 
-                <NepaliDatePicker
-                  label="प्रसूति मिति"
-                  value={formData.deliveryDate}
-                  onChange={(val) => handleDateChange('deliveryDate', val)}
-                  required
-                />
+                <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <div className="space-y-3">
+                    <h4 className="font-bold text-slate-700 border-b border-slate-200 pb-2">यातायात खर्च</h4>
+                    <div className="flex items-center gap-6">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          name="transportAllowanceEligible"
+                          checked={formData.transportAllowanceEligible}
+                          onChange={handleChange}
+                          className="w-4 h-4 text-primary-600 rounded"
+                        />
+                        <span className="text-sm font-medium">योग्य</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          name="transportAllowanceReceived"
+                          checked={formData.transportAllowanceReceived}
+                          onChange={handleChange}
+                          className="w-4 h-4 text-primary-600 rounded"
+                        />
+                        <span className="text-sm font-medium">प्राप्त</span>
+                      </label>
+                    </div>
+                  </div>
 
-                <Input
-                  label="प्रसूति समय"
-                  name="birthTime"
-                  type="time"
-                  value={formData.birthTime}
-                  onChange={handleChange}
-                />
-
-                <Select
-                  label="प्रसूति स्थान"
-                  name="deliveryPlace"
-                  value={formData.deliveryPlace}
-                  onChange={handleChange}
-                  options={[
-                    { id: '1', value: 'Health Facility', label: 'स्वास्थ्य संस्था' },
-                    { id: '2', value: 'Home', label: 'घर' },
-                    { id: '3', value: 'On the way', label: 'बाटोमा' },
-                  ]}
-                  required
-                />
-
-                <Input
-                  label="प्रसूति गराउने व्यक्ति"
-                  name="deliveredBy"
-                  value={formData.deliveredBy}
-                  onChange={handleChange}
-                  required
-                />
-
-                <Select
-                  label="प्रसूति नतिजा"
-                  name="deliveryOutcome"
-                  value={formData.deliveryOutcome}
-                  onChange={handleChange}
-                  options={[
-                    { id: '1', value: 'Live birth', label: 'जीवित जन्म' },
-                    { id: '2', value: 'Still birth', label: 'मृत जन्म' },
-                  ]}
-                />
-
-                <Select
-                  label="शिशुको लिङ्ग"
-                  name="newbornGender"
-                  value={formData.newbornGender}
-                  onChange={handleChange}
-                  options={[
-                    { id: '1', value: 'Male', label: 'छोरा' },
-                    { id: '2', value: 'Female', label: 'छोरी' },
-                    { id: '3', value: 'Other', label: 'अन्य' },
-                  ]}
-                />
-
-                <Input
-                  label="शिशुको तौल (kg)"
-                  name="newbornWeight"
-                  type="number"
-                  step="0.1"
-                  value={formData.newbornWeight}
-                  onChange={handleChange}
-                  required
-                />
-
-                <Select
-                  label="जटिलता"
-                  name="complications"
-                  value={formData.complications}
-                  onChange={handleChange}
-                  options={complicationOptions}
-                />
-              </div>
-
-              <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <div className="space-y-3">
-                  <h4 className="font-bold text-slate-700 border-b border-slate-200 pb-2">यातायात खर्च</h4>
-                  <div className="flex items-center gap-6">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        name="transportAllowanceEligible"
-                        checked={formData.transportAllowanceEligible}
-                        onChange={handleChange}
-                        className="w-4 h-4 text-primary-600 rounded"
-                      />
-                      <span className="text-sm font-medium">योग्य</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        name="transportAllowanceReceived"
-                        checked={formData.transportAllowanceReceived}
-                        onChange={handleChange}
-                        className="w-4 h-4 text-primary-600 rounded"
-                      />
-                      <span className="text-sm font-medium">प्राप्त</span>
-                    </label>
+                  <div className="space-y-3">
+                    <h4 className="font-bold text-slate-700 border-b border-slate-200 pb-2">प्रोत्साहन भत्ता</h4>
+                    <div className="flex items-center gap-6">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          name="incentiveAllowanceEligible"
+                          checked={formData.incentiveAllowanceEligible}
+                          onChange={handleChange}
+                          className="w-4 h-4 text-primary-600 rounded"
+                        />
+                        <span className="text-sm font-medium">योग्य</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          name="incentiveAllowanceReceived"
+                          checked={formData.incentiveAllowanceReceived}
+                          onChange={handleChange}
+                          className="w-4 h-4 text-primary-600 rounded"
+                        />
+                        <span className="text-sm font-medium">प्राप्त</span>
+                      </label>
+                    </div>
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <h4 className="font-bold text-slate-700 border-b border-slate-200 pb-2">प्रोत्साहन भत्ता</h4>
-                  <div className="flex items-center gap-6">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        name="incentiveAllowanceEligible"
-                        checked={formData.incentiveAllowanceEligible}
-                        onChange={handleChange}
-                        className="w-4 h-4 text-primary-600 rounded"
-                      />
-                      <span className="text-sm font-medium">योग्य</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        name="incentiveAllowanceReceived"
-                        checked={formData.incentiveAllowanceReceived}
-                        onChange={handleChange}
-                        className="w-4 h-4 text-primary-600 rounded"
-                      />
-                      <span className="text-sm font-medium">प्राप्त</span>
-                    </label>
+                {/* Partograph Section */}
+                <div className="mt-8 space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                    <h4 className="font-bold text-slate-800 flex items-center gap-2">
+                      <Activity size={18} className="text-primary-600" />
+                      पार्टोग्राफ (Partograph)
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPartographEntry(initialPartographEntry);
+                        setEditingPartographIndex(null);
+                        setShowPartographForm(true);
+                      }}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-teal-50 text-teal-700 rounded-lg text-sm font-semibold hover:bg-teal-100 transition-colors border border-teal-200"
+                    >
+                      <Plus size={16} /> नयाँ प्रविष्टि थप्नुहोस्
+                    </button>
+                  </div>
+
+                  <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-slate-50 text-slate-600 font-medium">
+                        <tr>
+                          <th className="p-2">समय</th>
+                          <th className="p-2">FHR</th>
+                          <th className="p-2">Dilation</th>
+                          <th className="p-2">Descent</th>
+                          <th className="p-2">BP/Pulse</th>
+                          <th className="p-2 text-right">कार्य</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {(formData.partograph || []).map((entry, index) => (
+                          <tr key={entry.id || index}>
+                            <td className="p-2 font-medium">{entry.time}</td>
+                            <td className="p-2">{entry.fetalHeartRate}</td>
+                            <td className="p-2">{entry.cervicalDilation} cm</td>
+                            <td className="p-2">{entry.descentOfHead}/5</td>
+                            <td className="p-2">{entry.maternalBp} | {entry.maternalPulse}</td>
+                            <td className="p-2 text-right">
+                              <div className="flex justify-end gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => editPartographEntry(index)}
+                                  className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                                >
+                                  <Pencil size={14} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => removePartographEntry(index)}
+                                  className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        {(!formData.partograph || formData.partograph.length === 0) && (
+                          <tr>
+                            <td colSpan={6} className="text-center p-4 text-slate-400 italic">कुनै प्रविष्टि छैन।</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-              </div>
 
-              {/* Partograph Section */}
-              <div className="mt-8 space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                  <h4 className="font-bold text-slate-800 flex items-center gap-2">
-                    <Activity size={18} className="text-primary-600" />
-                    पार्टोग्राफ (Partograph)
-                  </h4>
+                <div className="mt-8 flex justify-end gap-4 border-t border-slate-100 pt-6 sticky bottom-0 bg-white pb-4">
                   <button
                     type="button"
-                    onClick={() => {
-                      setPartographEntry(initialPartographEntry);
-                      setEditingPartographIndex(null);
-                      setShowPartographForm(true);
-                    }}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-teal-50 text-teal-700 rounded-lg text-sm font-semibold hover:bg-teal-100 transition-colors border border-teal-200"
+                    onClick={handleCloseForm}
+                    className="px-6 py-2.5 text-slate-600 font-semibold hover:bg-slate-100 rounded-xl transition-colors"
                   >
-                    <Plus size={16} /> नयाँ प्रविष्टि थप्नुहोस्
+                    रद्द गर्नुहोस्
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-8 py-2.5 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 shadow-lg shadow-primary-200 transition-all"
+                  >
+                    {isEditing ? 'परिवर्तन सुरक्षित गर्नुहोस्' : 'रेकर्ड सुरक्षित गर्नुहोस्'}
                   </button>
                 </div>
-
-                <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                  <table className="w-full text-xs text-left">
-                    <thead className="bg-slate-50 text-slate-600 font-medium">
-                      <tr>
-                        <th className="p-2">समय</th>
-                        <th className="p-2">FHR</th>
-                        <th className="p-2">Dilation</th>
-                        <th className="p-2">Descent</th>
-                        <th className="p-2">BP/Pulse</th>
-                        <th className="p-2 text-right">कार्य</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {(formData.partograph || []).map((entry, index) => (
-                        <tr key={entry.id || index}>
-                          <td className="p-2 font-medium">{entry.time}</td>
-                          <td className="p-2">{entry.fetalHeartRate}</td>
-                          <td className="p-2">{entry.cervicalDilation} cm</td>
-                          <td className="p-2">{entry.descentOfHead}/5</td>
-                          <td className="p-2">{entry.maternalBp} | {entry.maternalPulse}</td>
-                          <td className="p-2 text-right">
-                            <div className="flex justify-end gap-1">
-                              <button
-                                type="button"
-                                onClick={() => editPartographEntry(index)}
-                                className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                              >
-                                <Pencil size={14} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => removePartographEntry(index)}
-                                className="p-1 text-red-600 hover:bg-red-50 rounded"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                      {(!formData.partograph || formData.partograph.length === 0) && (
-                        <tr>
-                          <td colSpan={6} className="text-center p-4 text-slate-400 italic">कुनै प्रविष्टि छैन।</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div className="mt-8 flex justify-end gap-4 border-t border-slate-100 pt-6">
-                <button
-                  type="button"
-                  onClick={handleCloseForm}
-                  className="px-6 py-2.5 text-slate-600 font-semibold hover:bg-slate-100 rounded-xl transition-colors"
-                >
-                  रद्द गर्नुहोस्
-                </button>
-                <button
-                  type="submit"
-                  className="px-8 py-2.5 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 shadow-lg shadow-primary-200 transition-all"
-                >
-                  {isEditing ? 'परिवर्तन सुरक्षित गर्नुहोस्' : 'रेकर्ड सुरक्षित गर्नुहोस्'}
-                </button>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
         </div>
       )}
