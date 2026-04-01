@@ -57,6 +57,9 @@ export interface TBPatient {
   registrationDate: string;
   serviceType: 'TB' | 'Leprosy';
   leprosyType?: 'MB' | 'PB'; 
+  weight?: string;
+  regimen?: 'Adult' | 'Child';
+  treatmentType?: string;
   labResultMonth2Positive?: boolean; 
   completedSchedule: number[];
   newReportAvailable?: boolean;
@@ -64,6 +67,7 @@ export interface TBPatient {
   latestReportMonth?: number;
   reports: TBReport[];
   fiscalYear: string;
+  status?: 'Active' | 'Transfer Out' | 'Completed' | 'Died' | 'Loss to Follow-up';
 }
 
 export interface GarbhawatiPatient {

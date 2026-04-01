@@ -4,7 +4,7 @@ import {
   Save, RotateCcw, Activity, UserPlus, List, Phone, MapPin, 
   Calendar, FileDigit, User, Stethoscope, Users, TrendingUp, 
   FlaskConical, AlertCircle, X, ChevronRight, Microscope, 
-  CheckCircle2, Eye, Search, ClipboardList, History, Clock, Trash2, Pencil
+  CheckCircle2, Eye, Search, ClipboardList, History, Clock, Trash2, Pencil, Scale, Pill
 } from 'lucide-react';
 import { Input } from './Input';
 import { Select } from './Select';
@@ -124,6 +124,9 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
     ethnicity: '',
     address: '',
     phone: '',
+    weight: '',
+    regimen: 'Adult',
+    treatmentType: '',
     regType: '',
     classification: '',
     leprosyType: undefined, 
@@ -134,6 +137,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
     reports: [],
     // Fix: Initialize fiscalYear property as it's required by TBPatient type
     fiscalYear: currentFiscalYear, 
+    status: 'Active',
   });
 
   // Effect to update patientId and reset leprosyType when activeTab or fiscal year changes
@@ -155,6 +159,15 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
     { id: 'relapse', label: 'दोहोरिएको (Relapse)', value: 'Relapse' },
     { id: 'transfer_in', label: 'सरुवा भई आएको (Transferred In)', value: 'Transferred In' },
     { id: 'loss_to_followup', label: 'उपचार पछि हराएको (Treatment after Loss to Follow-up)', value: 'Treatment after Loss to Follow-up' },
+    { id: 'other_previously_treated', label: 'अन्य पहिले उपचार गरिएको (Other previously treated)', value: 'Other previously treated' },
+  ];
+
+  const treatmentTypeOptions: Option[] = [
+    { id: '2hrze4hr', label: '2HRZE+4HR', value: '2HRZE+4HR' },
+    { id: '6hrze', label: '6HRZE', value: '6HRZE' },
+    { id: '6hrzelfx', label: '6HRZE+Lfx', value: '6HRZE+Lfx' },
+    { id: '2hrze7hre', label: '2HRZE+7HRE', value: '2HRZE+7HRE' },
+    { id: 'custom', label: 'अन्य (Other/Manual)', value: 'Other' },
   ];
 
   const tbClassification: Option[] = [
@@ -169,7 +182,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
   ];
 
   const getSputumTestStatus = (p: TBPatient) => {
-    if (p.serviceType !== 'TB') return { required: false, reason: '', scheduleMonth: -1 };
+    if (p.serviceType !== 'TB' || (p.status && p.status !== 'Active')) return { required: false, reason: '', scheduleMonth: -1 };
     
     const followupDates = getAllSputumFollowupDates(p);
     const today = new NepaliDate();
@@ -295,6 +308,9 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
         ethnicity: '',
         address: '',
         phone: '',
+        weight: '',
+        regimen: 'Adult',
+        treatmentType: '',
         regType: '',
         classification: '',
         leprosyType: activeTab === 'Leprosy' ? 'PB' : undefined, // Reset based on activeTab
@@ -304,6 +320,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
         newReportAvailable: false,
         reports: [],
         fiscalYear: currentFiscalYear, // Ensure reset also sets fiscalYear
+        status: 'Active',
     });
   };
 
@@ -320,6 +337,12 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
       if(!selectedPatientForLab) return;
       
       const { patient, scheduleMonth } = selectedPatientForLab;
+
+      if (patient.status && patient.status !== 'Active') {
+          alert("यो बिरामी सक्रिय अवस्थामा नभएकोले रिपोर्ट प्रविष्ट गर्न मिल्दैन।");
+          setSelectedPatientForLab(null);
+          return;
+      }
 
       const newReport: TBReport = {
           month: scheduleMonth,
@@ -451,6 +474,56 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
             // Removed minDate and maxDate restrictions
           />
 
+          {activeTab === 'TB' && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="बिरामीको तौल (Weight)" type="number" value={formData.weight} onChange={e => setFormData({...formData, weight: e.target.value})} icon={<Scale size={18}/>} />
+                <Select label="उपचार तालिका (Regimen)" options={[{id:'adult', label:'Adult', value:'Adult'}, {id:'child', label:'Child', value:'Child'}]} value={formData.regimen} onChange={e => setFormData({...formData, regimen: e.target.value as any})} />
+              </div>
+
+              <div className="space-y-4">
+                <Select 
+                  label="उपचार प्रकार (Treatment Type)" 
+                  options={treatmentTypeOptions} 
+                  value={treatmentTypeOptions.some(opt => opt.value === formData.treatmentType && opt.value !== 'Other') ? formData.treatmentType : (formData.treatmentType ? 'Other' : '')} 
+                  onChange={e => {
+                    const val = e.target.value;
+                    if (val !== 'Other') {
+                      setFormData({...formData, treatmentType: val});
+                    } else if (formData.treatmentType === '2HRZE+4HR' || formData.treatmentType === '6HRZE' || formData.treatmentType === '6HRZE+Lfx' || formData.treatmentType === '2HRZE+7HRE' || !formData.treatmentType) {
+                      setFormData({...formData, treatmentType: ''});
+                    }
+                  }} 
+                  icon={<Pill size={18}/>}
+                />
+                
+                {(formData.treatmentType === '' || !treatmentTypeOptions.some(opt => opt.value === formData.treatmentType && opt.value !== 'Other')) && (
+                  <Input 
+                    label="अन्य उपचार प्रकार (Manual Entry)" 
+                    placeholder="उपचार प्रकार लेख्नुहोस्..." 
+                    value={formData.treatmentType} 
+                    onChange={e => setFormData({...formData, treatmentType: e.target.value})} 
+                  />
+                )}
+              </div>
+            </>
+          )}
+
+          <Select 
+            label="अवस्था (Status)" 
+            options={[
+              {id:'active', label:'Active', value:'Active'},
+              {id:'transfer_out', label:'Transfer Out', value:'Transfer Out'},
+              {id:'completed', label:'Completed', value:'Completed'},
+              {id:'died', label:'Died', value:'Died'},
+              {id:'loss_to_followup', label:'Loss to Follow-up', value:'Loss to Follow-up'}
+            ]} 
+            value={formData.status || 'Active'} 
+            onChange={e => setFormData({...formData, status: e.target.value as any})} 
+            required 
+            icon={<Activity size={18}/>} 
+          />
+
           <div className="md:col-span-2 pt-4 border-t flex justify-end gap-3">
               <button type="button" onClick={handleReset} className="flex items-center gap-2 px-6 py-2 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all font-bold text-sm"><RotateCcw size={16}/> {editingPatientId ? 'रद्द' : 'रिसेट'}</button>
               <button type="submit" className="flex items-center gap-2 px-8 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl shadow-lg shadow-indigo-100 transition-all font-bold text-sm"><Save size={16}/> {editingPatientId ? 'अपडेट गर्नुहोस्' : 'दर्ता गर्नुहोस्'}</button>
@@ -473,6 +546,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                       <th className="px-6 py-3">ID</th>
                       <th className="px-6 py-3">बिरामी विवरण</th>
                       <th className="px-6 py-3">वर्गीकरण</th>
+                      <th className="px-6 py-3">अवस्था</th>
                       <th className="px-6 py-3">रिपोर्टहरू</th>
                       <th className="px-6 py-3">मिति</th>
                       <th className="px-6 py-3 text-right">कार्य</th>
@@ -489,6 +563,16 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                           <td className="px-6 py-4">
                               <span className={`px-2 py-0.5 rounded text-[10px] font-black border ${activeTab === 'TB' ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700'}`}>
                                   {activeTab === 'TB' ? p.classification : p.leprosyType}
+                              </span>
+                          </td>
+                          <td className="px-6 py-4">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                  p.status === 'Active' ? 'bg-green-50 text-green-700 border-green-200' : 
+                                  p.status === 'Transfer Out' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                                  p.status === 'Completed' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                  'bg-slate-50 text-slate-700 border-slate-200'
+                              }`}>
+                                  {p.status || 'Active'}
                               </span>
                           </td>
                           <td className="px-6 py-4">
@@ -688,6 +772,37 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                       <p><strong>उमेर:</strong> {selectedPatientForDetails.age}</p>
                       <p><strong>ठेगाना:</strong> {selectedPatientForDetails.address}</p>
                       <p><strong>फोन नं:</strong> {selectedPatientForDetails.phone}</p>
+                      <div className="flex items-center gap-2">
+                        <strong>अवस्था:</strong>
+                        <select 
+                          value={selectedPatientForDetails.status || 'Active'} 
+                          onChange={(e) => {
+                            const newStatus = e.target.value as any;
+                            const updatedPatient = { ...selectedPatientForDetails, status: newStatus };
+                            onUpdatePatient(updatedPatient);
+                            setSelectedPatientForDetails(updatedPatient);
+                          }}
+                          className={`text-xs font-bold px-2 py-1 rounded border ${
+                            selectedPatientForDetails.status === 'Active' ? 'bg-green-50 text-green-700 border-green-200' : 
+                            selectedPatientForDetails.status === 'Transfer Out' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                            selectedPatientForDetails.status === 'Completed' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                            'bg-slate-50 text-slate-700 border-slate-200'
+                          }`}
+                        >
+                          <option value="Active">Active</option>
+                          <option value="Transfer Out">Transfer Out</option>
+                          <option value="Completed">Completed</option>
+                          <option value="Died">Died</option>
+                          <option value="Loss to Follow-up">Loss to Follow-up</option>
+                        </select>
+                      </div>
+                      {selectedPatientForDetails.serviceType === 'TB' && (
+                        <>
+                          <p><strong>तौल:</strong> {selectedPatientForDetails.weight || '-'} kg</p>
+                          <p><strong>उपचार तालिका:</strong> {selectedPatientForDetails.regimen || '-'}</p>
+                          <p><strong>उपचार प्रकार:</strong> {selectedPatientForDetails.treatmentType || '-'}</p>
+                        </>
+                      )}
                       <div className="space-y-2">
                           <p><strong>खकार परीक्षण तालिका:</strong></p>
                           <ul className="list-disc pl-5">
@@ -696,7 +811,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                                       <span className="text-sm">
                                           {item.label}: <span className="font-mono text-xs text-slate-500">{item.date}</span> - <strong className={item.status === 'Completed' ? 'text-green-600' : 'text-amber-600'}>{item.status}</strong>
                                       </span>
-                                      {item.status === 'Pending' && (
+                                      {item.status === 'Pending' && (selectedPatientForDetails.status === 'Active' || !selectedPatientForDetails.status) && (
                                           <button 
                                               onClick={() => {
                                                   setSelectedPatientForLab({ 
