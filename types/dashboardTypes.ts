@@ -75,7 +75,7 @@ export interface DashboardProps {
 
   tbPatients: TBPatient[];
   onAddTbPatient: (patient: TBPatient) => void;
-  onUpdateTbPatient: (patient: TBPatient) => void;
+  onUpdateTbPatient: (patient: TBPatient, sourceOrgName?: string) => void;
   onDeleteTbPatient: (patientId: string) => void;
 
   garbhawatiPatients: GarbhawatiPatient[];

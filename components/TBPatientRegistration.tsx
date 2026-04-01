@@ -23,7 +23,7 @@ interface TBPatientRegistrationProps {
   allUsers: User[];
   currentUser: User | null;
   onAddPatient: (patient: TBPatient) => void;
-  onUpdatePatient: (patient: TBPatient) => void;
+  onUpdatePatient: (patient: TBPatient, sourceOrgName?: string) => void;
   onDeletePatient: (patientId: string) => void;
   onAddInterFacilityRequest: (req: InterFacilityRequest) => void;
   onUpdateInterFacilityRequest: (req: InterFacilityRequest) => void;
@@ -285,7 +285,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
   const patientsWithNewReports = useMemo(() => {
     const localNew = (patients || []).filter(p => p.newReportAvailable);
     const interFacilityNew = (globalInterFacilityRequests || []).filter(req => 
-      req.sourceOrgId === currentUser?.id && 
+      req.sourceOrgName === currentUser?.organizationName && 
       req.status === 'Completed' && 
       !req.viewedBySource
     );
@@ -322,7 +322,9 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
   const interFacilityRequestsForMe = useMemo(() => {
     if (!currentUser) return [];
     const filtered = globalInterFacilityRequests.filter(req => {
-      const isTarget = req.targetPalikaId === currentUser.id || isUserUnderTarget(currentUser, req.targetPalikaId, allUsers);
+      const targetUser = allUsers.find(u => u.id === req.targetPalikaId);
+      const isSameOrg = targetUser && currentUser.organizationName === targetUser.organizationName;
+      const isTarget = req.targetPalikaId === currentUser.id || isUserUnderTarget(currentUser, req.targetPalikaId, allUsers) || isSameOrg;
       const isPending = req.status === 'Pending';
       return isTarget && isPending;
     });
@@ -437,6 +439,31 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
     }
   };
 
+
+  const handleDeleteReport = (patient: TBPatient, reportId: string) => {
+    if (window.confirm('के तपाईं यो रिपोर्ट हटाउन निश्चित हुनुहुन्छ? यो कार्य पूर्ववत गर्न सकिँदैन।')) {
+        const updatedReports = patient.reports.filter(r => r.id !== reportId);
+        
+        // Recalculate latest result and month based on remaining reports
+        const sortedReports = [...updatedReports].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        const latestReport = sortedReports[0];
+        
+        // Recalculate completed schedule
+        const completedSchedule = [...new Set(updatedReports.map(r => r.month))];
+
+        const updatedPatientRaw = {
+            ...patient,
+            reports: sortedReports,
+            latestResult: latestReport ? latestReport.result : undefined,
+            latestReportMonth: latestReport ? latestReport.month : undefined,
+            completedSchedule: completedSchedule
+        };
+
+        const updatedPatient = JSON.parse(JSON.stringify(updatedPatientRaw));
+        onUpdatePatient(updatedPatient);
+        alert('रिपोर्ट सफलतापूर्वक हटाइयो।');
+    }
+  };
 
   const handleLabSubmit = (e: React.FormEvent) => {
       e.preventDefault();
@@ -560,7 +587,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
     };
 
     const updatedPatient = JSON.parse(JSON.stringify(updatedPatientRaw));
-    onUpdatePatient(updatedPatient);
+    onUpdatePatient(updatedPatient, request.sourceOrgName);
 
     setSelectedInterFacilityRequest(null);
     alert('अन्तर संस्था अनुरोध अस्वीकार गरियो।');
@@ -612,7 +639,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
     };
 
     const updatedPatient = JSON.parse(JSON.stringify(updatedPatientRaw));
-    onUpdatePatient(updatedPatient);
+    onUpdatePatient(updatedPatient, request.sourceOrgName);
 
     setSelectedInterFacilityRequest(null);
     setLabFormData({
@@ -978,7 +1005,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                       ) : reportCenterTab === 'History' ? (
                           <table className="w-full text-sm text-left">
                               <thead className="bg-slate-50 text-slate-600 font-bold sticky top-0">
-                                  <tr><th className="px-6 py-3">मिति</th><th className="px-6 py-3">बिरामी</th><th className="px-6 py-3">महिना</th><th className="px-6 py-3">ल्याब नं</th><th className="px-6 py-3">नतिजा</th></tr>
+                                  <tr><th className="px-6 py-3">मिति</th><th className="px-6 py-3">बिरामी</th><th className="px-6 py-3">महिना</th><th className="px-6 py-3">ल्याब नं</th><th className="px-6 py-3">नतिजा</th><th className="px-6 py-3 text-right">कार्य</th></tr>
                               </thead>
                               <tbody className="divide-y">
                                   {allReportsHistory.map((item, idx) => (
@@ -993,9 +1020,14 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                                           <td className="px-6 py-4 font-bold">
                                               {item.report.result.includes('Positive') ? (item.report.result.match(/\(([^)]+)\)/)?.[1] || 'Pos') : 'Neg'}
                                           </td>
+                                          <td className="px-6 py-4 text-right">
+                                              <button onClick={() => handleDeleteReport(item.patient, item.report.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg" title="हटाउनुहोस्">
+                                                  <Trash2 size={16} />
+                                              </button>
+                                          </td>
                                       </tr>
                                   ))}
-                                  {allReportsHistory.length === 0 && <tr><td colSpan={5} className="p-12 text-center text-slate-400 italic">कुनै रिपोर्ट इतिहास छैन।</td></tr>}
+                                  {allReportsHistory.length === 0 && <tr><td colSpan={6} className="p-12 text-center text-slate-400 italic">कुनै रिपोर्ट इतिहास छैन।</td></tr>}
                               </tbody>
                           </table>
                       ) : (
