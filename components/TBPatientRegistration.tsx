@@ -218,6 +218,25 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
     return { required: false, reason: '', scheduleMonth: -1 };
   };
 
+  const getDosageInfo = (p: TBPatient) => {
+    if (p.serviceType !== 'TB' || p.regimen !== 'Adult' || p.treatmentType !== '2HRZE+4HR' || !p.weight) return null;
+    
+    const weight = parseFloat(p.weight);
+    if (isNaN(weight)) return null;
+
+    let tablets = 0;
+    if (weight <= 39) tablets = 2;
+    else if (weight <= 54) tablets = 3;
+    else if (weight <= 70) tablets = 4;
+    else tablets = 5;
+
+    return {
+      tablets,
+      phase1: "२ महिना HRZE",
+      phase2: "४ महिना HR"
+    };
+  };
+
   // Fix: Ensure fiscalYear is recognized on patient objects for filtering
   const patientsNeedingSputum = useMemo(() => (patients || []) // Defensive check, though 'patients' is defaulted to []
     .map(p => ({ ...p, ...getSputumTestStatus(p) }))
@@ -801,6 +820,24 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                           <p><strong>तौल:</strong> {selectedPatientForDetails.weight || '-'} kg</p>
                           <p><strong>उपचार तालिका:</strong> {selectedPatientForDetails.regimen || '-'}</p>
                           <p><strong>उपचार प्रकार:</strong> {selectedPatientForDetails.treatmentType || '-'}</p>
+                          {getDosageInfo(selectedPatientForDetails) && (
+                            <div className="bg-blue-50 p-3 rounded-xl border border-blue-100 mt-2">
+                              <p className="text-xs font-bold text-blue-800 mb-1">औषधि मात्रा (Dosage Info):</p>
+                              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                                <div className="bg-white p-2 rounded border border-blue-100">
+                                  <span className="block text-slate-500">पहिलो चरण:</span>
+                                  <span className="font-bold text-blue-700">{getDosageInfo(selectedPatientForDetails)?.phase1}</span>
+                                </div>
+                                <div className="bg-white p-2 rounded border border-blue-100">
+                                  <span className="block text-slate-500">दोस्रो चरण:</span>
+                                  <span className="font-bold text-blue-700">{getDosageInfo(selectedPatientForDetails)?.phase2}</span>
+                                </div>
+                                <div className="col-span-2 bg-indigo-600 text-white p-2 rounded text-center font-black">
+                                  दैनिक {getDosageInfo(selectedPatientForDetails)?.tablets} ट्याब्लेट (Tablets)
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </>
                       )}
                       <div className="space-y-2">
