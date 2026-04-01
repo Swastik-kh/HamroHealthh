@@ -53,6 +53,7 @@ export interface InterFacilityRequest {
   id: string;
   patientId: string;
   patientName: string;
+  patientDetails?: Partial<TBPatient>;
   month: number;
   requestDate: string;
   requestDateBs: string;
@@ -63,6 +64,7 @@ export interface InterFacilityRequest {
   sourceOrgName: string; // Name of the requesting facility
   sourceOrgId: string; // UID of the requesting facility
   status: 'Pending' | 'Completed';
+  viewedBySource?: boolean;
   report?: TBReport;
   result?: string;
   labNo?: string;

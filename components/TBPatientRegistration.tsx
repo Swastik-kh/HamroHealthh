@@ -97,8 +97,17 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
         }
     } catch (e) { return []; }
     
-    const isDone = (month: number) => (p.completedSchedule || []).includes(month);
-    const isMonth2Positive = (p.reports || []).some(r => r.month === 2 && r.result.toLowerCase().includes('positive'));
+    const isDone = (month: number) => {
+        const localDone = (p.completedSchedule || []).includes(month);
+        const interFacilityDone = (globalInterFacilityRequests || []).some(req => 
+            req.patientId === p.id && 
+            req.month === month && 
+            req.status === 'Completed'
+        );
+        return localDone || interFacilityDone;
+    };
+    const isMonth2Positive = (p.reports || []).some(r => r.month === 2 && r.result.toLowerCase().includes('positive')) || 
+                             (globalInterFacilityRequests || []).some(req => req.patientId === p.id && req.month === 2 && req.result?.toLowerCase().includes('positive'));
     
     const getFollowUpDate = (monthsToAdd: number) => {
         try {
@@ -273,27 +282,54 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
     .map(p => ({ ...p, ...getSputumTestStatus(p) }))
     .filter(p => p.required), [patients, currentFiscalYear]); // Re-evaluate when patients or FY changes
 
-  const patientsWithNewReports = useMemo(() => (patients || []).filter(p => p.newReportAvailable), [patients]); // Defensive check
+  const patientsWithNewReports = useMemo(() => {
+    const localNew = (patients || []).filter(p => p.newReportAvailable);
+    const interFacilityNew = (globalInterFacilityRequests || []).filter(req => 
+      req.sourceOrgId === currentUser?.id && 
+      req.status === 'Completed' && 
+      !req.viewedBySource
+    );
+    
+    // Combine them into a single list of "new report notifications"
+    // For inter-facility, we'll map them to a structure similar to TBPatient for the UI
+    const interFacilityPatients = interFacilityNew.map(req => {
+      const patient = patients.find(p => p.id === req.patientId) || req.patientDetails as TBPatient;
+      return {
+        ...patient,
+        id: patient.id,
+        newReportAvailable: true,
+        latestResult: req.result,
+        latestReportMonth: req.month,
+        isInterFacilityReport: true,
+        requestId: req.id
+      };
+    });
+    
+    return [...localNew, ...interFacilityPatients];
+  }, [patients, globalInterFacilityRequests, currentUser]);
+
   const newReportCount = patientsWithNewReports.length;
+
+  const isUserUnderTarget = (user: User, targetId: string, allUsers: User[]): boolean => {
+    if (!user.parentId) return false;
+    if (user.parentId === targetId) return true;
+    const parent = allUsers.find(u => u.id === user.parentId);
+    if (!parent) return false;
+    return isUserUnderTarget(parent, targetId, allUsers);
+  };
 
   // Memoized filtered requests for the current facility
   const interFacilityRequestsForMe = useMemo(() => {
     if (!currentUser) return [];
-    console.log("currentUser:", currentUser);
-    console.log("allUsers:", allUsers);
-    console.log("globalInterFacilityRequests:", globalInterFacilityRequests);
     const filtered = globalInterFacilityRequests.filter(req => {
-      // Match if the request is targeted to the current user's ID or if the user is the parent of the target Palika
-      const isTarget = req.targetPalikaId === currentUser.id || currentUser.parentId === req.targetPalikaId;
+      const isTarget = req.targetPalikaId === currentUser.id || isUserUnderTarget(currentUser, req.targetPalikaId, allUsers);
       const isPending = req.status === 'Pending';
-      console.log("req.targetPalikaId:", req.targetPalikaId, "currentUser.id:", currentUser.id, "currentUser.parentId:", currentUser.parentId, "isTarget:", isTarget, "isPending:", isPending);
       return isTarget && isPending;
     });
-    console.log("filteredRequests:", filtered);
     return filtered.map(req => {
-      const patient = patients.find(p => p.id === req.patientId);
-      return { req, patient };
-    }).filter(item => item.patient !== undefined) as {req: InterFacilityRequest, patient: TBPatient}[];
+      const patient = patients.find(p => p.id === req.patientId) || req.patientDetails as TBPatient;
+      return { request: req, patient };
+    }).filter(item => item.patient !== undefined) as {request: InterFacilityRequest, patient: TBPatient}[];
   }, [globalInterFacilityRequests, currentUser, patients, allUsers]);
   
   // FIX: Rewritten allReportsHistory with robust checks
@@ -447,6 +483,24 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
       id: Date.now().toString(),
       patientId: selectedPatientForInterFacility.id,
       patientName: selectedPatientForInterFacility.name,
+      patientDetails: {
+          id: selectedPatientForInterFacility.id,
+          patientId: selectedPatientForInterFacility.patientId,
+          name: selectedPatientForInterFacility.name,
+          age: selectedPatientForInterFacility.age,
+          address: selectedPatientForInterFacility.address,
+          phone: selectedPatientForInterFacility.phone,
+          gender: selectedPatientForInterFacility.gender,
+          ethnicity: selectedPatientForInterFacility.ethnicity,
+          registrationDate: selectedPatientForInterFacility.registrationDate,
+          serviceType: selectedPatientForInterFacility.serviceType,
+          classification: selectedPatientForInterFacility.classification,
+          weight: selectedPatientForInterFacility.weight,
+          regimen: selectedPatientForInterFacility.regimen,
+          treatmentType: selectedPatientForInterFacility.treatmentType,
+          fiscalYear: selectedPatientForInterFacility.fiscalYear,
+          reports: []
+      },
       month: interFacilityFormData.month,
       requestDate: new Date().toISOString().split('T')[0],
       requestDateBs: todayBs,
@@ -504,7 +558,11 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
     const updatedRequest: InterFacilityRequest = {
       ...request,
       status: 'Completed',
-      report: report
+      report: report,
+      result: report.result,
+      labNo: report.labNo,
+      completedDate: report.date,
+      completedDateBs: labFormData.testDateNepali || new NepaliDate(new Date(report.date)).format('YYYY-MM-DD')
     };
     onUpdateInterFacilityRequest(updatedRequest);
 
@@ -561,8 +619,28 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
             <div className="bg-blue-50 p-3 rounded-lg text-blue-600"><Users size={20} /></div>
         </div>
 
-        <div onClick={() => setShowSputumModal(true)} className="bg-white p-4 rounded-xl border border-orange-200 shadow-sm flex items-center justify-between cursor-pointer hover:bg-orange-50 transition-all group">
-            <div><p className="text-slate-500 text-xs font-bold font-nepali mb-1">खकार परीक्षण अनुरोध</p><h3 className="text-2xl font-black text-orange-600">{patientsNeedingSputum.length + interFacilityRequestsForMe.length}</h3></div>
+        <div onClick={() => setShowSputumModal(true)} className="bg-white p-4 rounded-xl border border-orange-200 shadow-sm flex items-center justify-between cursor-pointer hover:bg-orange-50 transition-all group relative overflow-hidden">
+            {interFacilityRequestsForMe.length > 0 && (
+              <div className="absolute top-0 right-0 bg-orange-600 text-white text-[10px] px-2 py-0.5 font-bold rounded-bl-lg animate-pulse">
+                नयाँ अन्तर संस्था अनुरोध
+              </div>
+            )}
+            <div>
+              <p className="text-slate-500 text-xs font-bold font-nepali mb-1">खकार परीक्षण अनुरोध</p>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-baseline gap-2">
+                  <h3 className="text-2xl font-black text-orange-600">{patientsNeedingSputum.length + interFacilityRequestsForMe.length}</h3>
+                  {interFacilityRequestsForMe.length > 0 && (
+                    <span className="text-[10px] font-bold text-orange-500">({interFacilityRequestsForMe.length} अन्तर संस्था)</span>
+                  )}
+                </div>
+                {interFacilityRequestsForMe.length > 0 && (
+                  <div className="text-[9px] text-orange-400 font-bold truncate max-w-[150px]">
+                    {Array.from(new Set(interFacilityRequestsForMe.map(r => r.request.sourceOrgName))).join(', ')} बाट अनुरोध
+                  </div>
+                )}
+              </div>
+            </div>
             <div className="bg-orange-100 p-3 rounded-lg text-orange-600 group-hover:scale-110 transition-transform"><FlaskConical size={20} /></div>
         </div>
 
@@ -834,7 +912,12 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                                       <tr key={p.id} className="hover:bg-slate-50">
                                           <td className="px-6 py-4 font-mono text-indigo-600 font-bold">{p.patientId}</td>
                                           <td className="px-6 py-4">
-                                              <div className="font-bold">{p.name}</div>
+                                              <div className="font-bold flex items-center gap-2">
+                                                  {p.name}
+                                                  {(p as any).isInterFacilityReport && (
+                                                      <span className="text-[9px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full font-black">अन्तर संस्था</span>
+                                                  )}
+                                              </div>
                                               <div className="text-[10px] text-slate-400">{p.age} Yrs | {p.address} | {p.phone}</div>
                                           </td>
                                           <td className="px-6 py-4 text-xs">Month {p.latestReportMonth}</td>
@@ -845,8 +928,14 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                                           </td>
                                           <td className="px-6 py-4">
                                               <button onClick={() => {
-                                                  // Mark report as viewed
-                                                  onUpdatePatient({...p, newReportAvailable: false});
+                                                  if ((p as any).isInterFacilityReport) {
+                                                      const req = globalInterFacilityRequests.find(r => r.id === (p as any).requestId);
+                                                      if (req) {
+                                                          onUpdateInterFacilityRequest({...req, viewedBySource: true});
+                                                      }
+                                                  } else {
+                                                      onUpdatePatient({...p, newReportAvailable: false});
+                                                  }
                                                   alert("विवरण सुरक्षित गरियो");
                                               }} className="text-teal-600 hover:underline font-bold text-xs">Mark as Viewed</button>
                                           </td>
@@ -886,15 +975,15 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                               <tbody className="divide-y">
                                   {interFacilityRequestsForMe.map((item, idx) => (
                                       <tr key={idx} className="hover:bg-slate-50">
-                                          <td className="px-6 py-4 text-xs font-nepali">{item.req.requestDateBs}</td>
+                                          <td className="px-6 py-4 text-xs font-nepali">{item.request.requestDateBs}</td>
                                           <td className="px-6 py-4">
                                               <div className="font-bold">{item.patient.name}</div>
                                               <div className="text-[10px] text-slate-400">{item.patient.patientId} | {item.patient.age} Yrs | {item.patient.address} | {item.patient.phone}</div>
                                           </td>
-                                          <td className="px-6 py-4 text-xs font-bold text-orange-600">Month {item.req.month}</td>
+                                          <td className="px-6 py-4 text-xs font-bold text-orange-600">Month {item.request.month}</td>
                                           <td className="px-6 py-4 text-xs font-bold">
-                                              <div className="font-bold">{item.req.sourceOrgName}</div>
-                                              <div className="text-[10px] text-slate-400">{item.req.targetPalikaName}</div>
+                                              <div className="font-bold">{item.request.sourceOrgName}</div>
+                                              <div className="text-[10px] text-slate-400">{item.request.targetPalikaName}</div>
                                           </td>
                                           <td className="px-6 py-4 text-right">
                                               <button onClick={() => {
@@ -944,12 +1033,12 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                                 </tr>
                             ))}
                             {interFacilityRequestsForMe.map(item => (
-                                <tr key={item.req.id} className="hover:bg-orange-50/50">
+                                <tr key={item.request.id} className="hover:bg-orange-50/50">
                                     <td className="px-6 py-4">
                                         <div className="font-bold">{item.patient.name}</div>
                                         <div className="text-[10px] text-slate-400">{item.patient.patientId} | {item.patient.age} Yrs | {item.patient.address} | {item.patient.phone}</div>
                                     </td>
-                                    <td className="px-6 py-4"><span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-bold">अन्तर संस्था: {item.req.sourceOrgName} (Month {item.req.month})</span></td>
+                                    <td className="px-6 py-4"><span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-bold">अन्तर संस्था: {item.request.sourceOrgName} (Month {item.request.month})</span></td>
                                     <td className="px-6 py-4 text-right">
                                         <button onClick={() => {
                                             setSelectedInterFacilityRequest(item);
@@ -1070,24 +1159,51 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                           <p><strong>खकार परीक्षण तालिका:</strong></p>
                           <ul className="list-disc pl-5">
                               {getAllSputumFollowupDates(selectedPatientForDetails).map(item => (
-                                  <li key={item.month} className="flex items-center justify-between py-1 border-b border-slate-50 last:border-0">
-                                      <span className="text-sm">
-                                          {item.label}: <span className="font-mono text-xs text-slate-500">{item.date}</span> - <strong className={item.status === 'Completed' ? 'text-green-600' : 'text-amber-600'}>{item.status}</strong>
-                                      </span>
-                                      {item.status === 'Pending' && (selectedPatientForDetails.status === 'Active' || !selectedPatientForDetails.status) && (
-                                          <button 
-                                              onClick={() => {
-                                                  setSelectedPatientForLab({ 
-                                                      patient: selectedPatientForDetails, 
-                                                      reason: item.label, 
-                                                      scheduleMonth: item.month 
-                                                  });
-                                                  setSelectedPatientForDetails(null);
-                                              }}
-                                              className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-lg hover:bg-indigo-100 font-bold transition-colors"
-                                          >
-                                              प्रविष्टि
-                                          </button>
+                                  <li key={item.month} className="flex flex-col py-2 border-b border-slate-50 last:border-0">
+                                      <div className="flex items-center justify-between">
+                                          <span className="text-sm">
+                                              {item.label}: <span className="font-mono text-xs text-slate-500">{item.date}</span> - <strong className={item.status === 'Completed' ? 'text-green-600' : 'text-amber-600'}>{item.status}</strong>
+                                          </span>
+                                          {item.status === 'Pending' && (selectedPatientForDetails.status === 'Active' || !selectedPatientForDetails.status) && (
+                                              <button 
+                                                  onClick={() => {
+                                                      setSelectedPatientForLab({ 
+                                                          patient: selectedPatientForDetails, 
+                                                          reason: item.label, 
+                                                          scheduleMonth: item.month 
+                                                      });
+                                                      setSelectedPatientForDetails(null);
+                                                  }}
+                                                  className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-lg hover:bg-indigo-100 font-bold transition-colors"
+                                              >
+                                                  प्रविष्टि
+                                              </button>
+                                          )}
+                                      </div>
+                                      {item.status === 'Completed' && (
+                                          <div className="mt-1 text-[10px] text-slate-500 bg-slate-50 p-2 rounded-lg">
+                                              {(() => {
+                                                  const localReport = (selectedPatientForDetails.reports || []).find(r => r.month === item.month);
+                                                  const interReport = (globalInterFacilityRequests || []).find(req => req.patientId === selectedPatientForDetails.id && req.month === item.month && req.status === 'Completed');
+                                                  
+                                                  if (localReport) {
+                                                      return (
+                                                          <div className="flex justify-between">
+                                                              <span>Lab No: {localReport.labNo} | Result: <strong className={localReport.result === 'Positive' ? 'text-red-600' : 'text-green-600'}>{localReport.result} {localReport.grading}</strong></span>
+                                                              <span>{localReport.testDateNepali}</span>
+                                                          </div>
+                                                      );
+                                                  } else if (interReport) {
+                                                      return (
+                                                          <div className="flex justify-between">
+                                                              <span>Lab No: {interReport.labNo} | Result: <strong className={interReport.result === 'Positive' ? 'text-red-600' : 'text-green-600'}>{interReport.result}</strong> (Inter-facility: {interReport.targetFacilityName})</span>
+                                                              <span>{interReport.completedDateBs}</span>
+                                                          </div>
+                                                      );
+                                                  }
+                                                  return null;
+                                              })()}
+                                          </div>
                                       )}
                                   </li>
                               ))}
