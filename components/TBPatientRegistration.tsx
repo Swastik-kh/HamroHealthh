@@ -280,11 +280,13 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
   const interFacilityRequestsForMe = useMemo(() => {
     if (!currentUser) return [];
     console.log("currentUser:", currentUser);
+    console.log("allUsers:", allUsers);
     console.log("globalInterFacilityRequests:", globalInterFacilityRequests);
     const filtered = globalInterFacilityRequests.filter(req => {
-      const isTarget = req.targetFacilityId === currentUser.id || req.targetFacilityId === currentUser.parentId;
+      // Match if the request is targeted to the current user's ID or if the user is the parent of the target Palika
+      const isTarget = req.targetPalikaId === currentUser.id || currentUser.parentId === req.targetPalikaId;
       const isPending = req.status === 'Pending';
-      console.log("req:", req, "isTarget:", isTarget, "isPending:", isPending);
+      console.log("req.targetPalikaId:", req.targetPalikaId, "currentUser.id:", currentUser.id, "currentUser.parentId:", currentUser.parentId, "isTarget:", isTarget, "isPending:", isPending);
       return isTarget && isPending;
     });
     console.log("filteredRequests:", filtered);
@@ -292,7 +294,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
       const patient = patients.find(p => p.id === req.patientId);
       return { req, patient };
     }).filter(item => item.patient !== undefined) as {req: InterFacilityRequest, patient: TBPatient}[];
-  }, [globalInterFacilityRequests, currentUser, patients]);
+  }, [globalInterFacilityRequests, currentUser, patients, allUsers]);
   
   // FIX: Rewritten allReportsHistory with robust checks
   const allReportsHistory = useMemo(() => {
