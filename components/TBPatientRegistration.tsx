@@ -279,9 +279,16 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
   // Memoized filtered requests for the current facility
   const interFacilityRequestsForMe = useMemo(() => {
     if (!currentUser) return [];
-    return globalInterFacilityRequests.filter(req => 
-      (req.targetFacilityId === currentUser.id || req.targetFacilityId === currentUser.parentId) && req.status === 'Pending'
-    ).map(req => {
+    console.log("currentUser:", currentUser);
+    console.log("globalInterFacilityRequests:", globalInterFacilityRequests);
+    const filtered = globalInterFacilityRequests.filter(req => {
+      const isTarget = req.targetFacilityId === currentUser.id || req.targetFacilityId === currentUser.parentId;
+      const isPending = req.status === 'Pending';
+      console.log("req:", req, "isTarget:", isTarget, "isPending:", isPending);
+      return isTarget && isPending;
+    });
+    console.log("filteredRequests:", filtered);
+    return filtered.map(req => {
       const patient = patients.find(p => p.id === req.patientId);
       return { req, patient };
     }).filter(item => item.patient !== undefined) as {req: InterFacilityRequest, patient: TBPatient}[];
