@@ -305,7 +305,15 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
       };
     });
     
-    return [...localNew, ...interFacilityPatients];
+    const combined = [...localNew, ...interFacilityPatients];
+    const uniquePatients = new Map();
+    combined.forEach(p => {
+        // If it already exists, prefer the one with isInterFacilityReport flag if applicable
+        if (!uniquePatients.has(p.id) || (p as any).isInterFacilityReport) {
+            uniquePatients.set(p.id, p);
+        }
+    });
+    return Array.from(uniquePatients.values());
   }, [patients, globalInterFacilityRequests, currentUser]);
 
   const newReportCount = patientsWithNewReports.length;
@@ -478,11 +486,12 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
       }
 
       const newReport: TBReport = {
+          id: Date.now().toString(),
           month: scheduleMonth,
           result: labFormData.result === 'Positive' ? `${labFormData.result} (${labFormData.grading})` : labFormData.result,
           labNo: labFormData.labNo,
           date: labFormData.testDate,
-          dateNepali: labFormData.testDateNepali
+          dateNepali: labFormData.testDateNepali || new NepaliDate(new Date(labFormData.testDate)).format('YYYY-MM-DD')
       };
 
       const updatedPatientRaw = {
@@ -604,6 +613,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
       month: request.month,
       testDate: labFormData.testDate,
       date: labFormData.testDate,
+      dateNepali: labFormData.testDateNepali || new NepaliDate(new Date(labFormData.testDate)).format('YYYY-MM-DD'),
       labNo: labFormData.labNo,
       result: labFormData.result === 'Positive' ? `${labFormData.result} (${labFormData.grading})` : labFormData.result,
       grading: labFormData.grading,
@@ -1343,7 +1353,10 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                         <div>महिना: Month {selectedInterFacilityRequest.request.month}</div>
                         <div>पठाउने संस्था: {selectedInterFacilityRequest.request.sourceOrgName} ({selectedInterFacilityRequest.request.targetPalikaName})</div>
                     </div>
-                    <NepaliDatePicker label="परीक्षण मिति (BS)" value={labFormData.testDateNepali} onChange={val => setLabFormData({...labFormData, testDateNepali: val})} required />
+                    <div className="grid grid-cols-2 gap-4">
+                        <Input label="परीक्षण मिति (AD)" type="date" value={labFormData.testDate} onChange={e => setLabFormData({...labFormData, testDate: e.target.value})} required />
+                        <NepaliDatePicker label="परीक्षण मिति (BS)" value={labFormData.testDateNepali} onChange={val => setLabFormData({...labFormData, testDateNepali: val})} required />
+                    </div>
                     <Input label="ल्याब नम्बर" placeholder="Lab No." value={labFormData.labNo} onChange={e => setLabFormData({...labFormData, labNo: e.target.value})} required />
                     <Select 
                         label="नतिजा" 
