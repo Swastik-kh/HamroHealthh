@@ -535,6 +535,37 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
     alert('अन्तर संस्था अनुरोध सफलतापूर्वक पठाइयो।');
   };
 
+  const handleInterFacilityReportReject = () => {
+    if (!selectedInterFacilityRequest || !currentUser) return;
+    if (!window.confirm('के तपाईं यो अनुरोध अस्वीकार गर्न निश्चित हुनुहुन्छ?')) return;
+
+    const { patient, request } = selectedInterFacilityRequest;
+
+    // Update global request status
+    const updatedRequest: InterFacilityRequest = {
+      ...request,
+      status: 'Rejected',
+      completedDate: new Date().toISOString().split('T')[0],
+      completedDateBs: new NepaliDate().format('YYYY-MM-DD')
+    };
+    onUpdateInterFacilityRequest(updatedRequest);
+
+    // Update patient record
+    const updatedPatientRaw = {
+      ...patient,
+      // Also update the request in patient's history
+      interFacilityRequests: (patient.interFacilityRequests || []).map(r => 
+        r.id === request.id ? updatedRequest : r
+      )
+    };
+
+    const updatedPatient = JSON.parse(JSON.stringify(updatedPatientRaw));
+    onUpdatePatient(updatedPatient);
+
+    setSelectedInterFacilityRequest(null);
+    alert('अन्तर संस्था अनुरोध अस्वीकार गरियो।');
+  };
+
   const handleInterFacilityReportSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedInterFacilityRequest || !currentUser) return;
@@ -1006,7 +1037,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
       {showSputumModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowSputumModal(false)}></div>
-            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col animate-in zoom-in-95">
+            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95">
                 <div className="px-6 py-4 border-b bg-orange-50 flex justify-between items-center text-orange-800">
                     <h3 className="font-bold text-lg font-nepali">खकार परीक्षण आवश्यक बिरामीहरू</h3>
                     <button onClick={() => setShowSputumModal(false)} className="p-2 hover:bg-white/50 rounded-full"><X size={20}/></button>
@@ -1280,7 +1311,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                         <div>महिना: Month {selectedInterFacilityRequest.request.month}</div>
                         <div>पठाउने संस्था: {selectedInterFacilityRequest.request.sourceOrgName} ({selectedInterFacilityRequest.request.targetPalikaName})</div>
                     </div>
-                    <Input label="परीक्षण मिति" type="date" value={labFormData.testDate} onChange={e => setLabFormData({...labFormData, testDate: e.target.value})} required />
+                    <NepaliDatePicker label="परीक्षण मिति (BS)" value={labFormData.testDateNepali} onChange={val => setLabFormData({...labFormData, testDateNepali: val})} required />
                     <Input label="ल्याब नम्बर" placeholder="Lab No." value={labFormData.labNo} onChange={e => setLabFormData({...labFormData, labNo: e.target.value})} required />
                     <Select 
                         label="नतिजा" 
@@ -1298,9 +1329,12 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                             required 
                         />
                     )}
-                    <div className="pt-4 border-t flex justify-end gap-3">
-                        <button type="button" onClick={() => setSelectedInterFacilityRequest(null)} className="px-6 py-2 text-slate-500 font-bold">रद्द</button>
-                        <button type="submit" className="bg-orange-600 text-white px-8 py-2 rounded-xl font-bold shadow-lg">रिपोर्ट सुरक्षित गर्नुहोस्</button>
+                    <div className="pt-4 border-t flex justify-between gap-3">
+                        <button type="button" onClick={handleInterFacilityReportReject} className="bg-red-100 text-red-600 px-6 py-2 rounded-xl font-bold hover:bg-red-200">अस्वीकार गर्नुहोस्</button>
+                        <div className="flex gap-3">
+                            <button type="button" onClick={() => setSelectedInterFacilityRequest(null)} className="px-6 py-2 text-slate-500 font-bold">रद्द</button>
+                            <button type="submit" className="bg-orange-600 text-white px-8 py-2 rounded-xl font-bold shadow-lg">रिपोर्ट सुरक्षित गर्नुहोस्</button>
+                        </div>
                     </div>
                 </form>
             </div>
