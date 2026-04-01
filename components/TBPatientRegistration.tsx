@@ -1154,7 +1154,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                       </div>
 
                       {labFormData.result === 'Positive' && (
-                          <Select label="ग्रेडिङ" options={[{id:'s',value:'Scanty',label:'Scanty'}, {id:'1',value:'1+',label:'1+'}, {id:'2',value:'2+',label:'2+'}, {id:'3',value:'3+',label:'3+'}]} value={labFormData.grading} onChange={e => setLabFormData({...labFormData, grading: e.target.value})} required />
+                          <Select label="ग्रेडिङ" options={[{id:'1',value:'1+',label:'1+'}, {id:'2',value:'2+',label:'2+'}, {id:'3',value:'3+ or more',label:'3+ or more'}, {id:'s',value:'Scanty',label:'Scanty'}]} value={labFormData.grading} onChange={e => setLabFormData({...labFormData, grading: e.target.value})} required />
                       )}
 
                       <div className="pt-4 border-t flex justify-end gap-3">
@@ -1367,8 +1367,8 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                     />
                     {labFormData.result === 'Positive' && (
                         <Select 
-                            label="Grading" 
-                            options={[{id:'1', label:'+', value:'+'}, {id:'2', label:'++', value:'++'}, {id:'3', label:'+++', value:'+++'}, {id:'sc', label:'Scanty', value:'Scanty'}]} 
+                            label="ग्रेडिङ (Grading)" 
+                            options={[{id:'1', label:'1+', value:'1+'}, {id:'2', label:'2+', value:'2+'}, {id:'3', label:'3+ or more', value:'3+ or more'}, {id:'sc', label:'Scanty', value:'Scanty'}]} 
                             value={labFormData.grading} 
                             onChange={e => setLabFormData({...labFormData, grading: e.target.value})} 
                             required 
