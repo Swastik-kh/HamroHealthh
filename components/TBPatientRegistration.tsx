@@ -40,6 +40,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
   
   // State for Lab Report Entry
   const [selectedPatientForLab, setSelectedPatientForLab] = useState<{patient: TBPatient, reason: string, scheduleMonth: number} | null>(null);
+  const [selectedPatientForDetails, setSelectedPatientForDetails] = useState<TBPatient | null>(null);
   const [labFormData, setLabFormData] = useState({
     testDate: new Date().toISOString().split('T')[0],
     testDateNepali: '',
@@ -47,6 +48,56 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
     result: '',
     grading: ''
   });
+
+  const getAllSputumFollowupDates = (p: TBPatient) => {
+    if (p.serviceType !== 'TB') return [];
+    
+    let regDateNepali: any;
+    try {
+        if (!p.registrationDate) return [];
+        const parts = p.registrationDate.split(/[-/]/);
+        if (parts.length === 3) {
+            const y = parseInt(parts[0], 10);
+            const m = parseInt(parts[1], 10) - 1; // 0-based month
+            const d = parseInt(parts[2], 10);
+            regDateNepali = new NepaliDate(y, m, d);
+        } else {
+            regDateNepali = new NepaliDate(p.registrationDate);
+        }
+    } catch (e) { return []; }
+    
+    const isDone = (month: number) => (p.completedSchedule || []).includes(month);
+    const isMonth2Positive = (p.reports || []).some(r => r.month === 2 && r.result.toLowerCase().includes('positive'));
+    
+    const getFollowUpDate = (monthsToAdd: number) => {
+        try {
+            // Clone using year, month, date to avoid constructor errors
+            const d = new NepaliDate(regDateNepali.getYear(), regDateNepali.getMonth(), regDateNepali.getDate());
+            d.setMonth(d.getMonth() + monthsToAdd);
+            return d.format('YYYY-MM-DD');
+        } catch (e) {
+            return 'N/A';
+        }
+    };
+
+    const schedule: number[] = [0, 2];
+    if (p.classification === 'PBC') {
+        schedule.push(5, 6);
+        if (isMonth2Positive) {
+            schedule.push(3);
+        }
+    }
+    
+    // Sort schedule to ensure order
+    schedule.sort((a, b) => a - b);
+
+    return schedule.map(month => ({
+        month,
+        label: month === 0 ? 'Month 0 (Registration)' : `Month ${month}`,
+        status: isDone(month) ? 'Completed' : 'Pending',
+        date: getFollowUpDate(month)
+    }));
+  };
 
   const generateId = (type: 'TB' | 'Leprosy') => {
     const fyClean = currentFiscalYear.replace('/', '');
@@ -120,35 +171,36 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
   const getSputumTestStatus = (p: TBPatient) => {
     if (p.serviceType !== 'TB') return { required: false, reason: '', scheduleMonth: -1 };
     
-    // FIX: Manually parse the Nepali date string to avoid invalid date errors
-    let regDateNepali;
-    try {
-        if (!p.registrationDate) return { required: false, reason: '', scheduleMonth: -1 };
-        
-        const parts = p.registrationDate.split(/[-/]/);
-        if (parts.length !== 3) return { required: false, reason: '', scheduleMonth: -1 };
-        
-        const y = parseInt(parts[0], 10);
-        const m = parseInt(parts[1], 10) - 1; // NepaliDate month is 0-indexed
-        const d = parseInt(parts[2], 10);
-        
-        regDateNepali = new NepaliDate(y, m, d);
-    } catch (e) {
-        console.error("Invalid registration date for TB patient:", p.registrationDate);
-        return { required: false, reason: '', scheduleMonth: -1 };
-    }
-    
+    const followupDates = getAllSputumFollowupDates(p);
     const today = new NepaliDate();
     
-    // Calculate difference in days (approximate) using converted AD dates
-    const diffDays = Math.ceil(Math.abs(today.toJsDate().getTime() - regDateNepali.toJsDate().getTime()) / (1000 * 60 * 60 * 24));
-    
-    // FIX: Use nullish coalescing for p.completedSchedule
-    const isDone = (month: number) => (p.completedSchedule || []).includes(month);
+    // Parse registration date for diff calculation
+    let regDate;
+    try {
+        const parts = p.registrationDate.split(/[-/]/);
+        regDate = new NepaliDate(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    } catch (e) { return { required: false, reason: '', scheduleMonth: -1 }; }
 
-    if (diffDays >= 0 && diffDays <= 30 && !isDone(0)) return { required: true, reason: 'सुरुवाती निदान (Month 0)', scheduleMonth: 0 };
-    if (diffDays >= 55 && diffDays <= 75 && !isDone(2)) return { required: true, reason: 'दोस्रो महिना (Month 2)', scheduleMonth: 2 };
-    if (diffDays >= 145 && diffDays <= 165 && !isDone(5)) return { required: true, reason: 'पाँचौं महिना (Month 5)', scheduleMonth: 5 };
+    const diffDays = Math.ceil(Math.abs(today.toJsDate().getTime() - regDate.toJsDate().getTime()) / (1000 * 60 * 60 * 24));
+    
+    // Define windows for each month
+    const windows: Record<number, [number, number]> = {
+        0: [0, 30],
+        2: [55, 75],
+        3: [85, 105],
+        5: [145, 165],
+        6: [175, 195]
+    };
+
+    for (const item of followupDates) {
+        if (item.status === 'Pending') {
+            const window = windows[item.month];
+            // Return if within window OR overdue (diffDays > window[0])
+            if (window && diffDays >= window[0]) {
+                return { required: true, reason: `${item.label} परीक्षण`, scheduleMonth: item.month };
+            }
+        }
+    }
 
     return { required: false, reason: '', scheduleMonth: -1 };
   };
@@ -421,7 +473,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                       <th className="px-6 py-3">ID</th>
                       <th className="px-6 py-3">बिरामी विवरण</th>
                       <th className="px-6 py-3">वर्गीकरण</th>
-                      <th className="px-6 py-3">अन्तिम रिपोर्ट</th>
+                      <th className="px-6 py-3">रिपोर्टहरू</th>
                       <th className="px-6 py-3">मिति</th>
                       <th className="px-6 py-3 text-right">कार्य</th>
                   </tr>
@@ -430,9 +482,9 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                   {(patients || []).filter(p => p.fiscalYear === currentFiscalYear && p.serviceType === activeTab && (p.name.includes(searchTerm) || p.address.includes(searchTerm))).map(p => ( // Defensive check
                       <tr key={p.id} className="hover:bg-slate-50">
                           <td className="px-6 py-4 font-mono font-bold text-indigo-600 text-xs">{p.patientId}</td>
-                          <td className="px-6 py-4">
+                          <td className="px-6 py-4 cursor-pointer hover:bg-slate-100" onClick={() => setSelectedPatientForDetails(p)}>
                               <div className="font-bold text-slate-800">{p.name}</div>
-                              <div className="text-[10px] text-slate-400">{p.age} Yrs | {p.address}</div>
+                              <div className="text-[10px] text-slate-400">{p.age} Yrs | {p.address} | {p.phone}</div>
                           </td>
                           <td className="px-6 py-4">
                               <span className={`px-2 py-0.5 rounded text-[10px] font-black border ${activeTab === 'TB' ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700'}`}>
@@ -440,9 +492,17 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                               </span>
                           </td>
                           <td className="px-6 py-4">
-                              {p.latestResult ? (
-                                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-black ${p.latestResult.includes('Pos') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{p.latestResult}</span>
-                              ) : '-'}
+                              <div className="flex flex-wrap gap-1">
+                                  {(p.reports || []).map((r, idx) => {
+                                      const grading = r.result.includes('Positive') ? (r.result.match(/\(([^)]+)\)/)?.[1] || 'Pos') : 'Neg';
+                                      return (
+                                          <span key={idx} className={`px-1.5 py-0.5 rounded text-[9px] font-black border ${r.result.includes('Pos') ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
+                                              M{r.month}: {grading}
+                                          </span>
+                                      );
+                                  })}
+                                  {(!p.reports || p.reports.length === 0) && <span className="text-slate-300">-</span>}
+                              </div>
                           </td>
                           <td className="px-6 py-4 text-xs text-slate-500 font-nepali">{p.registrationDate}</td>
                           <td className="px-6 py-4 text-right">
@@ -489,9 +549,16 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                                   {patientsWithNewReports.map(p => (
                                       <tr key={p.id} className="hover:bg-slate-50">
                                           <td className="px-6 py-4 font-mono text-indigo-600 font-bold">{p.patientId}</td>
-                                          <td className="px-6 py-4 font-bold">{p.name}</td>
+                                          <td className="px-6 py-4">
+                                              <div className="font-bold">{p.name}</div>
+                                              <div className="text-[10px] text-slate-400">{p.age} Yrs | {p.address} | {p.phone}</div>
+                                          </td>
                                           <td className="px-6 py-4 text-xs">Month {p.latestReportMonth}</td>
-                                          <td className="px-6 py-4"><span className={`px-1.5 py-0.5 rounded text-[10px] font-black ${p.latestResult?.includes('Pos') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>{p.latestResult}</span></td>
+                                          <td className="px-6 py-4">
+                                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-black ${p.latestResult?.includes('Pos') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+                                                  {p.latestResult?.includes('Positive') ? (p.latestResult.match(/\(([^)]+)\)/)?.[1] || 'Pos') : 'Neg'}
+                                              </span>
+                                          </td>
                                           <td className="px-6 py-4">
                                               <button onClick={() => {
                                                   // Mark report as viewed
@@ -507,7 +574,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                       ) : (
                           <table className="w-full text-sm text-left">
                               <thead className="bg-slate-50 text-slate-600 font-bold sticky top-0">
-                                  <tr><th className="px-6 py-3">मिति</th><th className="px-6 py-3">बिरामी</th><th className="px-6 py-3">ल्याब नं</th><th className="px-6 py-3">नतिजा</th></tr>
+                                  <tr><th className="px-6 py-3">मिति</th><th className="px-6 py-3">बिरामी</th><th className="px-6 py-3">महिना</th><th className="px-6 py-3">ल्याब नं</th><th className="px-6 py-3">नतिजा</th></tr>
                               </thead>
                               <tbody className="divide-y">
                                   {allReportsHistory.map((item, idx) => (
@@ -515,10 +582,13 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                                           <td className="px-6 py-4 text-xs font-nepali">{item.report.dateNepali}</td>
                                           <td className="px-6 py-4">
                                               <div className="font-bold">{item.patient.name}</div>
-                                              <div className="text-[10px] text-slate-400">{item.patient.patientId}</div>
+                                              <div className="text-[10px] text-slate-400">{item.patient.patientId} | {item.patient.age} Yrs | {item.patient.address} | {item.patient.phone}</div>
                                           </td>
+                                          <td className="px-6 py-4 text-xs font-bold">Month {item.report.month}</td>
                                           <td className="px-6 py-4 font-mono">{item.report.labNo}</td>
-                                          <td className="px-6 py-4 font-bold">{item.report.result}</td>
+                                          <td className="px-6 py-4 font-bold">
+                                              {item.report.result.includes('Positive') ? (item.report.result.match(/\(([^)]+)\)/)?.[1] || 'Pos') : 'Neg'}
+                                          </td>
                                       </tr>
                                   ))}
                               </tbody>
@@ -548,7 +618,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                                 <tr key={p.id} className="hover:bg-orange-50/50">
                                     <td className="px-6 py-4">
                                         <div className="font-bold">{p.name}</div>
-                                        <div className="text-[10px] text-slate-400">{p.patientId}</div>
+                                        <div className="text-[10px] text-slate-400">{p.patientId} | {p.age} Yrs | {p.address} | {p.phone}</div>
                                     </td>
                                     <td className="px-6 py-4"><span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-bold">{p.reason}</span></td>
                                     <td className="px-6 py-4 text-right">
@@ -601,6 +671,54 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                           <button type="submit" className="bg-indigo-600 text-white px-8 py-2 rounded-xl font-bold shadow-lg">सुरक्षित गर्नुहोस्</button>
                       </div>
                   </form>
+              </div>
+          </div>
+      )}
+      {selectedPatientForDetails && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm" onClick={() => setSelectedPatientForDetails(null)}></div>
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative animate-in zoom-in-95">
+                  <div className="p-6 border-b bg-indigo-50 text-indigo-800 flex justify-between items-center">
+                      <h3 className="font-bold font-nepali">बिरामीको विवरण ({selectedPatientForDetails.name})</h3>
+                      <button onClick={() => setSelectedPatientForDetails(null)}><X size={20}/></button>
+                  </div>
+                  <div className="p-6 space-y-4">
+                      <p><strong>ID:</strong> {selectedPatientForDetails.patientId}</p>
+                      <p><strong>नाम:</strong> {selectedPatientForDetails.name}</p>
+                      <p><strong>उमेर:</strong> {selectedPatientForDetails.age}</p>
+                      <p><strong>ठेगाना:</strong> {selectedPatientForDetails.address}</p>
+                      <p><strong>फोन नं:</strong> {selectedPatientForDetails.phone}</p>
+                      <div className="space-y-2">
+                          <p><strong>खकार परीक्षण तालिका:</strong></p>
+                          <ul className="list-disc pl-5">
+                              {getAllSputumFollowupDates(selectedPatientForDetails).map(item => (
+                                  <li key={item.month} className="flex items-center justify-between py-1 border-b border-slate-50 last:border-0">
+                                      <span className="text-sm">
+                                          {item.label}: <span className="font-mono text-xs text-slate-500">{item.date}</span> - <strong className={item.status === 'Completed' ? 'text-green-600' : 'text-amber-600'}>{item.status}</strong>
+                                      </span>
+                                      {item.status === 'Pending' && (
+                                          <button 
+                                              onClick={() => {
+                                                  setSelectedPatientForLab({ 
+                                                      patient: selectedPatientForDetails, 
+                                                      reason: item.label, 
+                                                      scheduleMonth: item.month 
+                                                  });
+                                                  setSelectedPatientForDetails(null);
+                                              }}
+                                              className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-lg hover:bg-indigo-100 font-bold transition-colors"
+                                          >
+                                              प्रविष्टि
+                                          </button>
+                                      )}
+                                  </li>
+                              ))}
+                          </ul>
+                      </div>
+                  </div>
+                  <div className="p-6 border-t flex justify-end">
+                      <button onClick={() => setSelectedPatientForDetails(null)} className="bg-indigo-600 text-white px-8 py-2 rounded-xl font-bold shadow-lg">बन्द गर्नुहोस्</button>
+                  </div>
               </div>
           </div>
       )}
