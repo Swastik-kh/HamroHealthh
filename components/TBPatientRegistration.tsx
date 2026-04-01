@@ -2,15 +2,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Save, RotateCcw, Activity, UserPlus, List, Phone, MapPin, 
-  Calendar, FileDigit, User, Stethoscope, Users, TrendingUp, 
+  Calendar, FileDigit, User as UserIcon, Stethoscope, Users, TrendingUp, 
   FlaskConical, AlertCircle, X, ChevronRight, Microscope, 
-  CheckCircle2, Eye, Search, ClipboardList, History, Clock, Trash2, Pencil, Scale, Pill
+  CheckCircle2, Eye, Search, ClipboardList, History, Clock, Trash2, Pencil, Scale, Pill, MoreVertical
 } from 'lucide-react';
 import { Input } from './Input';
 import { Select } from './Select';
 import { NepaliDatePicker } from './NepaliDatePicker';
-import { Option } from '../types/coreTypes'; // Corrected import path
-import { TBPatient, TBReport } from '../types/healthTypes'; // Corrected import path
+import { Option, User } from '../types/coreTypes';
+import { TBPatient, TBReport, InterFacilityRequest } from '../types/healthTypes'; // Corrected import path
 
 // @ts-ignore
 import NepaliDate from 'nepali-date-converter';
@@ -19,22 +19,32 @@ import NepaliDate from 'nepali-date-converter';
 interface TBPatientRegistrationProps {
   currentFiscalYear: string;
   patients: TBPatient[]; // Now comes from props
+  interFacilityRequests: InterFacilityRequest[];
+  allUsers: User[];
+  currentUser: User | null;
   onAddPatient: (patient: TBPatient) => void;
   onUpdatePatient: (patient: TBPatient) => void;
   onDeletePatient: (patientId: string) => void;
+  onAddInterFacilityRequest: (req: InterFacilityRequest) => void;
+  onUpdateInterFacilityRequest: (req: InterFacilityRequest) => void;
 }
 
 export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({ 
   currentFiscalYear, 
   patients = [], // Defensive default value: ensures 'patients' is always an array
+  interFacilityRequests: globalInterFacilityRequests = [],
+  allUsers = [],
+  currentUser,
   onAddPatient, 
   onUpdatePatient,
-  onDeletePatient
+  onDeletePatient,
+  onAddInterFacilityRequest,
+  onUpdateInterFacilityRequest
 }) => {
   const [activeTab, setActiveTab] = useState<'TB' | 'Leprosy'>('TB');
   const [showSputumModal, setShowSputumModal] = useState(false);
   const [showReportCenter, setShowReportCenter] = useState(false);
-  const [reportCenterTab, setReportCenterTab] = useState<'Recent' | 'History'>('Recent');
+  const [reportCenterTab, setReportCenterTab] = useState<'Recent' | 'History' | 'InterFacility'>('Recent');
   const [searchTerm, setSearchTerm] = useState('');
   const [editingPatientId, setEditingPatientId] = useState<string | null>(null); // For editing existing patients
   
@@ -48,6 +58,27 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
     result: '',
     grading: ''
   });
+
+  const [showInterFacilityModal, setShowInterFacilityModal] = useState(false);
+  const [selectedPatientForInterFacility, setSelectedPatientForInterFacility] = useState<TBPatient | null>(null);
+  const [interFacilityFormData, setInterFacilityFormData] = useState({
+    month: 0,
+    targetPalikaId: '',
+    targetPalikaName: '',
+    targetFacilityId: '',
+    targetFacilityName: ''
+  });
+  const [activeMenuPatientId, setActiveMenuPatientId] = useState<string | null>(null);
+  const [selectedInterFacilityRequest, setSelectedInterFacilityRequest] = useState<{patient: TBPatient, request: InterFacilityRequest} | null>(null);
+
+  // Filter Palikas (Users with role ADMIN or SUPER_ADMIN)
+  const palikaOptions = useMemo(() => {
+    return allUsers
+      .filter(u => u.role === 'ADMIN' || u.role === 'SUPER_ADMIN')
+      .map(u => ({ id: u.id, label: u.organizationName, value: u.id }));
+  }, [allUsers]);
+
+  // Removed facilityOptions as it's no longer needed
 
   const getAllSputumFollowupDates = (p: TBPatient) => {
     if (p.serviceType !== 'TB') return [];
@@ -244,6 +275,17 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
 
   const patientsWithNewReports = useMemo(() => (patients || []).filter(p => p.newReportAvailable), [patients]); // Defensive check
   const newReportCount = patientsWithNewReports.length;
+
+  // Memoized filtered requests for the current facility
+  const interFacilityRequestsForMe = useMemo(() => {
+    if (!currentUser) return [];
+    return globalInterFacilityRequests.filter(req => 
+      (req.targetFacilityId === currentUser.id || req.targetFacilityId === currentUser.parentId) && req.status === 'Pending'
+    ).map(req => {
+      const patient = patients.find(p => p.id === req.patientId);
+      return { req, patient };
+    }).filter(item => item.patient !== undefined) as {req: InterFacilityRequest, patient: TBPatient}[];
+  }, [globalInterFacilityRequests, currentUser, patients]);
   
   // FIX: Rewritten allReportsHistory with robust checks
   const allReportsHistory = useMemo(() => {
@@ -388,6 +430,103 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
       alert("ल्याब रिपोर्ट सफलतापूर्वक प्रविष्ट भयो!");
   };
 
+  const handleInterFacilitySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPatientForInterFacility || !currentUser) return;
+
+    const newRequest: InterFacilityRequest = {
+      id: Date.now().toString(),
+      patientId: selectedPatientForInterFacility.id,
+      patientName: selectedPatientForInterFacility.name,
+      month: interFacilityFormData.month,
+      requestDate: new Date().toISOString().split('T')[0],
+      requestDateBs: todayBs,
+      status: 'Pending',
+      targetPalikaId: interFacilityFormData.targetPalikaId,
+      targetPalikaName: interFacilityFormData.targetPalikaName,
+      targetFacilityId: interFacilityFormData.targetPalikaId, // Send to Palika
+      targetFacilityName: interFacilityFormData.targetPalikaName, // Send to Palika
+      sourceOrgId: currentUser.id,
+      sourceOrgName: currentUser.organizationName
+    };
+
+    // Add to global requests
+    onAddInterFacilityRequest(newRequest);
+
+    // Also add to patient's local record for history
+    const updatedPatient = {
+      ...selectedPatientForInterFacility,
+      interFacilityRequests: [...(selectedPatientForInterFacility.interFacilityRequests || []), newRequest]
+    };
+    onUpdatePatient(updatedPatient);
+
+    setShowInterFacilityModal(false);
+    setSelectedPatientForInterFacility(null);
+    setInterFacilityFormData({
+      month: 0,
+      targetPalikaId: '',
+      targetPalikaName: '',
+      targetFacilityId: '',
+      targetFacilityName: ''
+    });
+    alert('अन्तर संस्था अनुरोध सफलतापूर्वक पठाइयो।');
+  };
+
+  const handleInterFacilityReportSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedInterFacilityRequest || !currentUser) return;
+
+    const { patient, request } = selectedInterFacilityRequest;
+    
+    const report: TBReport = {
+      id: Date.now().toString(),
+      month: request.month,
+      testDate: labFormData.testDate,
+      date: labFormData.testDate,
+      labNo: labFormData.labNo,
+      result: labFormData.result === 'Positive' ? `${labFormData.result} (${labFormData.grading})` : labFormData.result,
+      grading: labFormData.grading,
+      isInterFacility: true,
+      reportingOrgId: currentUser.id,
+      reportingOrgName: currentUser.organizationName
+    };
+
+    // Update global request status
+    const updatedRequest: InterFacilityRequest = {
+      ...request,
+      status: 'Completed',
+      report: report
+    };
+    onUpdateInterFacilityRequest(updatedRequest);
+
+    // Update patient record
+    const updatedPatientRaw = {
+      ...patient,
+      completedSchedule: [...new Set([...(patient.completedSchedule || []), request.month])],
+      newReportAvailable: true,
+      latestResult: report.result,
+      latestReportMonth: request.month,
+      reports: [report, ...(patient.reports || [])].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+      // Also update the request in patient's history
+      interFacilityRequests: (patient.interFacilityRequests || []).map(r => 
+        r.id === request.id ? updatedRequest : r
+      )
+    };
+
+    const updatedPatient = JSON.parse(JSON.stringify(updatedPatientRaw));
+    onUpdatePatient(updatedPatient);
+
+    setSelectedInterFacilityRequest(null);
+    setLabFormData({
+      testDate: new Date().toISOString().split('T')[0],
+      testDateNepali: '',
+      labNo: '',
+      result: '',
+      grading: ''
+    });
+    alert('रिपोर्ट सफलतापूर्वक प्रविष्ट गरियो।');
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
       {/* Header & Tabs */}
@@ -414,7 +553,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
         </div>
 
         <div onClick={() => setShowSputumModal(true)} className="bg-white p-4 rounded-xl border border-orange-200 shadow-sm flex items-center justify-between cursor-pointer hover:bg-orange-50 transition-all group">
-            <div><p className="text-slate-500 text-xs font-bold font-nepali mb-1">खकार परीक्षण अनुरोध</p><h3 className="text-2xl font-black text-orange-600">{patientsNeedingSputum.length}</h3></div>
+            <div><p className="text-slate-500 text-xs font-bold font-nepali mb-1">खकार परीक्षण अनुरोध</p><h3 className="text-2xl font-black text-orange-600">{patientsNeedingSputum.length + interFacilityRequestsForMe.length}</h3></div>
             <div className="bg-orange-100 p-3 rounded-lg text-orange-600 group-hover:scale-110 transition-transform"><FlaskConical size={20} /></div>
         </div>
 
@@ -440,7 +579,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
               </div>
           </div>
 
-          <Input label="बिरामीको नाम" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required icon={<User size={18}/>} />
+          <Input label="बिरामीको नाम" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required icon={<UserIcon size={18}/>} />
           
           <div className="grid grid-cols-2 gap-4">
             <Select label="लिङ्ग" options={[{id:'m',label:'पुरुष (Male)',value:'Male'},{id:'f',label:'महिला (Female)',value:'Female'},{id:'o',label:'अन्य (Other)',value:'Other'}]} value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value as any})} required />
@@ -551,7 +690,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
       </div>
 
       {/* Patient List */}
-      <div className="bg-white border rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white border rounded-2xl shadow-sm overflow-visible">
           <div className="p-4 bg-slate-50 border-b flex justify-between items-center">
               <h3 className="font-bold text-slate-700 font-nepali">हालै दर्ता भएका बिरामीहरू ({activeTab})</h3>
               <div className="relative w-64">
@@ -608,10 +747,40 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                               </div>
                           </td>
                           <td className="px-6 py-4 text-xs text-slate-500 font-nepali">{p.registrationDate}</td>
-                          <td className="px-6 py-4 text-right">
+                          <td className="px-6 py-4 text-right relative">
                               <div className="flex justify-end gap-2">
-                                  <button onClick={() => handleEditPatient(p)} className="text-indigo-400 hover:text-indigo-600 p-1.5 rounded-full hover:bg-indigo-50 transition-colors" title="Edit Patient"><Pencil size={18}/></button>
-                                  <button onClick={() => handleDeletePatient(p.id, p.name)} className="text-red-400 hover:text-red-600 p-1.5 rounded-full hover:bg-red-50 transition-colors" title="Delete Patient"><Trash2 size={18}/></button>
+                                  <button onClick={() => {
+                                      setActiveMenuPatientId(activeMenuPatientId === p.id ? null : p.id);
+                                  }} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-50 transition-colors">
+                                      <MoreVertical size={18}/>
+                                  </button>
+                                  
+                                  {activeMenuPatientId === p.id && (
+                                      <div className="absolute right-14 top-4 z-10 bg-white border rounded-xl shadow-xl py-2 w-48 animate-in fade-in zoom-in-95">
+                                          <button onClick={() => {
+                                              handleEditPatient(p);
+                                              setActiveMenuPatientId(null);
+                                          }} className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                                              <Pencil size={14}/> सम्पादन गर्नुहोस्
+                                          </button>
+                                          {activeTab === 'TB' && (
+                                            <button onClick={() => {
+                                                setSelectedPatientForInterFacility(p);
+                                                setShowInterFacilityModal(true);
+                                                setActiveMenuPatientId(null);
+                                            }} className="w-full text-left px-4 py-2 text-xs font-bold text-indigo-600 hover:bg-indigo-50 flex items-center gap-2">
+                                                <Microscope size={14}/> अन्तर संस्था अनुरोध
+                                            </button>
+                                          )}
+                                          <div className="border-t my-1"></div>
+                                          <button onClick={() => {
+                                              handleDeletePatient(p.id, p.name);
+                                              setActiveMenuPatientId(null);
+                                          }} className="w-full text-left px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-2">
+                                              <Trash2 size={14}/> हटाउनुहोस्
+                                          </button>
+                                      </div>
+                                  )}
                               </div>
                           </td>
                       </tr>
@@ -639,6 +808,9 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                       </button>
                       <button onClick={() => setReportCenterTab('History')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-all ${reportCenterTab === 'History' ? 'bg-white text-indigo-600 border-b-2 border-indigo-600' : 'bg-slate-50 text-slate-400'}`}>
                           <History size={16}/> रिपोर्ट इतिहास ({allReportsHistory.length})
+                      </button>
+                      <button onClick={() => setReportCenterTab('InterFacility')} className={`flex-1 py-3 text-sm font-bold flex items-center justify-center gap-2 transition-all ${reportCenterTab === 'InterFacility' ? 'bg-white text-orange-600 border-b-2 border-orange-600' : 'bg-slate-50 text-slate-400'}`}>
+                          <MapPin size={16}/> अन्तर संस्था अनुरोधहरू ({interFacilityRequestsForMe.length})
                       </button>
                   </div>
 
@@ -674,7 +846,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                                   {patientsWithNewReports.length === 0 && <tr><td colSpan={5} className="p-12 text-center text-slate-400 italic">कुनै नयाँ रिपोर्ट छैन।</td></tr>}
                               </tbody>
                           </table>
-                      ) : (
+                      ) : reportCenterTab === 'History' ? (
                           <table className="w-full text-sm text-left">
                               <thead className="bg-slate-50 text-slate-600 font-bold sticky top-0">
                                   <tr><th className="px-6 py-3">मिति</th><th className="px-6 py-3">बिरामी</th><th className="px-6 py-3">महिना</th><th className="px-6 py-3">ल्याब नं</th><th className="px-6 py-3">नतिजा</th></tr>
@@ -694,6 +866,36 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                                           </td>
                                       </tr>
                                   ))}
+                                  {allReportsHistory.length === 0 && <tr><td colSpan={5} className="p-12 text-center text-slate-400 italic">कुनै रिपोर्ट इतिहास छैन।</td></tr>}
+                              </tbody>
+                          </table>
+                      ) : (
+                          <table className="w-full text-sm text-left">
+                              <thead className="bg-slate-50 text-slate-600 font-bold sticky top-0">
+                                  <tr><th className="px-6 py-3">अनुरोध मिति</th><th className="px-6 py-3">बिरामी</th><th className="px-6 py-3">महिना</th><th className="px-6 py-3">पठाउने संस्था</th><th className="px-6 py-3 text-right">कार्य</th></tr>
+                              </thead>
+                              <tbody className="divide-y">
+                                  {interFacilityRequestsForMe.map((item, idx) => (
+                                      <tr key={idx} className="hover:bg-slate-50">
+                                          <td className="px-6 py-4 text-xs font-nepali">{item.req.requestDateBs}</td>
+                                          <td className="px-6 py-4">
+                                              <div className="font-bold">{item.patient.name}</div>
+                                              <div className="text-[10px] text-slate-400">{item.patient.patientId} | {item.patient.age} Yrs | {item.patient.address} | {item.patient.phone}</div>
+                                          </td>
+                                          <td className="px-6 py-4 text-xs font-bold text-orange-600">Month {item.req.month}</td>
+                                          <td className="px-6 py-4 text-xs font-bold">
+                                              <div className="font-bold">{item.req.sourceOrgName}</div>
+                                              <div className="text-[10px] text-slate-400">{item.req.targetPalikaName}</div>
+                                          </td>
+                                          <td className="px-6 py-4 text-right">
+                                              <button onClick={() => {
+                                                  setSelectedInterFacilityRequest(item);
+                                                  setLabFormData({testDate: new Date().toISOString().split('T')[0], testDateNepali: '', labNo: '', result: '', grading: ''});
+                                              }} className="bg-orange-600 text-white px-4 py-1 rounded-lg text-xs font-bold">रिपोर्ट प्रविष्ट</button>
+                                          </td>
+                                      </tr>
+                                  ))}
+                                  {interFacilityRequestsForMe.length === 0 && <tr><td colSpan={5} className="p-12 text-center text-slate-400 italic">कुनै अन्तर संस्था अनुरोध छैन।</td></tr>}
                               </tbody>
                           </table>
                       )}
@@ -732,7 +934,22 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                                     </td>
                                 </tr>
                             ))}
-                            {patientsNeedingSputum.length === 0 && <tr><td colSpan={3} className="p-12 text-center text-slate-400 italic">हाल कुनै परीक्षण आवश्यक छैन।</td></tr>}
+                            {interFacilityRequestsForMe.map(item => (
+                                <tr key={item.req.id} className="hover:bg-orange-50/50">
+                                    <td className="px-6 py-4">
+                                        <div className="font-bold">{item.patient.name}</div>
+                                        <div className="text-[10px] text-slate-400">{item.patient.patientId} | {item.patient.age} Yrs | {item.patient.address} | {item.patient.phone}</div>
+                                    </td>
+                                    <td className="px-6 py-4"><span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-bold">अन्तर संस्था: {item.req.sourceOrgName} (Month {item.req.month})</span></td>
+                                    <td className="px-6 py-4 text-right">
+                                        <button onClick={() => {
+                                            setSelectedInterFacilityRequest(item);
+                                            setLabFormData({testDate: new Date().toISOString().split('T')[0], testDateNepali: '', labNo: '', result: '', grading: ''});
+                                        }} className="bg-orange-600 text-white px-4 py-1 rounded-lg text-xs font-bold">रिपोर्ट प्रविष्ट</button>
+                                    </td>
+                                </tr>
+                            ))}
+                            {patientsNeedingSputum.length === 0 && interFacilityRequestsForMe.length === 0 && <tr><td colSpan={3} className="p-12 text-center text-slate-400 italic">हाल कुनै परीक्षण आवश्यक छैन।</td></tr>}
                         </tbody>
                     </table>
                 </div>
@@ -780,7 +997,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
       {selectedPatientForDetails && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
               <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm" onClick={() => setSelectedPatientForDetails(null)}></div>
-              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative animate-in zoom-in-95">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden relative animate-in zoom-in-95">
                   <div className="p-6 border-b bg-indigo-50 text-indigo-800 flex justify-between items-center">
                       <h3 className="font-bold font-nepali">बिरामीको विवरण ({selectedPatientForDetails.name})</h3>
                       <button onClick={() => setSelectedPatientForDetails(null)}><X size={20}/></button>
@@ -873,6 +1090,96 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                   </div>
               </div>
           </div>
+      )}
+
+      {/* Inter-facility Request Modal */}
+      {showInterFacilityModal && selectedPatientForInterFacility && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm" onClick={() => setShowInterFacilityModal(false)}></div>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative animate-in zoom-in-95">
+                <div className="p-6 border-b bg-indigo-50 text-indigo-800 flex justify-between items-center">
+                    <h3 className="font-bold font-nepali">अन्तर संस्था खकार परीक्षण अनुरोध ({selectedPatientForInterFacility.name})</h3>
+                    <button onClick={() => setShowInterFacilityModal(false)}><X size={20}/></button>
+                </div>
+                <form onSubmit={handleInterFacilitySubmit} className="p-6 space-y-4">
+                    <Select 
+                      label="परीक्षण महिना (Month)" 
+                      options={[
+                        {id:'m0', label:'Month 0', value:'0'},
+                        {id:'m2', label:'Month 2', value:'2'},
+                        {id:'m3', label:'Month 3', value:'3'},
+                        {id:'m5', label:'Month 5', value:'5'},
+                        {id:'m6', label:'Month 6', value:'6'}
+                      ]} 
+                      value={interFacilityFormData.month.toString()} 
+                      onChange={e => setInterFacilityFormData({...interFacilityFormData, month: parseInt(e.target.value)})} 
+                      required 
+                    />
+                    
+                    <Select
+                      label="पालिका छनोट गर्नुहोस्"
+                      value={interFacilityFormData.targetPalikaId}
+                      onChange={(e) => {
+                        const selected = palikaOptions.find(o => o.value === e.target.value);
+                        setInterFacilityFormData({
+                          ...interFacilityFormData, 
+                          targetPalikaId: e.target.value,
+                          targetPalikaName: selected?.label || ''
+                        });
+                      }}
+                      options={[{ id: '', label: 'पालिका छान्नुहोस्', value: '' }, ...palikaOptions]}
+                      icon={<MapPin size={18} />}
+                    />
+
+                    <div className="pt-4 border-t flex justify-end gap-3">
+                        <button type="button" onClick={() => setShowInterFacilityModal(false)} className="px-6 py-2 text-slate-500 font-bold">रद्द</button>
+                        <button type="submit" disabled={!interFacilityFormData.targetPalikaId} className="bg-indigo-600 text-white px-8 py-2 rounded-xl font-bold shadow-lg disabled:opacity-50">अनुरोध पठाउनुहोस्</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+      )}
+
+      {/* Inter-facility Report Entry Modal */}
+      {selectedInterFacilityRequest && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm" onClick={() => setSelectedInterFacilityRequest(null)}></div>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative animate-in zoom-in-95">
+                <div className="p-6 border-b bg-orange-50 text-orange-800 flex justify-between items-center">
+                    <h3 className="font-bold font-nepali">अन्तर संस्था रिपोर्ट प्रविष्टि ({selectedInterFacilityRequest.patient.name})</h3>
+                    <button onClick={() => setSelectedInterFacilityRequest(null)}><X size={20}/></button>
+                </div>
+                <form onSubmit={handleInterFacilityReportSubmit} className="p-6 space-y-4">
+                    <div className="bg-orange-50 p-3 rounded-lg border border-orange-100 text-xs text-orange-800 mb-4">
+                        <div className="font-bold">अनुरोध विवरण:</div>
+                        <div>महिना: Month {selectedInterFacilityRequest.request.month}</div>
+                        <div>पठाउने संस्था: {selectedInterFacilityRequest.request.sourceOrgName} ({selectedInterFacilityRequest.request.targetPalikaName})</div>
+                    </div>
+                    <Input label="परीक्षण मिति" type="date" value={labFormData.testDate} onChange={e => setLabFormData({...labFormData, testDate: e.target.value})} required />
+                    <Input label="ल्याब नम्बर" placeholder="Lab No." value={labFormData.labNo} onChange={e => setLabFormData({...labFormData, labNo: e.target.value})} required />
+                    <Select 
+                        label="नतिजा" 
+                        options={[{id:'neg', label:'Negative', value:'Negative'}, {id:'pos', label:'Positive', value:'Positive'}]} 
+                        value={labFormData.result} 
+                        onChange={e => setLabFormData({...labFormData, result: e.target.value})} 
+                        required 
+                    />
+                    {labFormData.result === 'Positive' && (
+                        <Select 
+                            label="Grading" 
+                            options={[{id:'1', label:'+', value:'+'}, {id:'2', label:'++', value:'++'}, {id:'3', label:'+++', value:'+++'}, {id:'sc', label:'Scanty', value:'Scanty'}]} 
+                            value={labFormData.grading} 
+                            onChange={e => setLabFormData({...labFormData, grading: e.target.value})} 
+                            required 
+                        />
+                    )}
+                    <div className="pt-4 border-t flex justify-end gap-3">
+                        <button type="button" onClick={() => setSelectedInterFacilityRequest(null)} className="px-6 py-2 text-slate-500 font-bold">रद्द</button>
+                        <button type="submit" className="bg-orange-600 text-white px-8 py-2 rounded-xl font-bold shadow-lg">रिपोर्ट सुरक्षित गर्नुहोस्</button>
+                    </div>
+                </form>
+            </div>
+        </div>
       )}
     </div>
   );

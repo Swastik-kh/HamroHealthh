@@ -36,11 +36,38 @@ export interface RabiesPatient {
 }
 
 export interface TBReport {
+  id?: string;
   month: number;
   result: string;
   labNo: string;
   date: string;
   dateNepali?: string;
+  testDate?: string;
+  grading?: string;
+  isInterFacility?: boolean;
+  reportingOrgId?: string;
+  reportingOrgName?: string;
+}
+
+export interface InterFacilityRequest {
+  id: string;
+  patientId: string;
+  patientName: string;
+  month: number;
+  requestDate: string;
+  requestDateBs: string;
+  targetPalikaId?: string; // UID of the parent Palika
+  targetPalikaName?: string;
+  targetFacilityId: string; // UID of the target facility
+  targetFacilityName: string;
+  sourceOrgName: string; // Name of the requesting facility
+  sourceOrgId: string; // UID of the requesting facility
+  status: 'Pending' | 'Completed';
+  report?: TBReport;
+  result?: string;
+  labNo?: string;
+  completedDate?: string;
+  completedDateBs?: string;
 }
 
 export interface TBPatient {
@@ -68,6 +95,7 @@ export interface TBPatient {
   reports: TBReport[];
   fiscalYear: string;
   status?: 'Active' | 'Transfer Out' | 'Completed' | 'Died' | 'Loss to Follow-up';
+  interFacilityRequests?: InterFacilityRequest[];
 }
 
 export interface GarbhawatiPatient {

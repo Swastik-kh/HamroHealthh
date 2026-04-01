@@ -12,7 +12,7 @@ import {
 import { APP_NAME, FISCAL_YEARS } from '../constants';
 import { DashboardProps } from '../types/dashboardTypes'; 
 import { PurchaseOrderEntry, InventoryItem, MagFormEntry, StockEntryRequest, DakhilaPratibedanEntry } from '../types/inventoryTypes';
-import { User, LeaveApplication, LeaveStatus, Darta, Chalani, BharmanAdeshEntry, GarbhawotiRecord, PrasutiRecord, UttarPrasutiRecord, ServiceSeekerRecord, OPDRecord, EmergencyRecord, CBIMNCIRecord, BillingRecord, ServiceItem, LabReport, DispensaryRecord, PariwarSewaRecord, XRayRecord, ECGRecord, USGRecord, PhysiotherapyRecord, IPDRecord } from '../types';
+import { User, LeaveApplication, LeaveStatus, Darta, Chalani, BharmanAdeshEntry, GarbhawotiRecord, PrasutiRecord, UttarPrasutiRecord, ServiceSeekerRecord, OPDRecord, EmergencyRecord, CBIMNCIRecord, BillingRecord, ServiceItem, LabReport, DispensaryRecord, PariwarSewaRecord, XRayRecord, ECGRecord, USGRecord, PhysiotherapyRecord, IPDRecord, InterFacilityRequest } from '../types';
 import { UserManagement } from './UserManagement';
 import { ChangePassword } from './ChangePassword';
 import { TBPatientRegistration } from './TBPatientRegistration';
@@ -127,6 +127,9 @@ interface ExtendedDashboardProps extends DashboardProps {
   ipdRecords: IPDRecord[];
   onSaveIPDRecord: (record: IPDRecord) => void;
   onDeleteIPDRecord: (id: string) => void;
+  interFacilityRequests: InterFacilityRequest[];
+  onAddInterFacilityRequest: (req: InterFacilityRequest) => void;
+  onUpdateInterFacilityRequest: (req: InterFacilityRequest) => void;
   onUpdateReadNotifications: (userId: string, readIds: string[]) => void;
   activeOrgName: string;
   onSetActiveOrgName: (orgName: string) => void;
@@ -180,6 +183,7 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
   usgRecords = [], onSaveUSGRecord, onDeleteUSGRecord,
   physiotherapyRecords = [], onSavePhysiotherapyRecord, onDeletePhysiotherapyRecord,
   ipdRecords = [], onSaveIPDRecord, onDeleteIPDRecord,
+  interFacilityRequests = [], onAddInterFacilityRequest, onUpdateInterFacilityRequest,
   onUpdateReadNotifications,
   activeOrgName, onSetActiveOrgName, allUsers = []
 }) => {
@@ -717,7 +721,18 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
       case 'user_management': return <UserManagement currentUser={currentUser} users={users} onAddUser={onAddUser} onUpdateUser={onUpdateUser} onDeleteUser={onDeleteUser} isDbLocked={isDbLocked} />;
       case 'change_password': return <ChangePassword currentUser={currentUser} users={users} onChangePassword={onChangePassword} />;
       case 'store_setup': return <StoreSetup currentUser={currentUser} currentFiscalYear={currentFiscalYear} stores={stores} onAddStore={onAddStore} onUpdateStore={onUpdateStore} onDeleteStore={onDeleteStore} inventoryItems={inventoryItems} onUpdateInventoryItem={onUpdateInventoryItem} />;
-      case 'tb_leprosy': return <TBPatientRegistration currentFiscalYear={currentFiscalYear} patients={tbPatients} onAddPatient={onAddTbPatient} onUpdatePatient={onUpdateTbPatient} onDeletePatient={onDeleteTbPatient} />;
+      case 'tb_leprosy': return <TBPatientRegistration 
+                                  currentFiscalYear={currentFiscalYear} 
+                                  patients={tbPatients} 
+                                  interFacilityRequests={interFacilityRequests}
+                                  allUsers={allUsers}
+                                  currentUser={currentUser}
+                                  onAddPatient={onAddTbPatient} 
+                                  onUpdatePatient={onUpdateTbPatient} 
+                                  onDeletePatient={onDeleteTbPatient} 
+                                  onAddInterFacilityRequest={onAddInterFacilityRequest}
+                                  onUpdateInterFacilityRequest={onUpdateInterFacilityRequest}
+                                />;
       case 'rabies': return <RabiesRegistration currentFiscalYear={currentFiscalYear} patients={rabiesPatients} onAddPatient={onAddRabiesPatient} onUpdatePatient={onUpdatePatient} onDeletePatient={onDeletePatient} currentUser={currentUser} />;
       case 'report_rabies': return <RabiesReport currentFiscalYear={currentFiscalYear} currentUser={currentUser} patients={rabiesPatients} />;
       case 'report_cbimnci': return <CBIMNCIReport cbimnciRecords={cbimnciRecords} serviceSeekerRecords={serviceSeekerRecords} currentFiscalYear={currentFiscalYear} />;

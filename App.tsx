@@ -10,7 +10,7 @@ import {
   IssueReportEntry, FirmEntry, QuotationEntry, InventoryItem, Store, StockEntryRequest, 
   DakhilaPratibedanEntry, ReturnEntry, MarmatEntry, DhuliyaunaEntry, LogBookEntry, 
   DakhilaItem, TBPatient, GarbhawatiPatient, ChildImmunizationRecord, LeaveApplication, LeaveStatus, LeaveBalance, Darta, Chalani, BharmanAdeshEntry,
-  GarbhawotiRecord, PrasutiRecord, ServiceSeekerRecord, OPDRecord, EmergencyRecord, CBIMNCIRecord, BillingRecord, ServiceItem, LabReport, PariwarSewaRecord, XRayRecord, ECGRecord, USGRecord, PhysiotherapyRecord, IPDRecord, ItemEntry
+  GarbhawotiRecord, PrasutiRecord, ServiceSeekerRecord, OPDRecord, EmergencyRecord, CBIMNCIRecord, BillingRecord, ServiceItem, LabReport, PariwarSewaRecord, XRayRecord, ECGRecord, USGRecord, PhysiotherapyRecord, IPDRecord, ItemEntry, InterFacilityRequest
 } from './types';
 import { db } from './firebase';
 import { ref, onValue, set, remove, update, get, Unsubscribe, off, push } from "firebase/database";
@@ -92,6 +92,7 @@ const App: React.FC = () => {
   const [usgRecords, setUsgRecords] = useState<USGRecord[]>([]);
   const [physiotherapyRecords, setPhysiotherapyRecords] = useState<PhysiotherapyRecord[]>([]);
   const [ipdRecords, setIpdRecords] = useState<IPDRecord[]>([]);
+  const [interFacilityRequests, setInterFacilityRequests] = useState<InterFacilityRequest[]>([]);
   const [itemList, setItemList] = useState<ItemEntry[]>([]);
 
   const managedOrgs = useMemo(() => {
@@ -232,6 +233,18 @@ const App: React.FC = () => {
     setupOrgListener('ipdRecords', setIpdRecords);
     setupOrgListener('itemList', setItemList);
 
+    // Global Inter-Facility Requests Listener
+    const globalRequestsRef = ref(db, 'interFacilityRequests');
+    const unsubGlobalRequests = onValue(globalRequestsRef, (snap) => {
+        const data = snap.val();
+        const requests = data ? Object.keys(data).map(key => ({ ...data[key], id: key })) : [];
+        setInterFacilityRequests(requests);
+    }, (err) => {
+        console.error("Global requests listener error", err);
+    });
+
+    unsubscribes.push(unsubGlobalRequests);
+
     return () => unsubscribes.forEach(unsub => unsub());
   }, [currentUser, activeOrgName]);
 
@@ -243,6 +256,17 @@ const App: React.FC = () => {
       }
     }
   }, [allUsers, currentUser]);
+
+  const handleAddGlobal = async (sectionId: string, data: any) => {
+    const dbRef = ref(db, sectionId);
+    const newRef = push(dbRef);
+    await set(newRef, { ...data, id: newRef.key });
+  };
+
+  const handleUpdateGlobal = async (sectionId: string, data: any) => {
+    const dbRef = ref(db, `${sectionId}/${data.id}`);
+    await set(dbRef, data);
+  };
 
   const handleUpdateReadNotifications = async (userId: string, readIds: string[]) => {
     try {
@@ -1181,6 +1205,9 @@ const App: React.FC = () => {
     ipdRecords={ipdRecords}
     onSaveIPDRecord={handleSaveIPDRecord}
     onDeleteIPDRecord={handleDeleteIPDRecord}
+    interFacilityRequests={interFacilityRequests}
+    onAddInterFacilityRequest={(req) => handleAddGlobal('interFacilityRequests', req)}
+    onUpdateInterFacilityRequest={(req) => handleUpdateGlobal('interFacilityRequests', req)}
     itemList={itemList}
     onUpdateReadNotifications={handleUpdateReadNotifications}
     activeOrgName={activeOrgName}
