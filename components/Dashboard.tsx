@@ -73,6 +73,7 @@ import { GESIReport } from './GESIReport';
 import { GESIOPDReport } from './GESIOPDReport';
 import { GESICBIMNCIReport } from './GESICBIMNCIReport';
 import { MCHReport } from './MCHReport';
+import { MedicineStatusReport } from './MedicineStatusReport';
 // @ts-ignore
 import NepaliDate from 'nepali-date-converter';
 
@@ -476,7 +477,15 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
             { id: 'bida_abedan', label: 'बिदा आवेदन', icon: <Calendar size={16} /> },
           ]
         },
-        { id: 'tb_leprosy', label: 'क्षयरोग/कुष्ठरोग', icon: <Activity size={16} /> },  
+        { 
+          id: 'tb_leprosy_group', 
+          label: 'क्षयरोग/कुष्ठरोग', 
+          icon: <Activity size={16} />,
+          subItems: [
+            { id: 'tb_leprosy', label: 'बिरामी दर्ता', icon: <UserPlus size={16} /> },
+            { id: 'tb_medicine_status', label: 'औषधि अवस्था', icon: <Pill size={16} /> },
+          ]
+        },
         { id: 'khop_sewa', label: 'खोप सेवा', icon: <Baby size={16} /> }, 
         { id: 'rabies', label: 'रेबिज़ खोप क्लिनिक', icon: <Syringe size={16} /> }, 
         { 
@@ -749,6 +758,7 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
       case 'tb_leprosy': return <TBPatientRegistration 
                                   currentFiscalYear={currentFiscalYear} 
                                   patients={tbPatients} 
+                                  inventoryItems={inventoryItems}
                                   interFacilityRequests={interFacilityRequests}
                                   allUsers={allUsers}
                                   currentUser={currentUser}
@@ -758,6 +768,10 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
                                   onAddInterFacilityRequest={onAddInterFacilityRequest}
                                   onUpdateInterFacilityRequest={onUpdateInterFacilityRequest}
                                 />;
+      case 'tb_medicine_status': return <MedicineStatusReport 
+                                          patients={tbPatients} 
+                                          inventory={inventoryItems} 
+                                        />;
       case 'rabies': return <RabiesRegistration currentFiscalYear={currentFiscalYear} patients={rabiesPatients} onAddPatient={onAddRabiesPatient} onUpdatePatient={onUpdatePatient} onDeletePatient={onDeletePatient} currentUser={currentUser} />;
       case 'report_rabies': return <RabiesReport currentFiscalYear={currentFiscalYear} currentUser={currentUser} patients={rabiesPatients} />;
       case 'report_cbimnci': return <CBIMNCIReport cbimnciRecords={cbimnciRecords} serviceSeekerRecords={serviceSeekerRecords} currentFiscalYear={currentFiscalYear} />;

@@ -34,7 +34,14 @@ const PERMISSION_STRUCTURE = [
                     { id: 'bida_abedan', label: 'बिदा आवेदन (Leave Application)' },
                 ]
             },
-            { id: 'tb_leprosy', label: 'क्षयरोग/कुष्ठरोग (TB/Leprosy)' },
+            { 
+                id: 'tb_leprosy_group', 
+                label: 'क्षयरोग/कुष्ठरोग (TB/Leprosy)',
+                children: [
+                    { id: 'tb_leprosy', label: 'बिरामी दर्ता (Patient Registration)' },
+                    { id: 'tb_medicine_status', label: 'औषधि अवस्था (Medicine Status)' },
+                ]
+            },
             { id: 'khop_sewa', label: 'खोप सेवा (Vaccination Service)' }, 
             { id: 'rabies', label: 'रेबिज़ खोप क्लिनिक (Rabies Vaccine)' },
             { 

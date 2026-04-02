@@ -1134,7 +1134,31 @@ const App: React.FC = () => {
           issueReports={issueReports} onUpdateIssueReport={handleUpdateIssueReport}
           rabiesPatients={rabiesPatients} onAddRabiesPatient={(p) => set(getOrgRef(`rabiesPatients/${p.id}`), p)}
           onUpdatePatient={(p) => set(getOrgRef(`rabiesPatients/${p.id}`), p)} onDeletePatient={(id) => remove(getOrgRef(`rabiesPatients/${id}`))}
-          tbPatients={tbPatients} onAddTbPatient={(p) => set(getOrgRef(`tbPatients/${p.id}`), p)} onUpdateTbPatient={(p, sourceOrgName) => set(sourceOrgName ? ref(db, `orgData/${sourceOrgName.trim().replace(/[.#$[\]]/g, "_")}/tbPatients/${p.id}`) : getOrgRef(`tbPatients/${p.id}`), p)} onDeleteTbPatient={(id) => remove(getOrgRef(`tbPatients/${id}`))}
+          tbPatients={tbPatients} onAddTbPatient={(p) => set(getOrgRef(`tbPatients/${p.id}`), p)} onUpdateTbPatient={(p, sourceOrgName) => set(sourceOrgName ? ref(db, `orgData/${sourceOrgName.trim().replace(/[.#$[\]]/g, "_")}/tbPatients/${p.id}`) : getOrgRef(`tbPatients/${p.id}`), p)} 
+          onDeleteTbPatient={async (id) => {
+            try {
+              // 1. Remove associated inter-facility requests
+              const globalRequestsRef = ref(db, 'interFacilityRequests');
+              const snap = await get(globalRequestsRef);
+              if (snap.exists()) {
+                const requests = snap.val();
+                const updates: Record<string, any> = {};
+                Object.keys(requests).forEach(key => {
+                  if (requests[key].patientId === id) {
+                    updates[key] = null;
+                  }
+                });
+                if (Object.keys(updates).length > 0) {
+                  await update(globalRequestsRef, updates);
+                }
+              }
+              // 2. Remove the patient record
+              await remove(getOrgRef(`tbPatients/${id}`));
+            } catch (error) {
+              console.error("Error deleting patient and requests", error);
+              alert("बिरामीको विवरण हटाउन सकिएन।");
+            }
+          }}
           garbhawatiPatients={garbhawatiPatients} onAddGarbhawatiPatient={(p) => set(getOrgRef(`garbhawatiPatients/${p.id}`), p)} onUpdateGarbhawatiPatient={(p) => set(getOrgRef(`garbhawatiPatients/${p.id}`), p)} onDeleteGarbhawatiPatient={(id) => remove(getOrgRef(`garbhawatiPatients/${id}`))}
           bachhaImmunizationRecords={bachhaImmunizationRecords} onAddBachhaImmunizationRecord={(r) => set(getOrgRef(`bachhaImmunizationRecords/${r.id}`), r)} onUpdateBachhaImmunizationRecord={(r) => set(getOrgRef(`bachhaImmunizationRecords/${r.id}`), r)} onDeleteBachhaImmunizationRecord={(id) => remove(getOrgRef(`bachhaImmunizationRecords/${id}`))}
           firms={firms} onAddFirm={(f) => set(getOrgRef(`firms/${f.id}`), f)} quotations={quotations} onAddQuotation={(q) => set(getOrgRef(`quotations/${q.id}`), q)}

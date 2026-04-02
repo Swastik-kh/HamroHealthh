@@ -10,7 +10,10 @@ import { Input } from './Input';
 import { Select } from './Select';
 import { NepaliDatePicker } from './NepaliDatePicker';
 import { Option, User } from '../types/coreTypes';
-import { TBPatient, TBReport, InterFacilityRequest } from '../types/healthTypes'; // Corrected import path
+import { TBPatient, TBReport, InterFacilityRequest } from '../types/healthTypes';
+import { InventoryItem } from '../types/inventoryTypes';
+import { calculatePatientRequirements, MedicineRequirement } from '../lib/medicineUtils';
+import { MedicineStatusReport } from './MedicineStatusReport';
 
 // @ts-ignore
 import NepaliDate from 'nepali-date-converter';
@@ -19,6 +22,7 @@ import NepaliDate from 'nepali-date-converter';
 interface TBPatientRegistrationProps {
   currentFiscalYear: string;
   patients: TBPatient[]; // Now comes from props
+  inventoryItems: InventoryItem[];
   interFacilityRequests: InterFacilityRequest[];
   allUsers: User[];
   currentUser: User | null;
@@ -32,6 +36,7 @@ interface TBPatientRegistrationProps {
 export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({ 
   currentFiscalYear, 
   patients = [], // Defensive default value: ensures 'patients' is always an array
+  inventoryItems = [],
   interFacilityRequests: globalInterFacilityRequests = [],
   allUsers = [],
   currentUser,
@@ -70,6 +75,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
   });
   const [activeMenuPatientId, setActiveMenuPatientId] = useState<string | null>(null);
   const [selectedInterFacilityRequest, setSelectedInterFacilityRequest] = useState<{patient: TBPatient, request: InterFacilityRequest} | null>(null);
+  const [showMedicineStatusModal, setShowMedicineStatusModal] = useState(false);
 
   // Filter Palikas (Users with role ADMIN or SUPER_ADMIN)
   const palikaOptions = useMemo(() => {
@@ -357,6 +363,27 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
       // FIX: Access .report.date for sorting
       return history.sort((a, b) => new Date(b.report.date).getTime() - new Date(a.report.date).getTime());
   }, [patients]);
+
+  const medicineStats = useMemo(() => {
+    const activePatients = (patients || []).filter(p => (p.status === 'Active' || !p.status) && p.serviceType === activeTab);
+    const aggregate: Record<string, { totalRemaining: number, stock: number }> = {};
+    
+    activePatients.forEach(patient => {
+      const requirements = calculatePatientRequirements(patient, inventoryItems);
+      requirements.forEach(req => {
+        if (!aggregate[req.itemName]) {
+          aggregate[req.itemName] = { totalRemaining: 0, stock: req.availableStock };
+        }
+        aggregate[req.itemName].totalRemaining += req.remainingNeeded;
+      });
+    });
+    
+    return aggregate;
+  }, [patients, inventoryItems, activeTab]);
+
+  const lowStockMedicines = useMemo(() => {
+    return Object.entries(medicineStats).filter(([_, data]: [string, any]) => data.stock < data.totalRemaining);
+  }, [medicineStats]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -681,7 +708,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
       </div>
 
       {/* Stats Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="bg-white p-4 rounded-xl border shadow-sm flex items-center justify-between">
             <div><p className="text-slate-500 text-xs font-bold font-nepali mb-1">कुल दर्ता ({activeTab})</p><h3 className="text-2xl font-black text-slate-800">{(patients || []).filter(p => p.serviceType === activeTab && p.fiscalYear === currentFiscalYear).length}</h3></div> {/* Defensive check */}
             <div className="bg-blue-50 p-3 rounded-lg text-blue-600"><Users size={20} /></div>
@@ -720,6 +747,77 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
         <div onClick={() => { setShowReportCenter(true); setReportCenterTab('History'); }} className="bg-white p-4 rounded-xl border border-indigo-200 shadow-sm flex items-center justify-between cursor-pointer hover:bg-indigo-50 transition-all group">
             <div><p className="text-slate-500 text-xs font-bold font-nepali mb-1">रिपोर्ट इतिहास</p><h3 className="text-2xl font-black text-indigo-600">{allReportsHistory.length}</h3></div>
             <div className="bg-indigo-100 p-3 rounded-lg text-indigo-600 group-hover:scale-110 transition-transform"><History size={20} /></div>
+        </div>
+
+        <div onClick={() => setShowMedicineStatusModal(true)} className="bg-white p-4 rounded-xl border border-rose-200 shadow-sm flex items-center justify-between cursor-pointer hover:bg-rose-50 transition-all group">
+            <div>
+              <p className="text-slate-500 text-xs font-bold font-nepali mb-1">औषधिको अवस्था</p>
+              <div className="flex items-baseline gap-2">
+                <h3 className="text-2xl font-black text-rose-600">{lowStockMedicines.length > 0 ? `${lowStockMedicines.length} अपुग` : 'पर्याप्त'}</h3>
+              </div>
+            </div>
+            <div className="bg-rose-100 p-3 rounded-lg text-rose-600 group-hover:scale-110 transition-transform"><Pill size={20} /></div>
+        </div>
+      </div>
+
+      {/* Medicine Status Summary Card */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-blue-100 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+              <Pill size={18} className="text-blue-600" />
+              औषधि मौज्दात र आवश्यकता सारांश ({activeTab})
+            </h3>
+            <button onClick={() => setShowMedicineStatusModal(true)} className="text-xs font-bold text-blue-600 hover:underline">विस्तृत विवरण</button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {Object.entries(medicineStats).length === 0 ? (
+              <div className="sm:col-span-2 text-center py-4 text-slate-400 text-sm italic">कुनै औषधि विवरण उपलब्ध छैन।</div>
+            ) : (
+              (Object.entries(medicineStats) as [string, any][]).map(([name, data]) => (
+                <div key={name} className={`p-3 rounded-xl border ${data.stock < data.totalRemaining ? 'bg-red-50 border-red-100' : 'bg-slate-50 border-slate-100'}`}>
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-xs font-bold text-slate-700 truncate max-w-[150px]">{name}</span>
+                    {data.stock < data.totalRemaining ? (
+                      <span className="text-[10px] font-black text-red-600 bg-red-100 px-1.5 py-0.5 rounded uppercase">अपुग</span>
+                    ) : (
+                      <span className="text-[10px] font-black text-green-600 bg-green-100 px-1.5 py-0.5 rounded uppercase">पर्याप्त</span>
+                    )}
+                  </div>
+                  <div className="flex justify-between items-end">
+                    <div>
+                      <p className="text-[9px] text-slate-400 font-bold uppercase">बाँकी आवश्यकता</p>
+                      <p className="text-sm font-black text-slate-800">{data.totalRemaining}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[9px] text-slate-400 font-bold uppercase">मौज्दात</p>
+                      <p className={`text-sm font-black ${data.stock < data.totalRemaining ? 'text-red-600' : 'text-slate-800'}`}>{data.stock}</p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-indigo-600 to-blue-700 p-6 rounded-2xl text-white shadow-lg shadow-indigo-200 flex flex-col justify-between">
+          <div>
+            <h3 className="text-lg font-bold mb-1">औषधि व्यवस्थापन</h3>
+            <p className="text-indigo-100 text-xs">बिरामीको उपचारको लागि आवश्यक औषधिको मौज्दात सुनिश्चित गर्नुहोस्।</p>
+          </div>
+          <div className="mt-6 space-y-4">
+            <div className="flex items-center justify-between bg-white/10 p-3 rounded-xl backdrop-blur-sm">
+              <span className="text-xs font-medium">कुल औषधि प्रकार</span>
+              <span className="text-xl font-black">{Object.keys(medicineStats).length}</span>
+            </div>
+            <div className="flex items-center justify-between bg-white/10 p-3 rounded-xl backdrop-blur-sm">
+              <span className="text-xs font-medium">अपुग औषधि</span>
+              <span className="text-xl font-black text-orange-300">{lowStockMedicines.length}</span>
+            </div>
+            <button onClick={() => setShowMedicineStatusModal(true)} className="w-full py-3 bg-white text-indigo-600 rounded-xl font-bold text-sm shadow-sm hover:bg-indigo-50 transition-all active:scale-95">
+              विस्तृत रिपोर्ट हेर्नुहोस्
+            </button>
+          </div>
         </div>
       </div>
 
@@ -866,7 +964,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                   </tr>
               </thead>
               <tbody className="divide-y">
-                  {(patients || []).filter(p => p.fiscalYear === currentFiscalYear && p.serviceType === activeTab && (p.name.includes(searchTerm) || p.address.includes(searchTerm))).map(p => ( // Defensive check
+                  {(patients || []).filter(p => p.fiscalYear === currentFiscalYear && p.serviceType === activeTab && (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.address.toLowerCase().includes(searchTerm.toLowerCase()) || p.patientId.toLowerCase().includes(searchTerm.toLowerCase()))).map(p => ( // Defensive check
                       <tr key={p.id} className="hover:bg-slate-50">
                           <td className="px-6 py-4 font-mono font-bold text-indigo-600 text-xs">{p.patientId}</td>
                           <td className="px-6 py-4 cursor-pointer hover:bg-slate-100" onClick={() => setSelectedPatientForDetails(p)}>
@@ -911,30 +1009,36 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                                   </button>
                                   
                                   {activeMenuPatientId === p.id && (
-                                      <div className="absolute right-14 top-4 z-10 bg-white border rounded-xl shadow-xl py-2 w-48 animate-in fade-in zoom-in-95">
-                                          <button onClick={() => {
-                                              handleEditPatient(p);
-                                              setActiveMenuPatientId(null);
-                                          }} className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2">
-                                              <Pencil size={14}/> सम्पादन गर्नुहोस्
-                                          </button>
-                                          {activeTab === 'TB' && (
-                                            <button onClick={() => {
-                                                setSelectedPatientForInterFacility(p);
-                                                setShowInterFacilityModal(true);
-                                                setActiveMenuPatientId(null);
-                                            }} className="w-full text-left px-4 py-2 text-xs font-bold text-indigo-600 hover:bg-indigo-50 flex items-center gap-2">
-                                                <Microscope size={14}/> अन्तर संस्था अनुरोध
-                                            </button>
-                                          )}
-                                          <div className="border-t my-1"></div>
-                                          <button onClick={() => {
-                                              handleDeletePatient(p.id, p.name);
-                                              setActiveMenuPatientId(null);
-                                          }} className="w-full text-left px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-2">
-                                              <Trash2 size={14}/> हटाउनुहोस्
-                                          </button>
-                                      </div>
+                                      <>
+                                          <div 
+                                              className="fixed inset-0 z-[5]" 
+                                              onClick={() => setActiveMenuPatientId(null)}
+                                          ></div>
+                                          <div className="absolute right-14 top-4 z-10 bg-white border rounded-xl shadow-xl py-2 w-48 animate-in fade-in zoom-in-95">
+                                              <button onClick={() => {
+                                                  handleEditPatient(p);
+                                                  setActiveMenuPatientId(null);
+                                              }} className="w-full text-left px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                                                  <Pencil size={14}/> सम्पादन गर्नुहोस्
+                                              </button>
+                                              {activeTab === 'TB' && (
+                                                <button onClick={() => {
+                                                    setSelectedPatientForInterFacility(p);
+                                                    setShowInterFacilityModal(true);
+                                                    setActiveMenuPatientId(null);
+                                                }} className="w-full text-left px-4 py-2 text-xs font-bold text-indigo-600 hover:bg-indigo-50 flex items-center gap-2">
+                                                    <Microscope size={14}/> अन्तर संस्था अनुरोध
+                                                </button>
+                                              )}
+                                              <div className="border-t my-1"></div>
+                                              <button onClick={() => {
+                                                  handleDeletePatient(p.id, p.name);
+                                                  setActiveMenuPatientId(null);
+                                              }} className="w-full text-left px-4 py-2 text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-2">
+                                                  <Trash2 size={14}/> हटाउनुहोस्
+                                              </button>
+                                          </div>
+                                      </>
                                   )}
                               </div>
                           </td>
@@ -1168,12 +1272,12 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
       {selectedPatientForDetails && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
               <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm" onClick={() => setSelectedPatientForDetails(null)}></div>
-              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden relative animate-in zoom-in-95">
-                  <div className="p-6 border-b bg-indigo-50 text-indigo-800 flex justify-between items-center">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col relative animate-in zoom-in-95">
+                  <div className="p-6 border-b bg-indigo-50 text-indigo-800 flex justify-between items-center shrink-0">
                       <h3 className="font-bold font-nepali">बिरामीको विवरण ({selectedPatientForDetails.name})</h3>
                       <button onClick={() => setSelectedPatientForDetails(null)}><X size={20}/></button>
                   </div>
-                  <div className="p-6 space-y-4">
+                  <div className="p-6 space-y-4 overflow-y-auto flex-1">
                       <p><strong>ID:</strong> {selectedPatientForDetails.patientId}</p>
                       <p><strong>नाम:</strong> {selectedPatientForDetails.name}</p>
                       <p><strong>उमेर:</strong> {selectedPatientForDetails.age}</p>
@@ -1383,6 +1487,27 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                     </div>
                 </form>
             </div>
+        </div>
+      )}
+      {/* Medicine Status Modal */}
+      {showMedicineStatusModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+            <div className="p-4 border-b flex items-center justify-between bg-slate-50">
+              <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                <Pill size={20} className="text-blue-600" />
+                औषधि अवस्था विवरण (Medicine Status Report)
+              </h3>
+              <button onClick={() => setShowMedicineStatusModal(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors"><X size={20} /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <MedicineStatusReport 
+                patients={patients} 
+                inventory={inventoryItems} 
+                onDeletePatient={onDeletePatient}
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>
