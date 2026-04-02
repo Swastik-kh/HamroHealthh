@@ -23,9 +23,18 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Determine eligible members based on role (all users in the system)
+  // Determine eligible members based on role
   const eligibleMembers = React.useMemo(() => {
-    return allUsers.filter(u => u.id !== currentUser.id);
+    if (currentUser.role === 'SUPER_ADMIN') {
+      return allUsers.filter(u => u.id !== currentUser.id);
+    } else if (currentUser.role === 'HEALTH_SECTION') {
+      // Palika user sees all ADMINs under them
+      return allUsers.filter(u => u.role === 'ADMIN' && u.parentId === currentUser.id);
+    } else if (currentUser.role === 'ADMIN') {
+      // Admin sees all users in their organization
+      return allUsers.filter(u => u.organizationName === currentUser.organizationName && u.id !== currentUser.id);
+    }
+    return [];
   }, [allUsers, currentUser]);
 
   const filteredMembers = React.useMemo(() => {
