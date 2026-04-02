@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { User, ConferenceGroup, ConferenceMessage } from '../types';
 import { db, storage } from '../firebase';
 import { ref, onValue, push, set, remove, update, serverTimestamp } from 'firebase/database';
-import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { Users, MessageSquare, Plus, X, Send, Search, UserPlus, Paperclip, File, Download, Trash2, Loader2, Edit2, MoreVertical, ChevronLeft } from 'lucide-react';
+import imageCompression from 'browser-image-compression';
 // @ts-ignore
 import NepaliDate from 'nepali-date-converter';
 
@@ -27,6 +28,7 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
   const [showGroupMembers, setShowGroupMembers] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -165,16 +167,42 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
 
     if (selectedFile) {
       setIsUploading(true);
+      setUploadProgress(0);
       try {
-        const fileRef = storageRef(storage, `conferenceFiles/${selectedGroupId}/${Date.now()}_${selectedFile.name}`);
-        await uploadBytes(fileRef, selectedFile);
-        fileUrl = await getDownloadURL(fileRef);
-        fileName = selectedFile.name;
-        fileType = selectedFile.type;
+        let fileToUpload = selectedFile;
+        
+        // Compress image if it's an image
+        if (selectedFile.type.startsWith('image/')) {
+          const options = {
+            maxSizeMB: 1,
+            maxWidthOrHeight: 1920,
+            useWebWorker: true
+          };
+          fileToUpload = await imageCompression(selectedFile, options);
+        }
+
+        const fileRef = storageRef(storage, `conferenceFiles/${selectedGroupId}/${Date.now()}_${fileToUpload.name}`);
+        const uploadTask = uploadBytesResumable(fileRef, fileToUpload);
+
+        await new Promise<void>((resolve, reject) => {
+          uploadTask.on('state_changed', 
+            (snapshot) => {
+              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              setUploadProgress(Math.round(progress));
+            }, 
+            (error) => reject(error), 
+            () => resolve()
+          );
+        });
+
+        fileUrl = await getDownloadURL(uploadTask.snapshot.ref);
+        fileName = fileToUpload.name;
+        fileType = fileToUpload.type;
       } catch (error) {
         console.error("Error uploading file:", error);
         alert("फाइल अपलोड गर्न समस्या भयो।");
         setIsUploading(false);
+        setUploadProgress(0);
         return;
       }
     }
@@ -207,6 +235,7 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
     setNewMessage('');
     setSelectedFile(null);
     setIsUploading(false);
+    setUploadProgress(0);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -234,6 +263,26 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
     } catch (error) {
       console.error("Error deleting message:", error);
       alert("सन्देश मेटाउन समस्या भयो।");
+    }
+  };
+
+  const handleDownload = async (url: string, filename: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename || 'download';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error("Download failed, opening in new tab", error);
+      window.open(url, '_blank');
     }
   };
 
@@ -397,53 +446,62 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
                 const isImage = msg.fileType?.startsWith('image/');
                 
                 return (
-                  <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} group`}>
-                    <div className={`flex items-center gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                      {isMe && (
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                          <button 
-                            onClick={() => handleEditMessage(msg)}
-                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-full transition-colors"
-                            title="सम्पादन गर्नुहोस्"
-                          >
-                            <Edit2 size={14} />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteMessage(msg)}
-                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-slate-100 rounded-full transition-colors"
-                            title="मेटाउनुहोस्"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      )}
-                      <div className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-3 sm:px-4 py-2 ${isMe ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-800 rounded-tl-sm shadow-sm'}`}>
-                        {!isMe && <div className="text-[10px] font-bold text-indigo-600 mb-1">{sender?.fullName || 'Unknown'}</div>}
-                        
-                        {msg.fileUrl && (
-                          <div className="mb-2 mt-1">
-                            {isImage ? (
-                              <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer">
+                  <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} mb-2`}>
+                    <div className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-3 sm:px-4 py-2 ${isMe ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-800 rounded-tl-sm shadow-sm'}`}>
+                      {!isMe && <div className="text-[10px] font-bold text-indigo-600 mb-1">{sender?.fullName || 'Unknown'}</div>}
+                      
+                      {msg.fileUrl && (
+                        <div className="mb-2 mt-1">
+                          {isImage ? (
+                            <div className="relative group/image inline-block">
+                              <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="block">
                                 <img src={msg.fileUrl} alt="attachment" className="max-w-full h-auto rounded-lg border border-white/20 max-h-48 object-contain bg-black/5" />
                               </a>
-                            ) : (
-                              <a 
-                                href={msg.fileUrl} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className={`flex items-center gap-2 p-2 rounded-lg ${isMe ? 'bg-indigo-700 hover:bg-indigo-800' : 'bg-slate-100 hover:bg-slate-200'} transition-colors text-sm`}
+                              <button
+                                onClick={(e) => handleDownload(msg.fileUrl!, msg.fileName || 'image', e)}
+                                className="absolute bottom-2 right-2 p-2 bg-black/50 hover:bg-black/70 text-white rounded-lg opacity-0 group-hover/image:opacity-100 transition-opacity shadow-sm"
+                                title="डाउनलोड गर्नुहोस्"
                               >
-                                <File size={16} className="shrink-0" />
-                                <span className="truncate max-w-[200px]">{msg.fileName || 'Document'}</span>
-                                <Download size={14} className="shrink-0 ml-1" />
-                              </a>
-                            )}
-                          </div>
-                        )}
-                        
-                        {msg.text && <div className="text-sm whitespace-pre-wrap">{msg.text}</div>}
-                        
-                        <div className={`text-[10px] mt-1 text-right flex items-center justify-end gap-1 ${isMe ? 'text-indigo-200' : 'text-slate-400'}`}>
+                                <Download size={16} />
+                              </button>
+                            </div>
+                          ) : (
+                            <button 
+                              onClick={(e) => handleDownload(msg.fileUrl!, msg.fileName || 'document', e)}
+                              className={`flex items-center gap-2 p-2 rounded-lg ${isMe ? 'bg-indigo-700 hover:bg-indigo-800 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-800'} transition-colors text-sm w-full text-left`}
+                            >
+                              <File size={16} className="shrink-0" />
+                              <span className="truncate max-w-[200px]">{msg.fileName || 'Document'}</span>
+                              <Download size={14} className="shrink-0 ml-1" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      
+                      {msg.text && <div className="text-sm whitespace-pre-wrap">{msg.text}</div>}
+                      
+                      <div className={`text-[10px] mt-1 flex items-center justify-between gap-3 ${isMe ? 'text-indigo-200' : 'text-slate-400'}`}>
+                        <div className="flex items-center gap-2">
+                          {isMe && (
+                            <>
+                              <button 
+                                onClick={() => handleEditMessage(msg)}
+                                className="hover:text-white transition-colors"
+                                title="सम्पादन गर्नुहोस्"
+                              >
+                                <Edit2 size={12} />
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteMessage(msg)}
+                                className="hover:text-red-300 transition-colors"
+                                title="मेटाउनुहोस्"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
                           {msg.isEdited && <span>(सम्पादन गरिएको)</span>}
                           {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </div>
@@ -455,11 +513,11 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
               <div ref={messagesEndRef} />
             </div>
 
-            <div className="p-4 bg-white border-t border-slate-200">
+            <div className="p-2 sm:p-4 bg-white border-t border-slate-200">
               {editingMessageId && (
-                <div className="mb-3 flex items-center justify-between bg-amber-50 text-amber-800 p-2 rounded-lg text-sm border border-amber-200">
+                <div className="mb-2 sm:mb-3 flex items-center justify-between bg-amber-50 text-amber-800 p-2 rounded-lg text-xs sm:text-sm border border-amber-200">
                   <div className="flex items-center gap-2">
-                    <Edit2 size={16} />
+                    <Edit2 size={14} className="sm:w-4 sm:h-4" />
                     <span>सन्देश सम्पादन गर्दै...</span>
                   </div>
                   <button 
@@ -474,29 +532,38 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
                 </div>
               )}
               {selectedFile && !editingMessageId && (
-                <div className="mb-3 flex items-center gap-2 bg-indigo-50 text-indigo-800 p-2 rounded-lg text-sm border border-indigo-100">
-                  <File size={16} />
-                  <span className="truncate flex-1">{selectedFile.name}</span>
-                  <button 
-                    onClick={() => {
-                      setSelectedFile(null);
-                      if (fileInputRef.current) fileInputRef.current.value = '';
-                    }}
-                    className="p-1 hover:bg-indigo-200 rounded-md transition-colors"
-                  >
-                    <X size={14} />
-                  </button>
+                <div className="mb-2 sm:mb-3 flex flex-col gap-2 bg-indigo-50 text-indigo-800 p-2 rounded-lg text-xs sm:text-sm border border-indigo-100">
+                  <div className="flex items-center gap-2">
+                    <File size={14} className="sm:w-4 sm:h-4 shrink-0" />
+                    <span className="truncate flex-1">{selectedFile.name}</span>
+                    {!isUploading && (
+                      <button 
+                        onClick={() => {
+                          setSelectedFile(null);
+                          if (fileInputRef.current) fileInputRef.current.value = '';
+                        }}
+                        className="p-1 hover:bg-indigo-200 rounded-md transition-colors shrink-0"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                  {isUploading && (
+                    <div className="w-full bg-indigo-200 rounded-full h-1.5 mt-1">
+                      <div className="bg-indigo-600 h-1.5 rounded-full transition-all duration-300" style={{ width: `${uploadProgress}%` }}></div>
+                    </div>
+                  )}
                 </div>
               )}
-              <form onSubmit={handleSendMessage} className="flex gap-2 items-center">
+              <form onSubmit={handleSendMessage} className="flex gap-1 sm:gap-2 items-center">
                 {!editingMessageId && (
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="p-3 text-slate-500 hover:bg-slate-100 rounded-xl transition-colors shrink-0"
+                    className="p-2 sm:p-3 text-slate-500 hover:bg-slate-100 rounded-xl transition-colors shrink-0"
                     title="फाइल पठाउनुहोस्"
                   >
-                    <Paperclip size={20} />
+                    <Paperclip size={18} className="sm:w-5 sm:h-5" />
                   </button>
                 )}
                 <input 
@@ -511,14 +578,14 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="सन्देश लेख्नुहोस्..."
-                  className="flex-1 border border-slate-300 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="flex-1 min-w-0 border border-slate-300 rounded-xl px-3 py-2 sm:px-4 sm:py-2 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
                 <button
                   type="submit"
                   disabled={(!newMessage.trim() && !selectedFile) || isUploading}
-                  className="bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
+                  className="bg-indigo-600 text-white p-2 sm:p-3 rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
                 >
-                  {isUploading ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
+                  {isUploading ? <Loader2 size={18} className="animate-spin sm:w-5 sm:h-5" /> : <Send size={18} className="sm:w-5 sm:h-5" />}
                 </button>
               </form>
             </div>

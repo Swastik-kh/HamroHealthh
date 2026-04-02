@@ -576,7 +576,7 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
     };
 
     return filterItems(allMenuItems);
-  }, [currentUser, hasAccess, counts]);
+  }, [currentUser, hasAccess, counts, unreadConferenceCount]);
 
   const handlePrint = useCallback((printContentId: string, orientation: 'portrait' | 'landscape' = 'portrait') => {
     const printContent = document.getElementById(printContentId);
