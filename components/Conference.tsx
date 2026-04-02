@@ -237,6 +237,10 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
     setIsUploading(false);
     setUploadProgress(0);
     if (fileInputRef.current) fileInputRef.current.value = '';
+    
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
   };
 
   const handleEditMessage = (msg: ConferenceMessage) => {
