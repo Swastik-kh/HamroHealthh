@@ -10,6 +10,8 @@ import {
   UserPlus, FlaskConical, Pill, Accessibility, Scan, Waves, Siren, MessageSquare
 } from 'lucide-react';
 import { APP_NAME, FISCAL_YEARS } from '../constants';
+import { db } from '../firebase';
+import { ref, onValue } from 'firebase/database';
 import { DashboardProps } from '../types/dashboardTypes'; 
 import { PurchaseOrderEntry, InventoryItem, MagFormEntry, StockEntryRequest, DakhilaPratibedanEntry } from '../types/inventoryTypes';
 import { User, LeaveApplication, LeaveStatus, Darta, Chalani, BharmanAdeshEntry, GarbhawotiRecord, PrasutiRecord, UttarPrasutiRecord, ServiceSeekerRecord, OPDRecord, EmergencyRecord, CBIMNCIRecord, BillingRecord, ServiceItem, LabReport, DispensaryRecord, PariwarSewaRecord, XRayRecord, ECGRecord, USGRecord, PhysiotherapyRecord, IPDRecord, InterFacilityRequest } from '../types';
@@ -195,6 +197,21 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
   });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); 
   const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadConferenceCount, setUnreadConferenceCount] = useState(0);
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    const unreadRef = ref(db, `conferenceUnread/${currentUser.id}`);
+    const unsub = onValue(unreadRef, (snap) => {
+      const data = snap.val();
+      if (data) {
+        setUnreadConferenceCount(Object.keys(data).length);
+      } else {
+        setUnreadConferenceCount(0);
+      }
+    });
+    return () => unsub();
+  }, [currentUser?.id]);
   
   const readNotifIds = useMemo(() => currentUser?.readNotifications || [], [currentUser]);
 
@@ -516,7 +533,8 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
     {
       id: 'conference',
       label: 'कन्फरेन्स (Conference)',
-      icon: <MessageSquare size={20} />
+      icon: <MessageSquare size={20} />,
+      badgeCount: unreadConferenceCount > 0 ? unreadConferenceCount : undefined
     },
     {
       id: 'settings',

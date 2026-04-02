@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User, ConferenceGroup, ConferenceMessage } from '../types';
 import { db, storage } from '../firebase';
-import { ref, onValue, push, set, serverTimestamp } from 'firebase/database';
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Users, MessageSquare, Plus, X, Send, Search, UserPlus, Paperclip, File, Download, Trash2, Loader2 } from 'lucide-react';
+import { ref, onValue, push, set, remove, update, serverTimestamp } from 'firebase/database';
+import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { Users, MessageSquare, Plus, X, Send, Search, UserPlus, Paperclip, File, Download, Trash2, Loader2, Edit2, MoreVertical, ChevronLeft } from 'lucide-react';
 // @ts-ignore
 import NepaliDate from 'nepali-date-converter';
 
@@ -27,6 +27,7 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
   const [showGroupMembers, setShowGroupMembers] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -96,6 +97,10 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
       return;
     }
     setShowGroupMembers(false);
+    
+    // Clear unread status
+    remove(ref(db, `conferenceUnread/${currentUser.id}/${selectedGroupId}`));
+
     const messagesRef = ref(db, `conferenceMessages/${selectedGroupId}`);
     const unsub = onValue(messagesRef, (snap) => {
       const data = snap.val();
@@ -103,6 +108,8 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
         const msgList = Object.keys(data).map(key => ({ ...data[key], id: key })) as ConferenceMessage[];
         msgList.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
         setMessages(msgList);
+        // Clear unread status when new messages arrive while viewing the group
+        remove(ref(db, `conferenceUnread/${currentUser.id}/${selectedGroupId}`));
       } else {
         setMessages([]);
       }
@@ -140,6 +147,18 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
     e.preventDefault();
     if ((!newMessage.trim() && !selectedFile) || !selectedGroupId || isUploading) return;
 
+    if (editingMessageId) {
+      // Handle Edit
+      const msgRef = ref(db, `conferenceMessages/${selectedGroupId}/${editingMessageId}`);
+      await update(msgRef, {
+        text: newMessage.trim(),
+        isEdited: true
+      });
+      setNewMessage('');
+      setEditingMessageId(null);
+      return;
+    }
+
     let fileUrl = '';
     let fileName = '';
     let fileType = '';
@@ -170,10 +189,52 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
     };
 
     await set(msgRef, msg);
+    
+    // Update unread counts for all other members
+    if (selectedGroup && selectedGroup.members) {
+      const updates: any = {};
+      selectedGroup.members.forEach(memberId => {
+        if (memberId !== currentUser.id) {
+          // We'll just increment a counter or set a flag.
+          // Since we can't easily increment without a transaction, we can just set it to true or a timestamp.
+          // Let's store the timestamp of the last unread message.
+          updates[`conferenceUnread/${memberId}/${selectedGroupId}`] = serverTimestamp();
+        }
+      });
+      await update(ref(db), updates);
+    }
+
     setNewMessage('');
     setSelectedFile(null);
     setIsUploading(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleEditMessage = (msg: ConferenceMessage) => {
+    setEditingMessageId(msg.id);
+    setNewMessage(msg.text);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    setSelectedFile(null);
+  };
+
+  const handleDeleteMessage = async (msg: ConferenceMessage) => {
+    if (!window.confirm('के तपाईं पक्का यो सन्देश मेटाउन चाहनुहुन्छ?')) return;
+    
+    try {
+      if (msg.fileUrl) {
+        // Try to delete file from storage if possible
+        try {
+          const fileRef = storageRef(storage, msg.fileUrl);
+          await deleteObject(fileRef);
+        } catch (storageErr) {
+          console.error("Could not delete file from storage:", storageErr);
+        }
+      }
+      await remove(ref(db, `conferenceMessages/${msg.groupId}/${msg.id}`));
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      alert("सन्देश मेटाउन समस्या भयो।");
+    }
   };
 
   const handleRemoveMember = async (memberId: string) => {
@@ -209,9 +270,9 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex h-[calc(100vh-12rem)]">
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex h-[calc(100vh-12rem)] md:h-[calc(100vh-8rem)]">
       {/* Sidebar */}
-      <div className="w-1/3 border-r border-slate-200 flex flex-col bg-slate-50">
+      <div className={`border-r border-slate-200 flex flex-col bg-slate-50 ${selectedGroupId ? 'hidden md:flex md:w-1/3' : 'w-full md:w-1/3'}`}>
         <div className="p-4 border-b border-slate-200 bg-white flex justify-between items-center">
           <h2 className="font-bold text-slate-800 flex items-center gap-2">
             <MessageSquare size={20} className="text-indigo-600" />
@@ -253,30 +314,38 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 flex flex-col bg-white">
+      <div className={`flex-1 flex flex-col bg-white ${!selectedGroupId ? 'hidden md:flex' : 'flex'}`}>
         {selectedGroup ? (
           <>
             <div className="p-4 border-b border-slate-200 bg-white flex justify-between items-center shadow-sm z-10">
-              <div 
-                className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 p-2 rounded-lg transition-colors"
-                onClick={() => setShowGroupMembers(!showGroupMembers)}
-              >
-                <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-lg">
-                  {selectedGroup.name.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <h3 className="font-bold text-slate-800">{selectedGroup.name}</h3>
-                  <p className="text-xs text-slate-500">
-                    {`${selectedGroup.members.length} सदस्यहरू (हेर्न क्लिक गर्नुहोस्)`}
-                  </p>
+              <div className="flex items-center gap-1 sm:gap-3">
+                <button 
+                  onClick={() => setSelectedGroupId(null)}
+                  className="md:hidden p-2 -ml-2 text-slate-500 hover:bg-slate-100 rounded-lg"
+                >
+                  <ChevronLeft size={24} />
+                </button>
+                <div 
+                  className="flex items-center gap-2 sm:gap-3 cursor-pointer hover:bg-slate-50 p-1 sm:p-2 rounded-lg transition-colors"
+                  onClick={() => setShowGroupMembers(!showGroupMembers)}
+                >
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-base sm:text-lg shrink-0">
+                    {selectedGroup.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-slate-800 text-sm sm:text-base truncate">{selectedGroup.name}</h3>
+                    <p className="text-[10px] sm:text-xs text-slate-500 truncate">
+                      {`${selectedGroup.members.length} सदस्यहरू (हेर्न क्लिक गर्नुहोस्)`}
+                    </p>
+                  </div>
                 </div>
               </div>
               {canCreateGroup && (
                 <button 
                   onClick={() => setShowAddMember(true)}
-                  className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-2 text-sm font-bold"
+                  className="p-1.5 sm:p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-1 sm:gap-2 text-xs sm:text-sm font-bold shrink-0"
                 >
-                  <UserPlus size={18} /> सदस्य थप्नुहोस्
+                  <UserPlus size={16} className="sm:w-[18px] sm:h-[18px]" /> <span className="hidden sm:inline">सदस्य थप्नुहोस्</span>
                 </button>
               )}
             </div>
@@ -328,35 +397,56 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
                 const isImage = msg.fileType?.startsWith('image/');
                 
                 return (
-                  <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                    <div className={`max-w-[70%] rounded-2xl px-4 py-2 ${isMe ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-800 rounded-tl-sm shadow-sm'}`}>
-                      {!isMe && <div className="text-[10px] font-bold text-indigo-600 mb-1">{sender?.fullName || 'Unknown'}</div>}
-                      
-                      {msg.fileUrl && (
-                        <div className="mb-2 mt-1">
-                          {isImage ? (
-                            <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer">
-                              <img src={msg.fileUrl} alt="attachment" className="max-w-full h-auto rounded-lg border border-white/20 max-h-48 object-contain bg-black/5" />
-                            </a>
-                          ) : (
-                            <a 
-                              href={msg.fileUrl} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className={`flex items-center gap-2 p-2 rounded-lg ${isMe ? 'bg-indigo-700 hover:bg-indigo-800' : 'bg-slate-100 hover:bg-slate-200'} transition-colors text-sm`}
-                            >
-                              <File size={16} className="shrink-0" />
-                              <span className="truncate max-w-[200px]">{msg.fileName || 'Document'}</span>
-                              <Download size={14} className="shrink-0 ml-1" />
-                            </a>
-                          )}
+                  <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} group`}>
+                    <div className={`flex items-center gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                      {isMe && (
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                          <button 
+                            onClick={() => handleEditMessage(msg)}
+                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-full transition-colors"
+                            title="सम्पादन गर्नुहोस्"
+                          >
+                            <Edit2 size={14} />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteMessage(msg)}
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-slate-100 rounded-full transition-colors"
+                            title="मेटाउनुहोस्"
+                          >
+                            <Trash2 size={14} />
+                          </button>
                         </div>
                       )}
-                      
-                      {msg.text && <div className="text-sm whitespace-pre-wrap">{msg.text}</div>}
-                      
-                      <div className={`text-[10px] mt-1 text-right ${isMe ? 'text-indigo-200' : 'text-slate-400'}`}>
-                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      <div className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-3 sm:px-4 py-2 ${isMe ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-800 rounded-tl-sm shadow-sm'}`}>
+                        {!isMe && <div className="text-[10px] font-bold text-indigo-600 mb-1">{sender?.fullName || 'Unknown'}</div>}
+                        
+                        {msg.fileUrl && (
+                          <div className="mb-2 mt-1">
+                            {isImage ? (
+                              <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer">
+                                <img src={msg.fileUrl} alt="attachment" className="max-w-full h-auto rounded-lg border border-white/20 max-h-48 object-contain bg-black/5" />
+                              </a>
+                            ) : (
+                              <a 
+                                href={msg.fileUrl} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className={`flex items-center gap-2 p-2 rounded-lg ${isMe ? 'bg-indigo-700 hover:bg-indigo-800' : 'bg-slate-100 hover:bg-slate-200'} transition-colors text-sm`}
+                              >
+                                <File size={16} className="shrink-0" />
+                                <span className="truncate max-w-[200px]">{msg.fileName || 'Document'}</span>
+                                <Download size={14} className="shrink-0 ml-1" />
+                              </a>
+                            )}
+                          </div>
+                        )}
+                        
+                        {msg.text && <div className="text-sm whitespace-pre-wrap">{msg.text}</div>}
+                        
+                        <div className={`text-[10px] mt-1 text-right flex items-center justify-end gap-1 ${isMe ? 'text-indigo-200' : 'text-slate-400'}`}>
+                          {msg.isEdited && <span>(सम्पादन गरिएको)</span>}
+                          {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -366,7 +456,24 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
             </div>
 
             <div className="p-4 bg-white border-t border-slate-200">
-              {selectedFile && (
+              {editingMessageId && (
+                <div className="mb-3 flex items-center justify-between bg-amber-50 text-amber-800 p-2 rounded-lg text-sm border border-amber-200">
+                  <div className="flex items-center gap-2">
+                    <Edit2 size={16} />
+                    <span>सन्देश सम्पादन गर्दै...</span>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setEditingMessageId(null);
+                      setNewMessage('');
+                    }}
+                    className="p-1 hover:bg-amber-200 rounded-md transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+              {selectedFile && !editingMessageId && (
                 <div className="mb-3 flex items-center gap-2 bg-indigo-50 text-indigo-800 p-2 rounded-lg text-sm border border-indigo-100">
                   <File size={16} />
                   <span className="truncate flex-1">{selectedFile.name}</span>
@@ -382,14 +489,16 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
                 </div>
               )}
               <form onSubmit={handleSendMessage} className="flex gap-2 items-center">
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="p-3 text-slate-500 hover:bg-slate-100 rounded-xl transition-colors shrink-0"
-                  title="फाइल पठाउनुहोस्"
-                >
-                  <Paperclip size={20} />
-                </button>
+                {!editingMessageId && (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-3 text-slate-500 hover:bg-slate-100 rounded-xl transition-colors shrink-0"
+                    title="फाइल पठाउनुहोस्"
+                  >
+                    <Paperclip size={20} />
+                  </button>
+                )}
                 <input 
                   type="file" 
                   ref={fileInputRef} 

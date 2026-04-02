@@ -64,6 +64,7 @@ export interface ConferenceMessage {
   fileUrl?: string;
   fileName?: string;
   fileType?: string;
+  isEdited?: boolean;
 }
 
 export interface OrganizationSettings {
