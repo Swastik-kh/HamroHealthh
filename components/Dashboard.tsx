@@ -7,13 +7,14 @@ import {
   BookOpen, Book, Archive, RotateCcw, Wrench, Scroll, BarChart3,
   Sliders, Store, ShieldCheck, Users, Database, KeyRound, UserCog, Lock, Warehouse, ClipboardCheck, Bell, X, CheckCircle2, AlertTriangle, Calculator, Trash2, TrendingUp, AlertOctagon, Timer, Printer, Baby, Flame, CalendarClock, List,
   Eye, ShieldAlert, ChevronLeft, Send, MapPin, Search, HeartHandshake,
-  UserPlus, FlaskConical, Pill, Accessibility, Scan, Waves, Siren
+  UserPlus, FlaskConical, Pill, Accessibility, Scan, Waves, Siren, MessageSquare
 } from 'lucide-react';
 import { APP_NAME, FISCAL_YEARS } from '../constants';
 import { DashboardProps } from '../types/dashboardTypes'; 
 import { PurchaseOrderEntry, InventoryItem, MagFormEntry, StockEntryRequest, DakhilaPratibedanEntry } from '../types/inventoryTypes';
 import { User, LeaveApplication, LeaveStatus, Darta, Chalani, BharmanAdeshEntry, GarbhawotiRecord, PrasutiRecord, UttarPrasutiRecord, ServiceSeekerRecord, OPDRecord, EmergencyRecord, CBIMNCIRecord, BillingRecord, ServiceItem, LabReport, DispensaryRecord, PariwarSewaRecord, XRayRecord, ECGRecord, USGRecord, PhysiotherapyRecord, IPDRecord, InterFacilityRequest } from '../types';
 import { UserManagement } from './UserManagement';
+import { Conference } from './Conference';
 import { ChangePassword } from './ChangePassword';
 import { TBPatientRegistration } from './TBPatientRegistration';
 import { RabiesRegistration } from './RabiesRegistration';
@@ -422,7 +423,7 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
   const hasAccess = useCallback((menuId: string) => {
     if (!currentUser) return false;
     if (currentUser.role === 'SUPER_ADMIN') return true;
-    return currentUser.allowedMenus?.includes(menuId) || menuId === 'dashboard' || menuId === 'change_password' || menuId === 'bida_abedan';
+    return currentUser.allowedMenus?.includes(menuId) || menuId === 'dashboard' || menuId === 'change_password' || menuId === 'bida_abedan' || menuId === 'conference';
   }, [currentUser]);
 
   interface MenuItem { id: string; label: string; icon: React.ReactNode; subItems?: MenuItem[]; badgeCount?: number; }
@@ -511,6 +512,11 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
         { id: 'report_mch', label: 'MCH रिपोर्ट', icon: <Baby size={16} /> },
         { id: 'report_inventory_monthly', label: 'जिन्सी मासिक रिपोर्ट', icon: <FileText size={16} /> },
       ]
+    },
+    {
+      id: 'conference',
+      label: 'कन्फरेन्स (Conference)',
+      icon: <MessageSquare size={20} />
     },
     {
       id: 'settings',
@@ -718,6 +724,7 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
       case 'khop_sewa': return <VaccinationServiceTabs currentFiscalYear={currentFiscalYear} generalSettings={generalSettings} onUpdateGeneralSettings={onUpdateGeneralSettings} garbhawatiPatients={garbhawatiPatients} onAddGarbhawatiPatient={onAddGarbhawatiPatient} onUpdateGarbhawatiPatient={onUpdateGarbhawatiPatient} onDeleteGarbhawatiPatient={onDeleteGarbhawatiPatient} bachhaImmunizationRecords={bachhaImmunizationRecords} onAddBachhaImmunizationRecord={onAddBachhaImmunizationRecord} onUpdateBachhaImmunizationRecord={onUpdateBachhaImmunizationRecord} onDeleteBachhaImmunizationRecord={onDeleteBachhaImmunizationRecord} />;
       case 'immunization_tracking': return <ImmunizationTracking currentFiscalYear={currentFiscalYear} records={bachhaImmunizationRecords} generalSettings={generalSettings} />;
       case 'report_khop': return <ImmunizationReport currentFiscalYear={currentFiscalYear} bachhaRecords={bachhaImmunizationRecords} maternalRecords={garbhawatiPatients} generalSettings={generalSettings} />;
+      case 'conference': return <Conference currentUser={currentUser} allUsers={users} />;
       case 'user_management': return <UserManagement currentUser={currentUser} users={users} onAddUser={onAddUser} onUpdateUser={onUpdateUser} onDeleteUser={onDeleteUser} isDbLocked={isDbLocked} />;
       case 'change_password': return <ChangePassword currentUser={currentUser} users={users} onChangePassword={onChangePassword} />;
       case 'store_setup': return <StoreSetup currentUser={currentUser} currentFiscalYear={currentFiscalYear} stores={stores} onAddStore={onAddStore} onUpdateStore={onUpdateStore} onDeleteStore={onDeleteStore} inventoryItems={inventoryItems} onUpdateInventoryItem={onUpdateInventoryItem} />;

@@ -47,6 +47,22 @@ export interface WardConfig {
   bedCount: number;
 }
 
+export interface ConferenceGroup {
+  id: string;
+  name: string;
+  createdBy: string; // User ID
+  members: string[]; // Array of User IDs
+  createdAt: string; // ISO date string
+}
+
+export interface ConferenceMessage {
+  id: string;
+  groupId: string;
+  senderId: string;
+  text: string;
+  timestamp: string; // ISO date string
+}
+
 export interface OrganizationSettings {
   orgNameNepali: string;
   orgNameEnglish: string;
