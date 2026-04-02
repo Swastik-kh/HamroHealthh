@@ -61,6 +61,9 @@ export interface ConferenceMessage {
   senderId: string;
   text: string;
   timestamp: string; // ISO date string
+  fileUrl?: string;
+  fileName?: string;
+  fileType?: string;
 }
 
 export interface OrganizationSettings {

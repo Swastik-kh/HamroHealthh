@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User, ConferenceGroup, ConferenceMessage } from '../types';
-import { db } from '../firebase';
+import { db, storage } from '../firebase';
 import { ref, onValue, push, set, serverTimestamp } from 'firebase/database';
-import { Users, MessageSquare, Plus, X, Send, Search } from 'lucide-react';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { Users, MessageSquare, Plus, X, Send, Search, UserPlus, Paperclip, File, Download, Trash2, Loader2 } from 'lucide-react';
 // @ts-ignore
 import NepaliDate from 'nepali-date-converter';
 
@@ -20,6 +21,13 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
   const [newGroupName, setNewGroupName] = useState('');
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [membersToAdd, setMembersToAdd] = useState<string[]>([]);
+  const [addMemberSearchQuery, setAddMemberSearchQuery] = useState('');
+  const [showGroupMembers, setShowGroupMembers] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -47,7 +55,24 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
     );
   }, [eligibleMembers, searchQuery]);
 
-  const canCreateGroup = currentUser.role === 'HEALTH_SECTION' || currentUser.role === 'ADMIN';
+  const selectedGroup = groups.find(g => g.id === selectedGroupId);
+
+  const eligibleToAdd = React.useMemo(() => {
+    if (!selectedGroup) return [];
+    return eligibleMembers.filter(m => !selectedGroup.members.includes(m.id));
+  }, [eligibleMembers, selectedGroup]);
+
+  const filteredEligibleToAdd = React.useMemo(() => {
+    if (!addMemberSearchQuery.trim()) return eligibleToAdd;
+    const lowerQuery = addMemberSearchQuery.toLowerCase();
+    return eligibleToAdd.filter(m => 
+      m.fullName.toLowerCase().includes(lowerQuery) || 
+      m.organizationName.toLowerCase().includes(lowerQuery) ||
+      m.designation.toLowerCase().includes(lowerQuery)
+    );
+  }, [eligibleToAdd, addMemberSearchQuery]);
+
+  const canCreateGroup = currentUser.role === 'HEALTH_SECTION' || currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN';
 
   useEffect(() => {
     const groupsRef = ref(db, 'conferenceGroups');
@@ -70,6 +95,7 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
       setMessages([]);
       return;
     }
+    setShowGroupMembers(false);
     const messagesRef = ref(db, `conferenceMessages/${selectedGroupId}`);
     const unsub = onValue(messagesRef, (snap) => {
       const data = snap.val();
@@ -112,21 +138,75 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !selectedGroupId) return;
+    if ((!newMessage.trim() && !selectedFile) || !selectedGroupId || isUploading) return;
+
+    let fileUrl = '';
+    let fileName = '';
+    let fileType = '';
+
+    if (selectedFile) {
+      setIsUploading(true);
+      try {
+        const fileRef = storageRef(storage, `conferenceFiles/${selectedGroupId}/${Date.now()}_${selectedFile.name}`);
+        await uploadBytes(fileRef, selectedFile);
+        fileUrl = await getDownloadURL(fileRef);
+        fileName = selectedFile.name;
+        fileType = selectedFile.type;
+      } catch (error) {
+        console.error("Error uploading file:", error);
+        alert("फाइल अपलोड गर्न समस्या भयो।");
+        setIsUploading(false);
+        return;
+      }
+    }
 
     const msgRef = push(ref(db, `conferenceMessages/${selectedGroupId}`));
     const msg: Omit<ConferenceMessage, 'id'> = {
       groupId: selectedGroupId,
       senderId: currentUser.id,
       text: newMessage.trim(),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      ...(fileUrl && { fileUrl, fileName, fileType })
     };
 
     await set(msgRef, msg);
     setNewMessage('');
+    setSelectedFile(null);
+    setIsUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const selectedGroup = groups.find(g => g.id === selectedGroupId);
+  const handleRemoveMember = async (memberId: string) => {
+    if (!selectedGroup) return;
+    if (window.confirm('के तपाईं पक्का यो सदस्यलाई समूहबाट हटाउन चाहनुहुन्छ?')) {
+      const updatedMembers = selectedGroup.members.filter(id => id !== memberId);
+      await set(ref(db, `conferenceGroups/${selectedGroup.id}/members`), updatedMembers);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        alert('फाइल ५MB भन्दा सानो हुनुपर्छ।');
+        e.target.value = '';
+        return;
+      }
+      setSelectedFile(file);
+    }
+  };
+
+  const handleAddMembersSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedGroup || membersToAdd.length === 0) return;
+    
+    const updatedMembers = [...selectedGroup.members, ...membersToAdd];
+    await set(ref(db, `conferenceGroups/${selectedGroup.id}/members`), updatedMembers);
+    
+    setShowAddMember(false);
+    setMembersToAdd([]);
+    setAddMemberSearchQuery('');
+  };
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex h-[calc(100vh-12rem)]">
@@ -177,28 +257,104 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
         {selectedGroup ? (
           <>
             <div className="p-4 border-b border-slate-200 bg-white flex justify-between items-center shadow-sm z-10">
-              <div className="flex items-center gap-3">
+              <div 
+                className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 p-2 rounded-lg transition-colors"
+                onClick={() => setShowGroupMembers(!showGroupMembers)}
+              >
                 <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-lg">
                   {selectedGroup.name.charAt(0).toUpperCase()}
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-800">{selectedGroup.name}</h3>
                   <p className="text-xs text-slate-500">
-                    {selectedGroup.members.map(mId => allUsers.find(u => u.id === mId)?.fullName || 'Unknown').join(', ')}
+                    {`${selectedGroup.members.length} सदस्यहरू (हेर्न क्लिक गर्नुहोस्)`}
                   </p>
                 </div>
               </div>
+              {canCreateGroup && (
+                <button 
+                  onClick={() => setShowAddMember(true)}
+                  className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors flex items-center gap-2 text-sm font-bold"
+                >
+                  <UserPlus size={18} /> सदस्य थप्नुहोस्
+                </button>
+              )}
             </div>
+
+            {showGroupMembers && (
+              <div className="bg-white border-b border-slate-200 p-4 max-h-48 overflow-y-auto shadow-inner">
+                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">समूहका सदस्यहरू</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                  {selectedGroup.members.map(mId => {
+                    const member = allUsers.find(u => u.id === mId);
+                    if (!member) return null;
+                    const isCreator = selectedGroup.createdBy === currentUser.id;
+                    const canRemove = canCreateGroup && (isCreator || currentUser.role === 'SUPER_ADMIN') && member.id !== currentUser.id;
+                    
+                    return (
+                      <div key={member.id} className="flex items-center justify-between bg-slate-50 p-2 rounded-lg border border-slate-100">
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold shrink-0">
+                            {member.fullName.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="truncate">
+                            <div className="text-sm font-medium text-slate-800 truncate">{member.fullName}</div>
+                            <div className="text-[10px] text-slate-500 truncate">{member.designation}</div>
+                          </div>
+                        </div>
+                        {canRemove && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveMember(member.id);
+                            }}
+                            className="p-1.5 text-red-500 hover:bg-red-50 rounded-md transition-colors shrink-0"
+                            title="हटाउनुहोस्"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
               {messages.map(msg => {
                 const isMe = msg.senderId === currentUser.id;
                 const sender = allUsers.find(u => u.id === msg.senderId);
+                const isImage = msg.fileType?.startsWith('image/');
+                
                 return (
                   <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                     <div className={`max-w-[70%] rounded-2xl px-4 py-2 ${isMe ? 'bg-indigo-600 text-white rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-800 rounded-tl-sm shadow-sm'}`}>
                       {!isMe && <div className="text-[10px] font-bold text-indigo-600 mb-1">{sender?.fullName || 'Unknown'}</div>}
-                      <div className="text-sm whitespace-pre-wrap">{msg.text}</div>
+                      
+                      {msg.fileUrl && (
+                        <div className="mb-2 mt-1">
+                          {isImage ? (
+                            <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer">
+                              <img src={msg.fileUrl} alt="attachment" className="max-w-full h-auto rounded-lg border border-white/20 max-h-48 object-contain bg-black/5" />
+                            </a>
+                          ) : (
+                            <a 
+                              href={msg.fileUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className={`flex items-center gap-2 p-2 rounded-lg ${isMe ? 'bg-indigo-700 hover:bg-indigo-800' : 'bg-slate-100 hover:bg-slate-200'} transition-colors text-sm`}
+                            >
+                              <File size={16} className="shrink-0" />
+                              <span className="truncate max-w-[200px]">{msg.fileName || 'Document'}</span>
+                              <Download size={14} className="shrink-0 ml-1" />
+                            </a>
+                          )}
+                        </div>
+                      )}
+                      
+                      {msg.text && <div className="text-sm whitespace-pre-wrap">{msg.text}</div>}
+                      
                       <div className={`text-[10px] mt-1 text-right ${isMe ? 'text-indigo-200' : 'text-slate-400'}`}>
                         {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </div>
@@ -210,7 +366,37 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
             </div>
 
             <div className="p-4 bg-white border-t border-slate-200">
-              <form onSubmit={handleSendMessage} className="flex gap-2">
+              {selectedFile && (
+                <div className="mb-3 flex items-center gap-2 bg-indigo-50 text-indigo-800 p-2 rounded-lg text-sm border border-indigo-100">
+                  <File size={16} />
+                  <span className="truncate flex-1">{selectedFile.name}</span>
+                  <button 
+                    onClick={() => {
+                      setSelectedFile(null);
+                      if (fileInputRef.current) fileInputRef.current.value = '';
+                    }}
+                    className="p-1 hover:bg-indigo-200 rounded-md transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+              <form onSubmit={handleSendMessage} className="flex gap-2 items-center">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-3 text-slate-500 hover:bg-slate-100 rounded-xl transition-colors shrink-0"
+                  title="फाइल पठाउनुहोस्"
+                >
+                  <Paperclip size={20} />
+                </button>
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileChange} 
+                  className="hidden" 
+                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                />
                 <input
                   type="text"
                   value={newMessage}
@@ -220,10 +406,10 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
                 />
                 <button
                   type="submit"
-                  disabled={!newMessage.trim()}
-                  className="bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  disabled={(!newMessage.trim() && !selectedFile) || isUploading}
+                  className="bg-indigo-600 text-white p-3 rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
                 >
-                  <Send size={20} />
+                  {isUploading ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
                 </button>
               </form>
             </div>
@@ -305,6 +491,69 @@ export const Conference: React.FC<ConferenceProps> = ({ currentUser, allUsers })
               <div className="pt-4 border-t flex justify-end gap-3">
                 <button type="button" onClick={() => setShowCreateGroup(false)} className="px-6 py-2 text-slate-500 font-bold">रद्द</button>
                 <button type="submit" className="bg-indigo-600 text-white px-8 py-2 rounded-xl font-bold shadow-lg">बनाउनुहोस्</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Member Modal */}
+      {showAddMember && selectedGroup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm" onClick={() => setShowAddMember(false)}></div>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative animate-in zoom-in-95">
+            <div className="p-6 border-b bg-indigo-50 text-indigo-800 flex justify-between items-center">
+              <h3 className="font-bold flex items-center gap-2"><UserPlus size={20} /> सदस्य थप्नुहोस्</h3>
+              <button onClick={() => setShowAddMember(false)}><X size={20}/></button>
+            </div>
+            <form onSubmit={handleAddMembersSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">नयाँ सदस्यहरू चयन गर्नुहोस्</label>
+                
+                <div className="mb-3 relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Search size={16} className="text-slate-400" />
+                  </div>
+                  <input
+                    type="text"
+                    value={addMemberSearchQuery}
+                    onChange={(e) => setAddMemberSearchQuery(e.target.value)}
+                    placeholder="नाम, संस्था वा पदबाट खोज्नुहोस्..."
+                    className="w-full border border-slate-300 rounded-xl pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div className="max-h-60 overflow-y-auto border border-slate-200 rounded-xl divide-y">
+                  {filteredEligibleToAdd.length === 0 ? (
+                    <div className="p-4 text-center text-slate-500 text-sm">थप्नको लागि कुनै नयाँ सदस्य फेला परेन।</div>
+                  ) : (
+                    filteredEligibleToAdd.map(member => (
+                      <label key={member.id} className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={membersToAdd.includes(member.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setMembersToAdd([...membersToAdd, member.id]);
+                            } else {
+                              setMembersToAdd(membersToAdd.filter(id => id !== member.id));
+                            }
+                          }}
+                          className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                        />
+                        <div>
+                          <div className="font-bold text-sm text-slate-800">{member.fullName}</div>
+                          <div className="text-xs text-slate-500">{member.organizationName} - {member.designation}</div>
+                        </div>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-4 border-t flex justify-end gap-3">
+                <button type="button" onClick={() => setShowAddMember(false)} className="px-6 py-2 text-slate-500 font-bold">रद्द</button>
+                <button type="submit" disabled={membersToAdd.length === 0} className="bg-indigo-600 text-white px-8 py-2 rounded-xl font-bold shadow-lg disabled:opacity-50">थप्नुहोस्</button>
               </div>
             </form>
           </div>
