@@ -1,5 +1,5 @@
 
-import { User, OrganizationSettings, LeaveApplication, LeaveStatus, LeaveBalance, Darta, Chalani, BharmanAdeshEntry, SubscriptionRequest } from './coreTypes';
+import { User, OrganizationSettings, LeaveApplication, LeaveStatus, LeaveBalance, Darta, Chalani, BharmanAdeshEntry, SubscriptionRequest, ServiceSeekerRecord } from './coreTypes';
 import { 
   MagFormEntry, PurchaseOrderEntry, IssueReportEntry, FirmEntry, QuotationEntry, 
   InventoryItem, Store, StockEntryRequest, DakhilaPratibedanEntry, ReturnEntry, 
@@ -64,6 +64,7 @@ export interface DashboardProps {
   
   purchaseOrders: PurchaseOrderEntry[];
   onUpdatePurchaseOrder: (order: PurchaseOrderEntry) => void; 
+  onDeletePurchaseOrder: (id: string) => void;
 
   issueReports: IssueReportEntry[];
   onUpdateIssueReport: (report: IssueReportEntry) => void; 
@@ -148,6 +149,10 @@ export interface DashboardProps {
   bharmanAdeshEntries: BharmanAdeshEntry[];
   onSaveBharmanAdesh: (entry: BharmanAdeshEntry) => void;
   onDeleteBharmanAdesh: (id: string) => void;
+  
+  serviceSeekerRecords: ServiceSeekerRecord[];
+  onSaveServiceSeekerRecord: (record: ServiceSeekerRecord) => void;
+  onDeleteServiceSeekerRecord: (id: string) => void;
 
   onClearData: (sectionId: string) => void; 
   onUploadData?: (sectionId: string, data: any[]) => void;

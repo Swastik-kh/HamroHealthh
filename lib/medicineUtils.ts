@@ -227,5 +227,8 @@ export const calculatePatientRequirements = (
     }
   }
 
-  return requirements;
+  return requirements.map(req => ({
+    ...req,
+    remainingNeeded: (patient.status === 'Active' || !patient.status) ? req.remainingNeeded : 0
+  }));
 };

@@ -4,7 +4,7 @@ import { TBPatient, InventoryItem } from '../types';
 import { Option } from '../types/coreTypes';
 import { SearchableSelect } from './SearchableSelect';
 import { calculatePatientRequirements, MedicineRequirement, fuzzyMatch } from '../lib/medicineUtils';
-import { Pill, Package, AlertTriangle, CheckCircle, Info, Database, User, Trash2, LayoutDashboard, ClipboardList, Settings, X, Plus, Trash } from 'lucide-react';
+import { Pill, Package, AlertTriangle, CheckCircle, Info, Database, User, Trash2, LayoutDashboard, ClipboardList, Settings, X, Plus, Trash, Search } from 'lucide-react';
 
 interface MedicineStatusReportProps {
   patients: TBPatient[];
@@ -24,6 +24,8 @@ export const MedicineStatusReport: React.FC<MedicineStatusReportProps> = ({
   const [activeTab, setActiveTab] = useState<'summary' | 'management'>('summary');
   const [showMappingSettings, setShowMappingSettings] = useState(false);
   const [newMapping, setNewMapping] = useState({ standardName: '', keyword: '' });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('Active');
 
   const standardMedicineNames = [
     'HRZE (Adult)', 'HR (Adult)', 'HRE (Adult)', 
@@ -55,11 +57,17 @@ export const MedicineStatusReport: React.FC<MedicineStatusReportProps> = ({
   };
 
   const patientRequirements = useMemo(() => {
-    return activePatients.map(patient => ({
-      patient,
-      requirements: calculatePatientRequirements(patient, inventory, medicineMappings)
-    }));
-  }, [activePatients, inventory, medicineMappings]);
+    return patients
+      .filter(p => {
+        const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.patientId.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesStatus = statusFilter === 'All' || (statusFilter === 'Active' ? (p.status === 'Active' || !p.status) : p.status === statusFilter);
+        return matchesSearch && matchesStatus;
+      })
+      .map(patient => ({
+        patient,
+        requirements: calculatePatientRequirements(patient, inventory, medicineMappings)
+      }));
+  }, [patients, inventory, medicineMappings, searchTerm, statusFilter]);
 
   const aggregateRequirements = useMemo(() => {
     const aggregate: Record<string, { totalNeeded: number, totalRemaining: number, stock: number }> = {};
@@ -73,8 +81,10 @@ export const MedicineStatusReport: React.FC<MedicineStatusReportProps> = ({
       aggregate[name] = { totalNeeded: 0, totalRemaining: 0, stock };
     });
     
-    // Add requirements from patients
-    patientRequirements.forEach(({ requirements }) => {
+    // Add requirements from patients (only active ones for the aggregate summary)
+    patientRequirements.forEach(({ patient, requirements }) => {
+      if (patient.status !== 'Active' && patient.status) return;
+      
       requirements.forEach(req => {
         if (aggregate[req.itemName]) {
           aggregate[req.itemName].totalNeeded += req.totalNeeded;
@@ -338,11 +348,34 @@ export const MedicineStatusReport: React.FC<MedicineStatusReportProps> = ({
         <div className="animate-in fade-in slide-in-from-top-2 duration-300">
           {/* Patient-wise Detail View */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="p-4 border-b border-gray-100 bg-gray-50">
+            <div className="p-4 border-b border-gray-100 bg-gray-50 flex flex-col md:flex-row justify-between items-center gap-4">
               <h3 className="font-semibold text-gray-700 flex items-center gap-2">
                 <User size={18} />
                 बिरामी अनुसार औषधि विवरण (Patient-wise Requirement)
               </h3>
+              <div className="flex gap-2 w-full md:w-auto">
+                <div className="relative flex-1 md:w-64">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input 
+                    value={searchTerm} 
+                    onChange={e => setSearchTerm(e.target.value)} 
+                    placeholder="खोज्नुहोस् (नाम वा ID)..." 
+                    className="w-full pl-9 pr-4 py-1.5 rounded-lg border text-xs focus:ring-2 focus:ring-blue-500/20 outline-none" 
+                  />
+                </div>
+                <select 
+                  value={statusFilter} 
+                  onChange={e => setStatusFilter(e.target.value)}
+                  className="px-3 py-1.5 rounded-lg border text-xs bg-white focus:ring-2 focus:ring-blue-500/20 outline-none"
+                >
+                  <option value="All">सबै (All)</option>
+                  <option value="Active">सक्रिय (Active)</option>
+                  <option value="Completed">पूरा भएको (Completed)</option>
+                  <option value="Transfer Out">ट्रान्सफर (Transfer Out)</option>
+                  <option value="Died">मृत्यु (Died)</option>
+                  <option value="Loss to Follow-up">सम्पर्क विच्छेद (Loss to Follow-up)</option>
+                </select>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left">
@@ -351,6 +384,7 @@ export const MedicineStatusReport: React.FC<MedicineStatusReportProps> = ({
                     <th className="px-6 py-3 font-medium">बिरामीको नाम (Patient)</th>
                     <th className="px-6 py-3 font-medium">सेवा (Service)</th>
                     <th className="px-6 py-3 font-medium">तौल (Weight)</th>
+                    <th className="px-6 py-3 font-medium">अवस्था (Status)</th>
                     <th className="px-6 py-3 font-medium">दैनिक मात्रा (Daily Dose)</th>
                     <th className="px-6 py-3 font-medium">बाँकी औषधि (Remaining)</th>
                     <th className="px-6 py-3 font-medium text-right">कार्य (Action)</th>
@@ -370,14 +404,24 @@ export const MedicineStatusReport: React.FC<MedicineStatusReportProps> = ({
                       </td>
                       <td className="px-6 py-4 text-gray-600">{patient.weight || '-'} kg</td>
                       <td className="px-6 py-4">
-                        {requirements.map(r => (
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                            (patient.status === 'Active' || !patient.status) ? 'bg-green-50 text-green-700 border-green-200' : 
+                            patient.status === 'Transfer Out' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                            patient.status === 'Completed' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                            'bg-slate-50 text-slate-700 border-slate-200'
+                        }`}>
+                            {patient.status || 'Active'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        {(patient.status === 'Active' || !patient.status) ? requirements.map(r => (
                           <div key={r.itemName} className="text-sm">
                             {r.itemName}: <span className="font-semibold">{r.dailyQuantity}</span>
                           </div>
-                        ))}
+                        )) : <span className="text-slate-300">-</span>}
                       </td>
                       <td className="px-6 py-4">
-                        {requirements.map(r => {
+                        {(patient.status === 'Active' || !patient.status) ? requirements.map(r => {
                           const futureNeeded = Math.max(0, r.remainingNeeded - r.dailyQuantity);
                           const todayNeeded = r.remainingNeeded > 0 ? r.dailyQuantity : 0;
                           
@@ -393,7 +437,9 @@ export const MedicineStatusReport: React.FC<MedicineStatusReportProps> = ({
                               </div>
                             </div>
                           );
-                        })}
+                        }) : (
+                          <span className="text-slate-300 font-nepali">सक्रिय छैन (Not Active)</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-right">
                         <button 

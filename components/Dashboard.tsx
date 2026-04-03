@@ -88,9 +88,6 @@ interface ExtendedDashboardProps extends DashboardProps {
   uttarPrasutiRecords: UttarPrasutiRecord[];
   onSaveUttarPrasutiRecord: (record: UttarPrasutiRecord) => void;
   onDeleteUttarPrasutiRecord: (recordId: string) => void;
-  serviceSeekerRecords: ServiceSeekerRecord[];
-  onSaveServiceSeekerRecord: (record: ServiceSeekerRecord) => void;
-  onDeleteServiceSeekerRecord: (recordId: string) => void;
   opdRecords: OPDRecord[];
   onSaveOPDRecord: (record: OPDRecord) => void;
   onDeleteOPDRecord: (recordId: string) => void;
@@ -109,7 +106,6 @@ interface ExtendedDashboardProps extends DashboardProps {
   serviceItems: ServiceItem[];
   onSaveServiceItem: (item: ServiceItem) => void;
   onDeleteServiceItem: (id: string) => void;
-  onDeletePurchaseOrder: (id: string) => void;
   labReports: LabReport[];
   onSaveLabReport: (record: LabReport) => void;
   onDeleteLabReport: (id: string) => void;
@@ -776,6 +772,7 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
                                   allUsers={allUsers}
                                   currentUser={currentUser}
                                   generalSettings={generalSettings}
+                                  serviceSeekerRecords={serviceSeekerRecords}
                                   onUpdateGeneralSettings={onUpdateGeneralSettings}
                                   onAddPatient={onAddTbPatient} 
                                   onUpdatePatient={onUpdateTbPatient} 

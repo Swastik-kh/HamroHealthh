@@ -9,7 +9,7 @@ import {
 import { Input } from './Input';
 import { Select } from './Select';
 import { NepaliDatePicker } from './NepaliDatePicker';
-import { Option, User, OrganizationSettings } from '../types/coreTypes';
+import { Option, User, OrganizationSettings, ServiceSeekerRecord } from '../types/coreTypes';
 import { TBPatient, TBReport, InterFacilityRequest } from '../types/healthTypes';
 import { InventoryItem } from '../types/inventoryTypes';
 import { calculatePatientRequirements, MedicineRequirement } from '../lib/medicineUtils';
@@ -27,6 +27,7 @@ interface TBPatientRegistrationProps {
   allUsers: User[];
   currentUser: User | null;
   generalSettings: OrganizationSettings;
+  serviceSeekerRecords: ServiceSeekerRecord[];
   onUpdateGeneralSettings: (settings: OrganizationSettings) => void;
   onAddPatient: (patient: TBPatient) => void;
   onUpdatePatient: (patient: TBPatient, sourceOrgName?: string) => void;
@@ -43,6 +44,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
   allUsers = [],
   currentUser,
   generalSettings,
+  serviceSeekerRecords = [],
   onUpdateGeneralSettings,
   onAddPatient, 
   onUpdatePatient,
@@ -56,6 +58,8 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
   const [reportCenterTab, setReportCenterTab] = useState<'Recent' | 'History' | 'InterFacility'>('Recent');
   const [searchTerm, setSearchTerm] = useState('');
   const [editingPatientId, setEditingPatientId] = useState<string | null>(null); // For editing existing patients
+  const [showRegistrationForm, setShowRegistrationForm] = useState(false);
+  const [searchId, setSearchId] = useState('');
   
   // State for Lab Report Entry
   const [selectedPatientForLab, setSelectedPatientForLab] = useState<{patient: TBPatient, reason: string, scheduleMonth: number} | null>(null);
@@ -442,11 +446,57 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
     // Fix: patient object already contains fiscalYear, so spreading it is correct.
     setFormData({ ...patient });
     setActiveTab(patient.serviceType); // Ensure tab matches edited patient
+    setShowRegistrationForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSearchAndOpen = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!searchId.trim()) return;
+
+    const existingPatient = (patients || []).find(p => 
+      p.patientId.toLowerCase() === searchId.trim().toLowerCase() || 
+      p.id === searchId.trim()
+    );
+
+    if (existingPatient) {
+      handleEditPatient(existingPatient);
+      setSearchId('');
+    } else {
+      // Check in Muldarta (Service Seeker Records)
+      const muldartaRecord = (serviceSeekerRecords || []).find(r => 
+        r.mulDartaNo === searchId.trim() || 
+        r.registrationNumber === searchId.trim() ||
+        r.uniquePatientId === searchId.trim()
+      );
+
+      if (muldartaRecord) {
+        handleReset();
+        setFormData(prev => ({
+          ...prev,
+          patientId: generateId(activeTab),
+          name: muldartaRecord.name,
+          age: muldartaRecord.age || (muldartaRecord.ageYears !== undefined ? muldartaRecord.ageYears.toString() : ''),
+          gender: muldartaRecord.gender,
+          address: muldartaRecord.address,
+          phone: muldartaRecord.phone,
+          ethnicity: muldartaRecord.casteCode || '', // Map casteCode to ethnicity if available
+        }));
+        setShowRegistrationForm(true);
+        setSearchId('');
+        alert(`मूल दर्ता नं. ${searchId.trim()} बाट विवरण प्राप्त भयो।`);
+      } else {
+        handleReset();
+        setFormData(prev => ({ ...prev, patientId: searchId.trim() }));
+        setShowRegistrationForm(true);
+        setSearchId('');
+      }
+    }
   };
 
   const handleReset = () => {
     setEditingPatientId(null);
+    setShowRegistrationForm(false);
     setFormData({
         id: '',
         patientId: generateId(activeTab), // Re-generate ID for new entry
@@ -767,131 +817,158 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
       </div>
 
       {/* Registration Form */}
-      <div className="bg-white p-6 rounded-2xl border shadow-sm">
-        <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-6">
-          <div className="md:col-span-2 bg-slate-50 p-4 rounded-xl border flex items-center gap-4">
-              <div className="bg-white p-2 rounded-lg text-indigo-600 shadow-sm"><FileDigit size={20}/></div>
-              <div className="flex-1">
-                  <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">बिरामी परिचय नं. (ID)</label>
-                  <input value={formData.patientId} readOnly className="bg-transparent border-none text-xl font-black text-slate-800 p-0 focus:ring-0 w-full" />
+      <div className="bg-white p-6 rounded-2xl border shadow-sm space-y-6">
+        <div className="flex flex-col md:flex-row items-end gap-4 bg-slate-50 p-4 rounded-xl border border-indigo-100">
+          <div className="flex-1">
+            <label className="block text-xs font-bold text-slate-500 mb-1 font-nepali">बिरामी परिचय नं. वा दर्ता नं. राख्नुहोस् (Patient ID / Reg No)</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <Search size={18} />
               </div>
-          </div>
-
-          <Input label="बिरामीको नाम" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required icon={<UserIcon size={18}/>} />
-          
-          <div className="grid grid-cols-2 gap-4">
-            <Select label="लिङ्ग" options={[{id:'m',label:'पुरुष (Male)',value:'Male'},{id:'f',label:'महिला (Female)',value:'Female'},{id:'o',label:'अन्य (Other)',value:'Other'}]} value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value as any})} required />
-            <Select 
-                label="जात/जाति (Ethnicity)" 
-                options={[
-                    {id:'dalit', label:'दलित (Dalit)', value:'Dalit'},
-                    {id:'janajati', label:'जनजाति (Janajati)', value:'Janajati'},
-                    {id:'madhesi', label:'मधेसी (Madhesi)', value:'Madhesi'},
-                    {id:'brahmin', label:'ब्राह्मण/क्षेत्री (Brahmin/Chhetri)', value:'Brahmin/Chhetri'},
-                    {id:'muslim', label:'मुस्लिम (Muslim)', value:'Muslim'},
-                    {id:'other', label:'अन्य (Other)', value:'Other'}
-                ]} 
-                value={formData.ethnicity} 
-                onChange={e => setFormData({...formData, ethnicity: e.target.value})} 
-                required 
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-              <Input label="उमेर" type="number" value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} required icon={<Calendar size={18}/>} />
-              <Input label="फोन नं." value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} icon={<Phone size={18}/>} />
-          </div>
-
-          <Input label="ठेगाना" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} required icon={<MapPin size={18}/>} />
-
-          <Select label="दर्ता प्रकार" options={regTypes} value={formData.regType} onChange={e => setFormData({...formData, regType: e.target.value})} required icon={<List size={18}/>} />
-
-          {activeTab === 'TB' ? (
-              <Select label="TB वर्गीकरण" options={tbClassification} value={formData.classification} onChange={e => setFormData({...formData, classification: e.target.value})} required icon={<Stethoscope size={18}/>} />
-          ) : (
-              <Select 
-                label="कुष्ठरोग प्रकार (MB/PB)" 
-                options={leprosyTypes} 
-                value={formData.leprosyType || ''} 
-                onChange={e => setFormData({
-                    ...formData, 
-                    leprosyType: (e.target.value === '' ? undefined : e.target.value) as 'MB' | 'PB' | undefined
-                })} 
-                required 
-                icon={<ClipboardList size={18}/>} 
-                placeholder="-- प्रकार छान्नुहोस् --"
+              <input 
+                type="text" 
+                placeholder="उदा: TB-2082-1234" 
+                className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all font-bold"
+                value={searchId}
+                onChange={e => setSearchId(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSearchAndOpen()}
               />
-          )}
-          <NepaliDatePicker 
-            label="दर्ता मिति" 
-            value={formData.registrationDate} 
-            onChange={val => setFormData({...formData, registrationDate: val})} 
-            required 
-            // Removed minDate and maxDate restrictions
-          />
-
-          <NepaliDatePicker 
-            label="उपचार सुरु गरेको मिति" 
-            value={formData.treatmentStartDate || ''} 
-            onChange={val => setFormData({...formData, treatmentStartDate: val})} 
-            required 
-          />
-
-          {activeTab === 'TB' && (
-            <>
-              <div className="grid grid-cols-2 gap-4">
-                <Input label="बिरामीको तौल (Weight)" type="number" value={formData.weight} onChange={e => setFormData({...formData, weight: e.target.value})} icon={<Scale size={18}/>} />
-                <Select label="उपचार तालिका (Regimen)" options={[{id:'adult', label:'Adult', value:'Adult'}, {id:'child', label:'Child', value:'Child'}]} value={formData.regimen} onChange={e => setFormData({...formData, regimen: e.target.value as any})} />
-              </div>
-
-              <div className="space-y-4">
-                <Select 
-                  label="उपचार प्रकार (Treatment Type)" 
-                  options={treatmentTypeOptions} 
-                  value={treatmentTypeOptions.some(opt => opt.value === formData.treatmentType && opt.value !== 'Other') ? formData.treatmentType : (formData.treatmentType ? 'Other' : '')} 
-                  onChange={e => {
-                    const val = e.target.value;
-                    if (val !== 'Other') {
-                      setFormData({...formData, treatmentType: val});
-                    } else if (formData.treatmentType === '2HRZE+4HR' || formData.treatmentType === '6HRZE' || formData.treatmentType === '6HRZE+Lfx' || formData.treatmentType === '2HRZE+7HRE' || !formData.treatmentType) {
-                      setFormData({...formData, treatmentType: ''});
-                    }
-                  }} 
-                  icon={<Pill size={18}/>}
-                />
-                
-                {(formData.treatmentType === '' || !treatmentTypeOptions.some(opt => opt.value === formData.treatmentType && opt.value !== 'Other')) && (
-                  <Input 
-                    label="अन्य उपचार प्रकार (Manual Entry)" 
-                    placeholder="उपचार प्रकार लेख्नुहोस्..." 
-                    value={formData.treatmentType} 
-                    onChange={e => setFormData({...formData, treatmentType: e.target.value})} 
-                  />
-                )}
-              </div>
-            </>
-          )}
-
-          <Select 
-            label="अवस्था (Status)" 
-            options={[
-              {id:'active', label:'Active', value:'Active'},
-              {id:'transfer_out', label:'Transfer Out', value:'Transfer Out'},
-              {id:'completed', label:'Completed', value:'Completed'},
-              {id:'died', label:'Died', value:'Died'},
-              {id:'loss_to_followup', label:'Loss to Follow-up', value:'Loss to Follow-up'}
-            ]} 
-            value={formData.status || 'Active'} 
-            onChange={e => setFormData({...formData, status: e.target.value as any})} 
-            required 
-            icon={<Activity size={18}/>} 
-          />
-
-          <div className="md:col-span-2 pt-4 border-t flex justify-end gap-3">
-              <button type="button" onClick={handleReset} className="flex items-center gap-2 px-6 py-2 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all font-bold text-sm"><RotateCcw size={16}/> {editingPatientId ? 'रद्द' : 'रिसेट'}</button>
-              <button type="submit" className="flex items-center gap-2 px-8 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl shadow-lg shadow-indigo-100 transition-all font-bold text-sm"><Save size={16}/> {editingPatientId ? 'अपडेट गर्नुहोस्' : 'दर्ता गर्नुहोस्'}</button>
+            </div>
           </div>
-        </form>
+          <button 
+            onClick={() => handleSearchAndOpen()}
+            className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-all flex items-center gap-2 shadow-sm"
+          >
+            <ChevronRight size={18} /> अगाडि बढ्नुहोस्
+          </button>
+        </div>
+
+        {showRegistrationForm && (
+          <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-6 pt-6 border-t animate-in fade-in slide-in-from-top-4">
+            <div className="md:col-span-2 bg-slate-50 p-4 rounded-xl border flex items-center gap-4">
+                <div className="bg-white p-2 rounded-lg text-indigo-600 shadow-sm"><FileDigit size={20}/></div>
+                <div className="flex-1">
+                    <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">बिरामी परिचय नं. (ID)</label>
+                    <input value={formData.patientId} readOnly className="bg-transparent border-none text-xl font-black text-slate-800 p-0 focus:ring-0 w-full" />
+                </div>
+            </div>
+
+            <Input label="बिरामीको नाम" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required icon={<UserIcon size={18}/>} />
+            
+            <div className="grid grid-cols-2 gap-4">
+              <Select label="लिङ्ग" options={[{id:'m',label:'पुरुष (Male)',value:'Male'},{id:'f',label:'महिला (Female)',value:'Female'},{id:'o',label:'अन्य (Other)',value:'Other'}]} value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value as any})} required />
+              <Select 
+                  label="जात/जाति (Ethnicity)" 
+                  options={[
+                      {id:'dalit', label:'दलित (Dalit)', value:'Dalit'},
+                      {id:'janajati', label:'जनजाति (Janajati)', value:'Janajati'},
+                      {id:'madhesi', label:'मधेसी (Madhesi)', value:'Madhesi'},
+                      {id:'brahmin', label:'ब्राह्मण/क्षेत्री (Brahmin/Chhetri)', value:'Brahmin/Chhetri'},
+                      {id:'muslim', label:'मुस्लिम (Muslim)', value:'Muslim'},
+                      {id:'other', label:'अन्य (Other)', value:'Other'}
+                  ]} 
+                  value={formData.ethnicity} 
+                  onChange={e => setFormData({...formData, ethnicity: e.target.value})} 
+                  required 
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+                <Input label="उमेर" type="number" value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} required icon={<Calendar size={18}/>} />
+                <Input label="फोन नं." value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} icon={<Phone size={18}/>} />
+            </div>
+
+            <Input label="ठेगाना" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} required icon={<MapPin size={18}/>} />
+
+            <Select label="दर्ता प्रकार" options={regTypes} value={formData.regType} onChange={e => setFormData({...formData, regType: e.target.value})} required icon={<List size={18}/>} />
+
+            {activeTab === 'TB' ? (
+                <Select label="TB वर्गीकरण" options={tbClassification} value={formData.classification} onChange={e => setFormData({...formData, classification: e.target.value})} required icon={<Stethoscope size={18}/>} />
+            ) : (
+                <Select 
+                  label="कुष्ठरोग प्रकार (MB/PB)" 
+                  options={leprosyTypes} 
+                  value={formData.leprosyType || ''} 
+                  onChange={e => setFormData({
+                      ...formData, 
+                      leprosyType: (e.target.value === '' ? undefined : e.target.value) as 'MB' | 'PB' | undefined
+                  })} 
+                  required 
+                  icon={<ClipboardList size={18}/>} 
+                  placeholder="-- प्रकार छान्नुहोस् --"
+                />
+            )}
+            <NepaliDatePicker 
+              label="दर्ता मिति" 
+              value={formData.registrationDate} 
+              onChange={val => setFormData({...formData, registrationDate: val})} 
+              required 
+              // Removed minDate and maxDate restrictions
+            />
+
+            <NepaliDatePicker 
+              label="उपचार सुरु गरेको मिति" 
+              value={formData.treatmentStartDate || ''} 
+              onChange={val => setFormData({...formData, treatmentStartDate: val})} 
+              required 
+            />
+
+            {activeTab === 'TB' && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <Input label="बिरामीको तौल (Weight)" type="number" value={formData.weight} onChange={e => setFormData({...formData, weight: e.target.value})} icon={<Scale size={18}/>} />
+                  <Select label="उपचार तालिका (Regimen)" options={[{id:'adult', label:'Adult', value:'Adult'}, {id:'child', label:'Child', value:'Child'}]} value={formData.regimen} onChange={e => setFormData({...formData, regimen: e.target.value as any})} />
+                </div>
+
+                <div className="space-y-4">
+                  <Select 
+                    label="उपचार प्रकार (Treatment Type)" 
+                    options={treatmentTypeOptions} 
+                    value={treatmentTypeOptions.some(opt => opt.value === formData.treatmentType && opt.value !== 'Other') ? formData.treatmentType : (formData.treatmentType ? 'Other' : '')} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      if (val !== 'Other') {
+                        setFormData({...formData, treatmentType: val});
+                      } else if (formData.treatmentType === '2HRZE+4HR' || formData.treatmentType === '6HRZE' || formData.treatmentType === '6HRZE+Lfx' || formData.treatmentType === '2HRZE+7HRE' || !formData.treatmentType) {
+                        setFormData({...formData, treatmentType: ''});
+                      }
+                    }} 
+                    icon={<Pill size={18}/>}
+                  />
+                  
+                  {(formData.treatmentType === '' || !treatmentTypeOptions.some(opt => opt.value === formData.treatmentType && opt.value !== 'Other')) && (
+                    <Input 
+                      label="अन्य उपचार प्रकार (Manual Entry)" 
+                      placeholder="उपचार प्रकार लेख्नुहोस्..." 
+                      value={formData.treatmentType} 
+                      onChange={e => setFormData({...formData, treatmentType: e.target.value})} 
+                    />
+                  )}
+                </div>
+              </>
+            )}
+
+            <Select 
+              label="अवस्था (Status)" 
+              options={[
+                {id:'active', label:'Active', value:'Active'},
+                {id:'transfer_out', label:'Transfer Out', value:'Transfer Out'},
+                {id:'completed', label:'Completed', value:'Completed'},
+                {id:'died', label:'Died', value:'Died'},
+                {id:'loss_to_followup', label:'Loss to Follow-up', value:'Loss to Follow-up'}
+              ]} 
+              value={formData.status || 'Active'} 
+              onChange={e => setFormData({...formData, status: e.target.value as any})} 
+              required 
+              icon={<Activity size={18}/>} 
+            />
+
+            <div className="md:col-span-2 pt-4 border-t flex justify-end gap-3">
+                <button type="button" onClick={handleReset} className="flex items-center gap-2 px-6 py-2 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all font-bold text-sm"><RotateCcw size={16}/> {editingPatientId ? 'रद्द (Cancel)' : 'रिसेट (Reset)'}</button>
+                <button type="submit" className="flex items-center gap-2 px-8 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-xl shadow-lg shadow-indigo-100 transition-all font-bold text-sm"><Save size={16}/> {editingPatientId ? 'अपडेट गर्नुहोस्' : 'दर्ता गर्नुहोस्'}</button>
+            </div>
+          </form>
+        )}
       </div>
 
       {/* Patient List */}
