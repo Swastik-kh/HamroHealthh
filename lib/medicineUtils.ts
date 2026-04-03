@@ -278,9 +278,12 @@ export function checkDefaulter(patient: TBPatient): { isDefaulter: boolean; sinc
     const diffTime = Math.abs(todayAd.getTime() - firstMissedDate.getTime());
     const daysSinceStopped = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to include the missed day itself
     
+    const firstMissedNepali = new NepaliDate(firstMissedDate);
+    const sinceDateBs = `${firstMissedNepali.getYear()}-${(firstMissedNepali.getMonth() + 1).toString().padStart(2, '0')}-${firstMissedNepali.getDate().toString().padStart(2, '0')}`;
+
     return { 
         isDefaulter: true, 
-        sinceDate: firstMissedDate.toISOString().split('T')[0],
+        sinceDate: sinceDateBs,
         treatmentStartDate: patient.treatmentStartDate,
         daysSinceStopped: daysSinceStopped
     };
