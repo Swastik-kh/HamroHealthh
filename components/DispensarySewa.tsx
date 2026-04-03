@@ -225,7 +225,7 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
               <span>बाँकी (Pending)</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 bg-slate-100 rounded-sm"></div>
+              <div className="w-3 h-3 bg-slate-300 rounded-sm"></div>
               <span>अमान्य/लक (Locked)</span>
             </div>
           </div>
@@ -262,7 +262,7 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
 
                     let cellClass = "border border-slate-300 p-0 text-center transition-colors ";
                     if (!isValid || isBeforeStart) {
-                      cellClass += "bg-slate-100 cursor-not-allowed ";
+                      cellClass += "bg-slate-300 cursor-not-allowed ";
                     } else {
                       cellClass += "cursor-pointer hover:bg-white/50 ";
                       if (isTaken) {
