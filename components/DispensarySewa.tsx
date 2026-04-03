@@ -98,11 +98,11 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
           if (diffDays > 1) {
             // Interruption detected
             if (diffDays < 30) {
-              alert(`⚠️ उपचार अवरोध (${diffDays} दिन): बिरामीलाई २४-४८ घण्टा भित्र खोज्नुहोस्। छुटेका डोजहरू थप गरी उपचार जारी राख्नुहोस्।`);
+              alert(`⚠️ उपचार अवरोध (${diffDays} दिन): बिरामीलाई २४-४८ घण्टा भित्र खोज्नुहोस्। छुटेका डोजहरू थप गरी उपचार जारी राख्नुहोस्। औषधि प्रतिरोध विकास हुन नदिन छुटेका डोजहरू व्यवस्थापन गर्नुहोस्।`);
             } else if (diffDays >= 30 && diffDays < 60) {
-              alert(`⚠️ उपचार अवरोध १ देखि २ महिना (${diffDays} दिन): बिरामी खोज्नुहोस्, कारण पत्ता लगाउनुहोस् र २ वटा खकार नमुना परीक्षण (Microscopy/Xpert) को लागि पठाउनुहोस्। नतिजा अनुसार उपचार जारी राख्ने वा पुनः सुरु गर्ने निर्णय गर्नुहोस्।`);
+              alert(`⚠️ उपचार अवरोध १ देखि २ महिना (${diffDays} दिन): बिरामी खोज्नुहोस्, कारण पत्ता लगाउनुहोस् र २ वटा खकार नमुना परीक्षण (Microscopy/Xpert) को लागि पठाउनुहोस्। यदि खकार नेगेटिभ भए उपचार जारी राख्नुहोस् र छुटेका डोजहरू पूर्ति गर्न उपचार अवधि थप गर्नुहोस्। यदि पोजिटिभ भए उपचार पुनः सुरु गर्नुहोस्।`);
             } else if (diffDays >= 60) {
-              alert(`⚠️ उपचार अवरोध २ महिना वा सोभन्दा बढी (${diffDays} दिन): बिरामीलाई 'Lost to Follow-up' मानिन्छ। बिरामी खोज्नुहोस्, खकार परीक्षण गर्नुहोस् र राष्ट्रिय निर्देशिका अनुसार उपचार पुनः सुरु गर्नुहोस्।`);
+              alert(`⚠️ उपचार अवरोध २ महिना वा सोभन्दा बढी (${diffDays} दिन): बिरामीलाई 'Lost to Follow-up' मानिन्छ। बिरामी खोज्नुहोस्, अवरोधको कारण पत्ता लगाउनुहोस्, खकार परीक्षण गर्नुहोस् र राष्ट्रिय निर्देशिका अनुसार उपचार पुनः सुरु गर्नुहोस्।`);
             }
           }
         } catch (e) {
@@ -195,6 +195,8 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
     const startDay = parseInt(parts[2]);
     
     const startAdDate = new NepaliDate(startYear, startMonth, startDay).toJsDate();
+    const todayAd = new Date();
+    todayAd.setHours(0, 0, 0, 0);
     const isStandardRegimen = tbPatientRecord.treatmentType === '2HRZE+4HR';
 
     const months = [];
@@ -288,6 +290,7 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
                     const isTaken = tbPatientRecord.dailyDoses?.includes(dateStr);
                     
                     const isBeforeStart = currentAdDate < startAdDate;
+                    const isFuture = currentAdDate > todayAd;
                     const diffTime = currentAdDate.getTime() - startAdDate.getTime();
                     const daysFromStart = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
                     
@@ -295,7 +298,7 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
                     const isContinuation = isStandardRegimen && daysFromStart >= 61 && daysFromStart <= 180;
 
                     let cellClass = "border border-slate-300 p-0 text-center transition-colors ";
-                    if (!isValid || isBeforeStart) {
+                    if (!isValid || isBeforeStart || isFuture) {
                       cellClass += "bg-slate-300 cursor-not-allowed ";
                     } else {
                       cellClass += "cursor-pointer hover:bg-white/50 ";
@@ -320,10 +323,10 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
                       <td 
                         key={dIdx} 
                         className={cellClass}
-                        onClick={() => isValid && !isBeforeStart && handleToggleDailyDose(dateStr)}
+                        onClick={() => isValid && !isBeforeStart && !isFuture && handleToggleDailyDose(dateStr)}
                       >
                         <div className="w-full h-6 flex items-center justify-center">
-                          {isValid && !isBeforeStart ? (isTaken ? '✓' : '') : ''}
+                          {isValid && !isBeforeStart && !isFuture ? (isTaken ? '✓' : '') : ''}
                         </div>
                       </td>
                     );
