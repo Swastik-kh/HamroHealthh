@@ -79,7 +79,36 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
     if (currentDoses.includes(date)) {
       newDoses = currentDoses.filter(d => d !== date);
     } else {
-      newDoses = [...currentDoses, date];
+      newDoses = [...currentDoses, date].sort();
+      
+      // Check for interruption if this is a new dose being added
+      const sortedDoses = [...currentDoses].sort();
+      if (sortedDoses.length > 0) {
+        const lastDoseStr = sortedDoses[sortedDoses.length - 1];
+        try {
+          const lastDoseParts = lastDoseStr.split('-');
+          const currentDoseParts = date.split('-');
+          
+          const lastDoseNep = new NepaliDate(parseInt(lastDoseParts[0]), parseInt(lastDoseParts[1]) - 1, parseInt(lastDoseParts[2]));
+          const currentDoseNep = new NepaliDate(parseInt(currentDoseParts[0]), parseInt(currentDoseParts[1]) - 1, parseInt(currentDoseParts[2]));
+          
+          const diffTime = currentDoseNep.toJsDate().getTime() - lastDoseNep.toJsDate().getTime();
+          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+          
+          if (diffDays > 1) {
+            // Interruption detected
+            if (diffDays < 30) {
+              alert(`⚠️ उपचार अवरोध (${diffDays} दिन): बिरामीलाई २४-४८ घण्टा भित्र खोज्नुहोस्। छुटेका डोजहरू थप गरी उपचार जारी राख्नुहोस्।`);
+            } else if (diffDays >= 30 && diffDays < 60) {
+              alert(`⚠️ उपचार अवरोध १ देखि २ महिना (${diffDays} दिन): बिरामी खोज्नुहोस्, कारण पत्ता लगाउनुहोस् र २ वटा खकार नमुना परीक्षण (Microscopy/Xpert) को लागि पठाउनुहोस्। नतिजा अनुसार उपचार जारी राख्ने वा पुनः सुरु गर्ने निर्णय गर्नुहोस्।`);
+            } else if (diffDays >= 60) {
+              alert(`⚠️ उपचार अवरोध २ महिना वा सोभन्दा बढी (${diffDays} दिन): बिरामीलाई 'Lost to Follow-up' मानिन्छ। बिरामी खोज्नुहोस्, खकार परीक्षण गर्नुहोस् र राष्ट्रिय निर्देशिका अनुसार उपचार पुनः सुरु गर्नुहोस्।`);
+            }
+          }
+        } catch (e) {
+          console.error("Error calculating interruption gap", e);
+        }
+      }
     }
     
     onUpdateTbPatient({
@@ -129,7 +158,11 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
     
     const startYear = parseInt(parts[0]);
     const startMonth = parseInt(parts[1]) - 1; // 0-indexed
+    const startDay = parseInt(parts[2]);
     
+    const startAdDate = new NepaliDate(startYear, startMonth, startDay).toJsDate();
+    const isStandardRegimen = tbPatientRecord.treatmentType === '2HRZE+4HR';
+
     const months = [];
     for (let i = 0; i < 12; i++) {
       let y = startYear;
@@ -160,7 +193,7 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
 
     return (
       <div className="mt-8 bg-white p-6 rounded-2xl border border-primary-100 shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary-50 text-primary-600 rounded-lg">
               <Activity size={20} />
@@ -170,50 +203,93 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
               <p className="text-xs text-slate-500">दैनिक औषधि सेवन रेकर्ड (Daily Medicine Intake Record) | उपचार सुरु: {tbPatientRecord.treatmentStartDate}</p>
             </div>
           </div>
-          <div className="flex items-center gap-4 text-[10px]">
+          <div className="flex flex-wrap items-center gap-3 text-[9px]">
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 bg-primary-600 rounded-sm"></div>
               <span>सेवन गरिएको (Taken)</span>
             </div>
+            {isStandardRegimen && (
+              <>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 bg-blue-50 border border-blue-200 rounded-sm"></div>
+                  <span>सघन चरण (Intensive: 60 Days)</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 bg-orange-50 border border-orange-200 rounded-sm"></div>
+                  <span>निरन्तर चरण (Continuation: 120 Days)</span>
+                </div>
+              </>
+            )}
             <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 border border-slate-200 rounded-sm"></div>
+              <div className="w-3 h-3 border border-slate-300 rounded-sm"></div>
               <span>बाँकी (Pending)</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 bg-slate-100 rounded-sm"></div>
-              <span>अमान्य (Invalid)</span>
+              <span>अमान्य/लक (Locked)</span>
             </div>
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-[9px]">
+          <table className="w-full border-collapse text-[9px] border border-slate-300">
             <thead>
               <tr>
-                <th className="border border-slate-200 p-1 bg-slate-50 w-24">महिना / गते</th>
+                <th className="border border-slate-300 p-1 bg-slate-100 w-24">महिना / गते</th>
                 {Array.from({ length: 31 }, (_, i) => (
-                  <th key={i} className="border border-slate-200 p-1 bg-slate-50 w-6">{i + 1}</th>
+                  <th key={i} className="border border-slate-300 p-1 bg-slate-100 w-6">{i + 1}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {months.map((m, mIdx) => (
                 <tr key={mIdx}>
-                  <td className="border border-slate-200 p-1 font-bold bg-slate-50 text-center">{m.name}</td>
+                  <td className="border border-slate-300 p-1 font-bold bg-slate-50 text-center">{m.name}</td>
                   {Array.from({ length: 31 }, (_, dIdx) => {
                     const day = dIdx + 1;
                     const isValid = day <= m.daysInMonth;
+                    const currentNepDate = new NepaliDate(m.year, m.month, day);
+                    const currentAdDate = currentNepDate.toJsDate();
                     const dateStr = `${m.year}-${String(m.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                     const isTaken = tbPatientRecord.dailyDoses?.includes(dateStr);
+                    
+                    const isBeforeStart = currentAdDate < startAdDate;
+                    const diffTime = currentAdDate.getTime() - startAdDate.getTime();
+                    const daysFromStart = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                    
+                    const isIntensive = isStandardRegimen && daysFromStart >= 1 && daysFromStart <= 60;
+                    const isContinuation = isStandardRegimen && daysFromStart >= 61 && daysFromStart <= 180;
+
+                    let cellClass = "border border-slate-300 p-0 text-center transition-colors ";
+                    if (!isValid || isBeforeStart) {
+                      cellClass += "bg-slate-100 cursor-not-allowed ";
+                    } else {
+                      cellClass += "cursor-pointer hover:bg-white/50 ";
+                      if (isTaken) {
+                        if (isIntensive) {
+                          cellClass += "bg-blue-600 text-white ";
+                        } else if (isContinuation) {
+                          cellClass += "bg-orange-600 text-white ";
+                        } else {
+                          cellClass += "bg-primary-600 text-white ";
+                        }
+                      } else {
+                        if (isIntensive) {
+                          cellClass += "bg-blue-50 ";
+                        } else if (isContinuation) {
+                          cellClass += "bg-orange-50 ";
+                        }
+                      }
+                    }
                     
                     return (
                       <td 
                         key={dIdx} 
-                        className={`border border-slate-200 p-0 text-center cursor-pointer transition-colors ${isValid ? 'hover:bg-primary-50' : 'bg-slate-100 cursor-not-allowed'} ${isTaken && isValid ? 'bg-primary-600 text-white' : ''}`}
-                        onClick={() => isValid && handleToggleDailyDose(dateStr)}
+                        className={cellClass}
+                        onClick={() => isValid && !isBeforeStart && handleToggleDailyDose(dateStr)}
                       >
                         <div className="w-full h-6 flex items-center justify-center">
-                          {isValid ? (isTaken ? '✓' : '') : ''}
+                          {isValid && !isBeforeStart ? (isTaken ? '✓' : '') : ''}
                         </div>
                       </td>
                     );
