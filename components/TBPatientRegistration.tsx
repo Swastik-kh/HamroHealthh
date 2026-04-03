@@ -12,7 +12,7 @@ import { NepaliDatePicker } from './NepaliDatePicker';
 import { Option, User, OrganizationSettings, ServiceSeekerRecord } from '../types/coreTypes';
 import { TBPatient, TBReport, InterFacilityRequest } from '../types/healthTypes';
 import { InventoryItem } from '../types/inventoryTypes';
-import { calculatePatientRequirements, MedicineRequirement } from '../lib/medicineUtils';
+import { calculatePatientRequirements, MedicineRequirement, checkDefaulter } from '../lib/medicineUtils';
 import { MedicineStatusReport } from './MedicineStatusReport';
 
 // @ts-ignore
@@ -54,6 +54,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'TB' | 'Leprosy'>('TB');
   const [showSputumModal, setShowSputumModal] = useState(false);
+  const [showDefaulterModal, setShowDefaulterModal] = useState(false);
   const [showReportCenter, setShowReportCenter] = useState(false);
   const [reportCenterTab, setReportCenterTab] = useState<'Recent' | 'History' | 'InterFacility'>('Recent');
   const [searchTerm, setSearchTerm] = useState('');
@@ -332,6 +333,15 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
   }, [patients, globalInterFacilityRequests, currentUser]);
 
   const newReportCount = patientsWithNewReports.length;
+
+  const defaulterPatients = useMemo(() => {
+    return (patients || []).filter(p => p.serviceType === 'TB' && p.fiscalYear === currentFiscalYear).map(p => {
+        const { isDefaulter, sinceDate } = checkDefaulter(p);
+        return { ...p, isDefaulter, sinceDate };
+    }).filter(p => p.isDefaulter);
+  }, [patients, currentFiscalYear]);
+
+  const defaulterCount = defaulterPatients.length;
 
   const isUserUnderTarget = (user: User, targetId: string, allUsers: User[]): boolean => {
     if (!user.parentId) return false;
@@ -766,9 +776,42 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
       {/* Stats Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="bg-white p-4 rounded-xl border shadow-sm flex items-center justify-between">
-            <div><p className="text-slate-500 text-xs font-bold font-nepali mb-1">कुल दर्ता ({activeTab})</p><h3 className="text-2xl font-black text-slate-800">{(patients || []).filter(p => p.serviceType === activeTab && p.fiscalYear === currentFiscalYear).length}</h3></div> {/* Defensive check */}
+            <div>
+                <p className="text-slate-500 text-xs font-bold font-nepali mb-1">कुल दर्ता ({activeTab})</p>
+                <div className="flex items-baseline gap-2">
+                    <h3 className="text-2xl font-black text-slate-800">{(patients || []).filter(p => p.serviceType === activeTab && p.fiscalYear === currentFiscalYear).length}</h3>
+                    {activeTab === 'TB' && defaulterCount > 0 && (
+                        <span onClick={() => setShowDefaulterModal(true)} className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full animate-pulse cursor-pointer">
+                            {defaulterCount} डिफल्टर
+                        </span>
+                    )}
+                </div>
+            </div>
             <div className="bg-blue-50 p-3 rounded-lg text-blue-600"><Users size={20} /></div>
         </div>
+
+        {showDefaulterModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-6 w-full max-w-lg shadow-xl">
+              <h2 className="text-xl font-bold mb-4 text-red-600">डिफल्टर बिरामीहरू ({defaulterCount})</h2>
+              <div className="max-h-96 overflow-y-auto">
+                {defaulterPatients.map(p => (
+                  <div key={p.id} className="p-3 border-b flex justify-between items-center">
+                    <div>
+                      <p className="font-bold">{p.name}</p>
+                      <p className="text-xs text-slate-500">दर्ता नं: {p.registrationNumber}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-slate-500">डिफल्टर भएको मिति</p>
+                      <p className="font-bold text-red-600">{p.sinceDate}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => setShowDefaulterModal(false)} className="mt-4 w-full bg-slate-800 text-white py-2 rounded-lg font-bold">बन्द गर्नुहोस्</button>
+            </div>
+          </div>
+        )}
 
         <div onClick={() => setShowSputumModal(true)} className="bg-white p-4 rounded-xl border border-orange-200 shadow-sm flex items-center justify-between cursor-pointer hover:bg-orange-50 transition-all group relative overflow-hidden">
             {interFacilityRequestsForMe.length > 0 && (

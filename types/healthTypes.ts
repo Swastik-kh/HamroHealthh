@@ -97,6 +97,7 @@ export interface TBPatient {
   latestReportMonth?: number;
   reports: TBReport[];
   dailyDoses?: string[]; // Array of YYYY-MM-DD strings representing days when medicine was taken/dispensed
+  isDefaulter?: boolean;
   fiscalYear: string;
   status?: 'Active' | 'Transfer Out' | 'Completed' | 'Died' | 'Loss to Follow-up';
   interFacilityRequests?: InterFacilityRequest[];

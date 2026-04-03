@@ -11,6 +11,14 @@ export interface MedicineRequirement {
   availableStock: number;
 }
 
+export const STANDARD_MEDICINE_NAMES = [
+  'HRZE (Adult)', 'HR (Adult)', 'HRE (Adult)', 
+  'HRZE (Child)', 'HR (Child)', 
+  'Levofloxacin 250/500mg', 'Dapsone 100mg', 
+  'Clofazimine 50mg', 'Clofazimine 100mg', 
+  'Rifampicin 600mg', 'Rifampicin 450mg'
+];
+
 const MEDICINE_MAPPINGS: Record<string, string[]> = {
   'HRZE (Adult)': ['HRZE', 'HRZE Adult', 'Isoniazid+Rifampicin+Pyrazinamide+Ethambutol', 'TB Intensive', '4FDC', 'Fixed Dose Combination Adult', 'RHZE'],
   'HR (Adult)': ['HR', 'HR Adult', 'Isoniazid+Rifampicin', 'TB Continuation', '2FDC', 'RH'],
@@ -232,3 +240,27 @@ export const calculatePatientRequirements = (
     remainingNeeded: (patient.status === 'Active' || !patient.status) ? req.remainingNeeded : 0
   }));
 };
+
+export function checkDefaulter(patient: TBPatient): { isDefaulter: boolean; sinceDate?: string } {
+  if (!patient.treatmentStartDate || !patient.dailyDoses) return { isDefaulter: false };
+  
+  const startDate = new Date(patient.treatmentStartDate);
+  const today = new Date();
+  
+  // Calculate total days since treatment start
+  const diffTime = Math.abs(today.getTime() - startDate.getTime());
+  const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  // Count missed days
+  const takenDays = patient.dailyDoses.length;
+  const missedDays = totalDays - takenDays;
+  
+  if (missedDays > 1) {
+    // Calculate the date of the first missed day
+    const firstMissedDate = new Date(startDate);
+    firstMissedDate.setDate(startDate.getDate() + takenDays + 1);
+    return { isDefaulter: true, sinceDate: firstMissedDate.toISOString().split('T')[0] };
+  }
+  
+  return { isDefaulter: false };
+}

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { Search, Save, Printer, Plus, Trash2, FileText, User, Calendar, Stethoscope, Activity, Pill, FlaskConical, History, X } from 'lucide-react';
 import { ServiceSeekerRecord, OPDRecord, PrescriptionItem, ServiceItem, LabReport, OrganizationSettings } from '../types/coreTypes';
-import { XRayRecord, ECGRecord, USGRecord, PhysiotherapyRecord } from '../types';
+import { XRayRecord, ECGRecord, USGRecord, PhysiotherapyRecord, TBPatient } from '../types';
 import { InventoryItem } from '../types/inventoryTypes';
 import { Input } from './Input';
 // @ts-ignore
@@ -13,6 +13,8 @@ import { MedicineSlipPrint } from './MedicineSlipPrint';
 interface OPDSewaProps {
   serviceSeekerRecords?: ServiceSeekerRecord[];
   opdRecords?: OPDRecord[];
+  tbPatients?: TBPatient[];
+  onUpdateTbPatient?: (patient: TBPatient) => void;
   onSaveRecord: (record: OPDRecord) => void;
   onDeleteRecord: (recordId: string) => void;
   currentFiscalYear: string;

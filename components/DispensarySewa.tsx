@@ -10,6 +10,7 @@ import {
   DispensaryRecord, User as AppUser, OrganizationSettings, TBPatient 
 } from '../types';
 import { InventoryItem, Store } from '../types/inventoryTypes';
+import { STANDARD_MEDICINE_NAMES, fuzzyMatch, calculatePatientRequirements } from '../lib/medicineUtils';
 // @ts-ignore
 import NepaliDate from 'nepali-date-converter';
 
@@ -56,6 +57,9 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
   const [selectedStoreId, setSelectedStoreId] = useState('');
   const [remarks, setRemarks] = useState('');
   const [dispenseItems, setDispenseItems] = useState<any[]>([]);
+  const [tbMedicine, setTbMedicine] = useState('');
+  const [tbQuantity, setTbQuantity] = useState('');
+  const [tbBatch, setTbBatch] = useState('');
 
   const tbPatientRecord = useMemo(() => {
     if (!selectedPatient) return null;
@@ -84,6 +88,36 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
     });
   };
 
+  const handleDispenseTB = () => {
+    if (!tbPatientRecord || !tbMedicine || !tbQuantity || !tbBatch) {
+      alert("कृपया सबै जानकारी भर्नुहोस्।");
+      return;
+    }
+    
+    // Find inventory items that match the selected standard medicine name
+    const matchingItems = inventoryItems.filter(i => 
+      fuzzyMatch(i.itemName, tbMedicine, generalSettings.medicineMappings) && 
+      i.batchNo === tbBatch
+    );
+    
+    const item = matchingItems[0];
+    if (!item || item.currentQuantity < parseInt(tbQuantity)) {
+      alert("स्टकमा पर्याप्त औषधि छैन।");
+      return;
+    }
+    
+    // Update inventory
+    onUpdateInventoryItem({
+      ...item,
+      currentQuantity: item.currentQuantity - parseInt(tbQuantity)
+    });
+    
+    alert("औषधि सफलतापूर्वक डिस्पेंस गरियो।");
+    setTbMedicine('');
+    setTbQuantity('');
+    setTbBatch('');
+  };
+
   const renderTBTreatmentCard = () => {
     if (!tbPatientRecord) return null;
 
@@ -97,7 +131,7 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
     const startMonth = parseInt(parts[1]) - 1; // 0-indexed
     
     const months = [];
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 12; i++) {
       let y = startYear;
       let m = startMonth + i;
       while (m > 11) {
@@ -105,10 +139,22 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
         y += 1;
       }
       const dateObj = new NepaliDate(y, m, 1);
+      
+      // Calculate days in month
+      let daysInMonth = 30;
+      for (let d = 32; d >= 28; d--) {
+        const dObj = new NepaliDate(y, m, d);
+        if (dObj.getMonth() === m) {
+          daysInMonth = d;
+          break;
+        }
+      }
+      
       months.push({
         year: y,
         month: m,
-        name: dateObj.format('MMMM')
+        name: dateObj.format('MMMM'),
+        daysInMonth
       });
     }
 
@@ -133,6 +179,10 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
               <div className="w-3 h-3 border border-slate-200 rounded-sm"></div>
               <span>बाँकी (Pending)</span>
             </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 bg-slate-100 rounded-sm"></div>
+              <span>अमान्य (Invalid)</span>
+            </div>
           </div>
         </div>
 
@@ -152,17 +202,18 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
                   <td className="border border-slate-200 p-1 font-bold bg-slate-50 text-center">{m.name}</td>
                   {Array.from({ length: 31 }, (_, dIdx) => {
                     const day = dIdx + 1;
+                    const isValid = day <= m.daysInMonth;
                     const dateStr = `${m.year}-${String(m.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                     const isTaken = tbPatientRecord.dailyDoses?.includes(dateStr);
                     
                     return (
                       <td 
                         key={dIdx} 
-                        className={`border border-slate-200 p-0 text-center cursor-pointer transition-colors hover:bg-primary-50 ${isTaken ? 'bg-primary-600 text-white' : ''}`}
-                        onClick={() => handleToggleDailyDose(dateStr)}
+                        className={`border border-slate-200 p-0 text-center cursor-pointer transition-colors ${isValid ? 'hover:bg-primary-50' : 'bg-slate-100 cursor-not-allowed'} ${isTaken && isValid ? 'bg-primary-600 text-white' : ''}`}
+                        onClick={() => isValid && handleToggleDailyDose(dateStr)}
                       >
                         <div className="w-full h-6 flex items-center justify-center">
-                          {isTaken ? '✓' : ''}
+                          {isValid ? (isTaken ? '✓' : '') : ''}
                         </div>
                       </td>
                     );
@@ -171,6 +222,60 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
               ))}
             </tbody>
           </table>
+        </div>
+        
+        <div className="mt-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
+          <h4 className="font-bold text-slate-700 mb-2">औषधि वितरण (Dispense Medicine)</h4>
+          <div className="grid grid-cols-4 gap-4">
+            <select 
+              value={tbMedicine} 
+              onChange={(e) => {
+                const selectedMed = e.target.value;
+                setTbMedicine(selectedMed);
+                setTbBatch('');
+                
+                // Auto-populate daily quantity
+                const requirements = calculatePatientRequirements(tbPatientRecord!, inventoryItems, generalSettings.medicineMappings);
+                const medRequirement = requirements.find(r => fuzzyMatch(r.itemName, selectedMed, generalSettings.medicineMappings));
+                if (medRequirement) {
+                  setTbQuantity(medRequirement.dailyQuantity.toString());
+                } else {
+                  setTbQuantity('');
+                }
+              }}
+              className="px-3 py-2 border rounded-lg text-xs"
+            >
+              <option value="">औषधि छान्नुहोस्</option>
+              {STANDARD_MEDICINE_NAMES.map(name => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+            <select 
+              value={tbBatch} 
+              onChange={(e) => setTbBatch(e.target.value)}
+              className="px-3 py-2 border rounded-lg text-xs"
+            >
+              <option value="">ब्याच छान्नुहोस्</option>
+              {inventoryItems
+                .filter(i => fuzzyMatch(i.itemName, tbMedicine, generalSettings.medicineMappings) && i.currentQuantity > 0)
+                .map(i => (
+                  <option key={i.id} value={i.batchNo}>{i.batchNo} (Stock: {i.currentQuantity})</option>
+                ))}
+            </select>
+            <input 
+              type="number" 
+              value={tbQuantity} 
+              onChange={(e) => setTbQuantity(e.target.value)}
+              placeholder="मात्रा (Qty)"
+              className="px-3 py-2 border rounded-lg text-xs"
+            />
+            <button 
+              onClick={handleDispenseTB}
+              className="bg-primary-600 text-white font-bold rounded-lg text-xs hover:bg-primary-700"
+            >
+              डिस्पेंस गर्नुहोस्
+            </button>
+          </div>
         </div>
         
         <div className="mt-4 grid grid-cols-2 gap-4 text-[10px] text-slate-500 italic">
@@ -626,8 +731,6 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
                     </table>
                   </div>
 
-                  {renderTBTreatmentCard()}
-
                   <div className="space-y-2">
                     <label className="text-sm font-bold text-slate-700">कैफियत (Remarks)</label>
                     <textarea
@@ -665,6 +768,8 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
               </div>
             </div>
           )}
+          {renderTBTreatmentCard()}
+
 
           {/* Recent Dispensing History */}
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
