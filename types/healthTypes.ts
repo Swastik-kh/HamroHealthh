@@ -100,6 +100,7 @@ export interface TBPatient {
   isDefaulter?: boolean;
   fiscalYear: string;
   status?: 'Active' | 'Transfer Out' | 'Completed' | 'Died' | 'Loss to Follow-up';
+  statusDateBs?: string | null; // Date when the status was changed
   interFacilityRequests?: InterFacilityRequest[];
 }
 

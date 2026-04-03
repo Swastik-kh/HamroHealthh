@@ -1152,9 +1152,9 @@ const App: React.FC = () => {
           magForms={magForms} onSaveMagForm={handleSaveMagForm} onDeleteMagForm={handleDeleteMagForm}
           purchaseOrders={purchaseOrders} onUpdatePurchaseOrder={(o) => set(getOrgRef(`purchaseOrders/${o.id}`), o)}
           issueReports={issueReports} onUpdateIssueReport={handleUpdateIssueReport}
-          rabiesPatients={rabiesPatients} onAddRabiesPatient={(p) => set(getOrgRef(`rabiesPatients/${p.id}`), p)}
-          onUpdatePatient={(p) => set(getOrgRef(`rabiesPatients/${p.id}`), p)} onDeletePatient={(id) => remove(getOrgRef(`rabiesPatients/${id}`))}
-          tbPatients={tbPatients} onAddTbPatient={(p) => set(getOrgRef(`tbPatients/${p.id}`), p)} onUpdateTbPatient={(p, sourceOrgName) => set(sourceOrgName ? ref(db, `orgData/${sourceOrgName.trim().replace(/[.#$[\]]/g, "_")}/tbPatients/${p.id}`) : getOrgRef(`tbPatients/${p.id}`), p)} 
+          rabiesPatients={rabiesPatients} onAddRabiesPatient={(p) => set(getOrgRef(`rabiesPatients/${p.id}`), JSON.parse(JSON.stringify(p)))}
+          onUpdatePatient={(p) => set(getOrgRef(`rabiesPatients/${p.id}`), JSON.parse(JSON.stringify(p)))} onDeletePatient={(id) => remove(getOrgRef(`rabiesPatients/${id}`))}
+          tbPatients={tbPatients} onAddTbPatient={(p) => set(getOrgRef(`tbPatients/${p.id}`), JSON.parse(JSON.stringify(p)))} onUpdateTbPatient={(p, sourceOrgName) => set(sourceOrgName ? ref(db, `orgData/${sourceOrgName.trim().replace(/[.#$[\]]/g, "_")}/tbPatients/${p.id}`) : getOrgRef(`tbPatients/${p.id}`), JSON.parse(JSON.stringify(p)))} 
           onDeleteTbPatient={async (id) => {
             try {
               // 1. Remove associated inter-facility requests
@@ -1179,8 +1179,8 @@ const App: React.FC = () => {
               alert("बिरामीको विवरण हटाउन सकिएन।");
             }
           }}
-          garbhawatiPatients={garbhawatiPatients} onAddGarbhawatiPatient={(p) => set(getOrgRef(`garbhawatiPatients/${p.id}`), p)} onUpdateGarbhawatiPatient={(p) => set(getOrgRef(`garbhawatiPatients/${p.id}`), p)} onDeleteGarbhawatiPatient={(id) => remove(getOrgRef(`garbhawatiPatients/${id}`))}
-          bachhaImmunizationRecords={bachhaImmunizationRecords} onAddBachhaImmunizationRecord={(r) => set(getOrgRef(`bachhaImmunizationRecords/${r.id}`), r)} onUpdateBachhaImmunizationRecord={(r) => set(getOrgRef(`bachhaImmunizationRecords/${r.id}`), r)} onDeleteBachhaImmunizationRecord={(id) => remove(getOrgRef(`bachhaImmunizationRecords/${id}`))}
+          garbhawatiPatients={garbhawatiPatients} onAddGarbhawatiPatient={(p) => set(getOrgRef(`garbhawatiPatients/${p.id}`), JSON.parse(JSON.stringify(p)))} onUpdateGarbhawatiPatient={(p) => set(getOrgRef(`garbhawatiPatients/${p.id}`), JSON.parse(JSON.stringify(p)))} onDeleteGarbhawatiPatient={(id) => remove(getOrgRef(`garbhawatiPatients/${id}`))}
+          bachhaImmunizationRecords={bachhaImmunizationRecords} onAddBachhaImmunizationRecord={(r) => set(getOrgRef(`bachhaImmunizationRecords/${r.id}`), JSON.parse(JSON.stringify(r)))} onUpdateBachhaImmunizationRecord={(r) => set(getOrgRef(`bachhaImmunizationRecords/${r.id}`), JSON.parse(JSON.stringify(r)))} onDeleteBachhaImmunizationRecord={(id) => remove(getOrgRef(`bachhaImmunizationRecords/${id}`))}
           firms={firms} onAddFirm={(f) => set(getOrgRef(`firms/${f.id}`), f)} quotations={quotations} onAddQuotation={(q) => set(getOrgRef(`quotations/${q.id}`), q)}
           inventoryItems={inventoryItems} onAddInventoryItem={(i) => set(getOrgRef(`inventory/${i.id}`), i)} onUpdateInventoryItem={(i) => set(getOrgRef(`inventory/${i.id}`), i)} onDeleteInventoryItem={handleDeleteInventoryItem}
           stockEntryRequests={stockEntryRequests} onRequestStockEntry={(r) => set(getOrgRef(`stockRequests/${r.id}`), r)} onApproveStockEntry={handleApproveStockEntry}

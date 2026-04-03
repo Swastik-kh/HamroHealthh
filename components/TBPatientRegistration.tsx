@@ -194,6 +194,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
     // Fix: Initialize fiscalYear property as it's required by TBPatient type
     fiscalYear: currentFiscalYear, 
     status: 'Active',
+    statusDateBs: todayBs,
   });
 
   // Effect to update patientId and reset leprosyType when activeTab or fiscal year changes
@@ -530,6 +531,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
         reports: [],
         fiscalYear: currentFiscalYear, // Ensure reset also sets fiscalYear
         status: 'Active',
+        statusDateBs: todayBs,
     });
   };
 
@@ -1003,10 +1005,26 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                 {id:'loss_to_followup', label:'Loss to Follow-up', value:'Loss to Follow-up'}
               ]} 
               value={formData.status || 'Active'} 
-              onChange={e => setFormData({...formData, status: e.target.value as any})} 
+              onChange={e => {
+                const newStatus = e.target.value as any;
+                setFormData({
+                  ...formData, 
+                  status: newStatus, 
+                  statusDateBs: newStatus === 'Active' ? null : (formData.statusDateBs || todayBs)
+                });
+              }} 
               required 
               icon={<Activity size={18}/>} 
             />
+
+            {formData.status !== 'Active' && (
+              <NepaliDatePicker
+                label="अवस्था परिवर्तन मिति (Status Date)"
+                value={formData.statusDateBs || ''}
+                onChange={val => setFormData({...formData, statusDateBs: val})}
+                required
+              />
+            )}
 
             <div className="md:col-span-2 pt-4 border-t flex justify-end gap-3">
                 <button type="button" onClick={handleReset} className="flex items-center gap-2 px-6 py-2 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all font-bold text-sm"><RotateCcw size={16}/> {editingPatientId ? 'रद्द (Cancel)' : 'रिसेट (Reset)'}</button>
@@ -1058,6 +1076,9 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                                   'bg-slate-50 text-slate-700 border-slate-200'
                               }`}>
                                   {p.status || 'Active'}
+                                  {p.statusDateBs && (
+                                      <div className="text-[8px] mt-0.5 opacity-70">({p.statusDateBs})</div>
+                                  )}
                               </span>
                           </td>
                           <td className="px-6 py-4">
@@ -1370,9 +1391,14 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                           value={selectedPatientForDetails.status || 'Active'} 
                           onChange={(e) => {
                             const newStatus = e.target.value as any;
-                            const updatedPatient = { ...selectedPatientForDetails, status: newStatus };
-                            onUpdatePatient(updatedPatient);
-                            setSelectedPatientForDetails(updatedPatient);
+                            const updatedPatient = { 
+                              ...selectedPatientForDetails, 
+                              status: newStatus, 
+                              statusDateBs: newStatus === 'Active' ? null : (selectedPatientForDetails.statusDateBs || todayBs)
+                            };
+                            const sanitizedPatient = JSON.parse(JSON.stringify(updatedPatient));
+                            onUpdatePatient(sanitizedPatient);
+                            setSelectedPatientForDetails(sanitizedPatient);
                           }}
                           className={`text-xs font-bold px-2 py-1 rounded border ${
                             selectedPatientForDetails.status === 'Active' ? 'bg-green-50 text-green-700 border-green-200' : 
@@ -1388,6 +1414,20 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                           <option value="Loss to Follow-up">Loss to Follow-up</option>
                         </select>
                       </div>
+                      {selectedPatientForDetails.status !== 'Active' && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <strong>अवस्था परिवर्तन मिति:</strong>
+                          <NepaliDatePicker
+                            value={selectedPatientForDetails.statusDateBs || ''}
+                            onChange={(val) => {
+                              const updatedPatient = { ...selectedPatientForDetails, statusDateBs: val || null };
+                              const sanitizedPatient = JSON.parse(JSON.stringify(updatedPatient));
+                              onUpdatePatient(sanitizedPatient);
+                              setSelectedPatientForDetails(sanitizedPatient);
+                            }}
+                          />
+                        </div>
+                      )}
                       {selectedPatientForDetails.serviceType === 'TB' && (
                         <>
                           <p><strong>तौल:</strong> {selectedPatientForDetails.weight || '-'} kg</p>
