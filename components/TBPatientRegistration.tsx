@@ -1030,6 +1030,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                   <tr>
                       <th className="px-6 py-3">ID</th>
                       <th className="px-6 py-3">बिरामी विवरण</th>
+                      <th className="px-6 py-3">उपचार सुरु मिति</th>
                       <th className="px-6 py-3">वर्गीकरण</th>
                       <th className="px-6 py-3">अवस्था</th>
                       <th className="px-6 py-3">रिपोर्टहरू</th>
@@ -1045,6 +1046,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                               <div className="font-bold text-slate-800">{p.name}</div>
                               <div className="text-[10px] text-slate-400">{p.age} Yrs | {p.address} | {p.phone}</div>
                           </td>
+                          <td className="px-6 py-4 text-xs text-slate-600 font-bold">{p.treatmentStartDate || '-'}</td>
                           <td className="px-6 py-4">
                               <span className={`px-2 py-0.5 rounded text-[10px] font-black border ${activeTab === 'TB' ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700'}`}>
                                   {activeTab === 'TB' ? p.classification : p.leprosyType}

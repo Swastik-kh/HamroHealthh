@@ -167,7 +167,7 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
             </div>
             <div>
               <h3 className="font-bold text-slate-800 font-nepali text-lg">क्षयरोग उपचार कार्ड (TB Treatment Card)</h3>
-              <p className="text-xs text-slate-500">दैनिक औषधि सेवन रेकर्ड (Daily Medicine Intake Record)</p>
+              <p className="text-xs text-slate-500">दैनिक औषधि सेवन रेकर्ड (Daily Medicine Intake Record) | उपचार सुरु: {tbPatientRecord.treatmentStartDate}</p>
             </div>
           </div>
           <div className="flex items-center gap-4 text-[10px]">
