@@ -1182,6 +1182,8 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
                                         inventoryItems={inventoryItems} 
                                         stores={stores} 
                                         onUpdateInventoryItem={onUpdateInventoryItem} 
+                                        tbPatients={tbPatients}
+                                        onUpdateTbPatient={onUpdateTbPatient}
                                       />;
       case 'pariwar_niyojan': return <PariwarSewa 
                                         records={pariwarSewaRecords}

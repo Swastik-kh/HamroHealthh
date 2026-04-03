@@ -3,12 +3,12 @@ import React, { useState, useMemo } from 'react';
 import { 
   Search, Pill, User, Calendar, Clock, CheckCircle2, 
   AlertCircle, Printer, Save, Trash2, Warehouse,
-  ChevronRight, ClipboardList, Info
+  ChevronRight, ClipboardList, Info, Activity
 } from 'lucide-react';
 import { 
   ServiceSeekerRecord, OPDRecord, EmergencyRecord, CBIMNCIRecord, 
-  DispensaryRecord, User as AppUser, OrganizationSettings 
-} from '../types/coreTypes';
+  DispensaryRecord, User as AppUser, OrganizationSettings, TBPatient 
+} from '../types';
 import { InventoryItem, Store } from '../types/inventoryTypes';
 // @ts-ignore
 import NepaliDate from 'nepali-date-converter';
@@ -27,6 +27,8 @@ interface DispensarySewaProps {
   inventoryItems: InventoryItem[];
   stores: Store[];
   onUpdateInventoryItem: (item: InventoryItem) => void;
+  tbPatients?: TBPatient[];
+  onUpdateTbPatient?: (patient: TBPatient) => void;
 }
 
 export const DispensarySewa: React.FC<DispensarySewaProps> = ({
@@ -42,7 +44,9 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
   onDeleteDispensaryRecord,
   inventoryItems = [],
   stores = [],
-  onUpdateInventoryItem
+  onUpdateInventoryItem,
+  tbPatients = [],
+  onUpdateTbPatient
 }) => {
   const [searchId, setSearchId] = useState('');
   const [selectedPatient, setSelectedPatient] = useState<ServiceSeekerRecord | null>(null);
@@ -52,6 +56,130 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
   const [selectedStoreId, setSelectedStoreId] = useState('');
   const [remarks, setRemarks] = useState('');
   const [dispenseItems, setDispenseItems] = useState<any[]>([]);
+
+  const tbPatientRecord = useMemo(() => {
+    if (!selectedPatient) return null;
+    return tbPatients.find(p => 
+      p.patientId === selectedPatient.id || 
+      p.patientId === selectedPatient.uniquePatientId ||
+      (p.name === selectedPatient.name && p.phone === selectedPatient.phone)
+    );
+  }, [selectedPatient, tbPatients]);
+
+  const handleToggleDailyDose = (date: string) => {
+    if (!tbPatientRecord || !onUpdateTbPatient) return;
+    
+    const currentDoses = tbPatientRecord.dailyDoses || [];
+    let newDoses: string[];
+    
+    if (currentDoses.includes(date)) {
+      newDoses = currentDoses.filter(d => d !== date);
+    } else {
+      newDoses = [...currentDoses, date];
+    }
+    
+    onUpdateTbPatient({
+      ...tbPatientRecord,
+      dailyDoses: newDoses
+    });
+  };
+
+  const renderTBTreatmentCard = () => {
+    if (!tbPatientRecord) return null;
+
+    const startDateStr = tbPatientRecord.treatmentStartDate || tbPatientRecord.registrationDate;
+    if (!startDateStr) return null;
+
+    const parts = startDateStr.split('-');
+    if (parts.length !== 3) return null;
+    
+    const startYear = parseInt(parts[0]);
+    const startMonth = parseInt(parts[1]) - 1; // 0-indexed
+    
+    const months = [];
+    for (let i = 0; i < 6; i++) {
+      let y = startYear;
+      let m = startMonth + i;
+      while (m > 11) {
+        m -= 12;
+        y += 1;
+      }
+      const dateObj = new NepaliDate(y, m, 1);
+      months.push({
+        year: y,
+        month: m,
+        name: dateObj.format('MMMM')
+      });
+    }
+
+    return (
+      <div className="mt-8 bg-white p-6 rounded-2xl border border-primary-100 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary-50 text-primary-600 rounded-lg">
+              <Activity size={20} />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-800 font-nepali text-lg">क्षयरोग उपचार कार्ड (TB Treatment Card)</h3>
+              <p className="text-xs text-slate-500">दैनिक औषधि सेवन रेकर्ड (Daily Medicine Intake Record)</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 text-[10px]">
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 bg-primary-600 rounded-sm"></div>
+              <span>सेवन गरिएको (Taken)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 border border-slate-200 rounded-sm"></div>
+              <span>बाँकी (Pending)</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-[9px]">
+            <thead>
+              <tr>
+                <th className="border border-slate-200 p-1 bg-slate-50 w-24">महिना / गते</th>
+                {Array.from({ length: 31 }, (_, i) => (
+                  <th key={i} className="border border-slate-200 p-1 bg-slate-50 w-6">{i + 1}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {months.map((m, mIdx) => (
+                <tr key={mIdx}>
+                  <td className="border border-slate-200 p-1 font-bold bg-slate-50 text-center">{m.name}</td>
+                  {Array.from({ length: 31 }, (_, dIdx) => {
+                    const day = dIdx + 1;
+                    const dateStr = `${m.year}-${String(m.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const isTaken = tbPatientRecord.dailyDoses?.includes(dateStr);
+                    
+                    return (
+                      <td 
+                        key={dIdx} 
+                        className={`border border-slate-200 p-0 text-center cursor-pointer transition-colors hover:bg-primary-50 ${isTaken ? 'bg-primary-600 text-white' : ''}`}
+                        onClick={() => handleToggleDailyDose(dateStr)}
+                      >
+                        <div className="w-full h-6 flex items-center justify-center">
+                          {isTaken ? '✓' : ''}
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        
+        <div className="mt-4 grid grid-cols-2 gap-4 text-[10px] text-slate-500 italic">
+          <div>* INTENSIVE PHASE: HRZE (Tab) / HRZ (Tab)</div>
+          <div className="text-right">* CONTINUATION PHASE: E (Tab) / Lfx (Tab)</div>
+        </div>
+      </div>
+    );
+  };
 
   // Update dispense items when store changes to find available batches
   React.useEffect(() => {
@@ -497,6 +625,8 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
                       </tbody>
                     </table>
                   </div>
+
+                  {renderTBTreatmentCard()}
 
                   <div className="space-y-2">
                     <label className="text-sm font-bold text-slate-700">कैफियत (Remarks)</label>
