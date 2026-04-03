@@ -244,7 +244,7 @@ export const calculatePatientRequirements = (
 export function checkDefaulter(patient: TBPatient): { isDefaulter: boolean; sinceDate?: string; treatmentStartDate?: string; daysSinceStopped?: number } {
   if (!patient.treatmentStartDate || !patient.dailyDoses) return { isDefaulter: false };
   
-  // 1. Convert treatmentStartDate (BS) to AD
+  // 1. Convert treatmentStartDate (BS) to AD for comparison
   let startAd: Date | null = null;
   const startDateStr = patient.treatmentStartDate;
   const parts = startDateStr.split(/[-/]/);
@@ -258,36 +258,50 @@ export function checkDefaulter(patient: TBPatient): { isDefaulter: boolean; sinc
   
   if (!startAd) return { isDefaulter: false };
 
+  // 2. Get Today and Yesterday in AD, but we'll check against BS strings
   const todayAd = new Date();
+  todayAd.setHours(0, 0, 0, 0);
+  const yesterdayAd = new Date(todayAd.getTime() - 24 * 60 * 60 * 1000);
+  
   const dosesSet = new Set(patient.dailyDoses);
   
-  let firstMissedDate: Date | null = null;
-  let currentDate = new Date(startAd);
+  const getBsStr = (date: Date) => {
+    const nep = new NepaliDate(date);
+    const y = nep.getYear();
+    const m = String(nep.getMonth() + 1).padStart(2, '0');
+    const d = String(nep.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
   
-  // Only check up to today
-  while (currentDate <= todayAd) {
-    const dateStr = currentDate.toISOString().split('T')[0];
-    if (!dosesSet.has(dateStr)) {
-      firstMissedDate = new Date(currentDate);
+  const todayBs = getBsStr(todayAd);
+  const yesterdayBs = getBsStr(yesterdayAd);
+  
+  // 3. Check if today or yesterday was taken
+  if (dosesSet.has(todayBs) || dosesSet.has(yesterdayBs)) {
+    return { isDefaulter: false };
+  }
+  
+  // 4. If both missed, they are a defaulter.
+  // Count consecutive missed days backwards from TODAY.
+  let firstMissedDateBs: string = todayBs;
+  let currentDate = new Date(todayAd);
+  let consecutiveMissedDays = 0;
+  
+  while (currentDate >= startAd) {
+    const dateBs = getBsStr(currentDate);
+    if (!dosesSet.has(dateBs)) {
+      consecutiveMissedDays++;
+      firstMissedDateBs = dateBs; // This will eventually be the earliest missed day in the current streak
+      currentDate.setDate(currentDate.getDate() - 1);
+    } else {
       break;
     }
-    currentDate.setDate(currentDate.getDate() + 1);
   }
   
-  if (firstMissedDate) {
-    const diffTime = Math.abs(todayAd.getTime() - firstMissedDate.getTime());
-    const daysSinceStopped = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to include the missed day itself
-    
-    const firstMissedNepali = new NepaliDate(firstMissedDate);
-    const sinceDateBs = `${firstMissedNepali.getYear()}-${(firstMissedNepali.getMonth() + 1).toString().padStart(2, '0')}-${firstMissedNepali.getDate().toString().padStart(2, '0')}`;
-
-    return { 
-        isDefaulter: true, 
-        sinceDate: sinceDateBs,
-        treatmentStartDate: patient.treatmentStartDate,
-        daysSinceStopped: daysSinceStopped
-    };
-  }
-  
-  return { isDefaulter: false };
+  return { 
+      isDefaulter: true, 
+      sinceDate: firstMissedDateBs,
+      treatmentStartDate: patient.treatmentStartDate,
+      daysSinceStopped: consecutiveMissedDays
+  };
 }

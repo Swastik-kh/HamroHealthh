@@ -335,11 +335,11 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
   const newReportCount = patientsWithNewReports.length;
 
   const defaulterPatients = useMemo(() => {
-    return (patients || []).filter(p => p.serviceType === 'TB' && p.fiscalYear === currentFiscalYear).map(p => {
+    return (patients || []).filter(p => p.serviceType === activeTab && p.fiscalYear === currentFiscalYear).map(p => {
         const { isDefaulter, sinceDate, treatmentStartDate, daysSinceStopped } = checkDefaulter(p);
         return { ...p, isDefaulter, sinceDate, treatmentStartDate, daysSinceStopped };
     }).filter(p => p.isDefaulter);
-  }, [patients, currentFiscalYear]);
+  }, [patients, currentFiscalYear, activeTab]);
 
   const defaulterCount = defaulterPatients.length;
 
@@ -780,7 +780,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                 <p className="text-slate-500 text-xs font-bold font-nepali mb-1">कुल दर्ता ({activeTab})</p>
                 <div className="flex items-baseline gap-2">
                     <h3 className="text-2xl font-black text-slate-800">{(patients || []).filter(p => p.serviceType === activeTab && p.fiscalYear === currentFiscalYear).length}</h3>
-                    {activeTab === 'TB' && defaulterCount > 0 && (
+                    {defaulterCount > 0 && (
                         <span onClick={() => setShowDefaulterModal(true)} className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full animate-pulse cursor-pointer">
                             {defaulterCount} डिफल्टर
                         </span>
@@ -799,7 +799,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                   <div key={p.id} className="p-3 border-b flex justify-between items-center">
                     <div>
                       <p className="font-bold">{p.name}</p>
-                      <p className="text-xs text-slate-500">दर्ता नं: {p.registrationNumber}</p>
+                      <p className="text-xs text-slate-500">दर्ता नं: {p.patientId}</p>
                       <p className="text-xs text-slate-500">उपचार सुरु: {p.treatmentStartDate}</p>
                     </div>
                     <div className="text-right">
@@ -1030,7 +1030,6 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                   <tr>
                       <th className="px-6 py-3">ID</th>
                       <th className="px-6 py-3">बिरामी विवरण</th>
-                      <th className="px-6 py-3">उपचार सुरु मिति</th>
                       <th className="px-6 py-3">वर्गीकरण</th>
                       <th className="px-6 py-3">अवस्था</th>
                       <th className="px-6 py-3">रिपोर्टहरू</th>
@@ -1046,7 +1045,6 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                               <div className="font-bold text-slate-800">{p.name}</div>
                               <div className="text-[10px] text-slate-400">{p.age} Yrs | {p.address} | {p.phone}</div>
                           </td>
-                          <td className="px-6 py-4 text-xs text-slate-600 font-bold">{p.treatmentStartDate || '-'}</td>
                           <td className="px-6 py-4">
                               <span className={`px-2 py-0.5 rounded text-[10px] font-black border ${activeTab === 'TB' ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700'}`}>
                                   {activeTab === 'TB' ? p.classification : p.leprosyType}
