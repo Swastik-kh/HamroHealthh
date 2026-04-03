@@ -10,7 +10,7 @@ import {
   IssueReportEntry, FirmEntry, QuotationEntry, InventoryItem, Store, StockEntryRequest, 
   DakhilaPratibedanEntry, ReturnEntry, MarmatEntry, DhuliyaunaEntry, LogBookEntry, 
   DakhilaItem, TBPatient, GarbhawatiPatient, ChildImmunizationRecord, LeaveApplication, LeaveStatus, LeaveBalance, Darta, Chalani, BharmanAdeshEntry,
-  GarbhawotiRecord, PrasutiRecord, ServiceSeekerRecord, OPDRecord, EmergencyRecord, CBIMNCIRecord, BillingRecord, ServiceItem, LabReport, PariwarSewaRecord, XRayRecord, ECGRecord, USGRecord, PhysiotherapyRecord, IPDRecord, ItemEntry, InterFacilityRequest
+  GarbhawotiRecord, PrasutiRecord, ServiceSeekerRecord, OPDRecord, EmergencyRecord, CBIMNCIRecord, BillingRecord, ServiceItem, LabReport, DispensaryRecord, PariwarSewaRecord, XRayRecord, ECGRecord, USGRecord, PhysiotherapyRecord, IPDRecord, ItemEntry, InterFacilityRequest
 } from './types';
 import { db } from './firebase';
 import { ref, onValue, set, remove, update, get, Unsubscribe, off, push } from "firebase/database";
@@ -81,6 +81,7 @@ const App: React.FC = () => {
   const [prasutiRecords, setPrasutiRecords] = useState<PrasutiRecord[]>([]);
   const [serviceSeekerRecords, setServiceSeekerRecords] = useState<ServiceSeekerRecord[]>([]);
   const [opdRecords, setOpdRecords] = useState<OPDRecord[]>([]);
+  const [dispensaryRecords, setDispensaryRecords] = useState<DispensaryRecord[]>([]);
   const [emergencyRecords, setEmergencyRecords] = useState<EmergencyRecord[]>([]);
   const [cbimnciRecords, setCbimnciRecords] = useState<CBIMNCIRecord[]>([]);
   const [billingRecords, setBillingRecords] = useState<BillingRecord[]>([]);
@@ -220,6 +221,7 @@ const App: React.FC = () => {
     setupOrgListener('prasutiRecords', setPrasutiRecords);
     setupOrgListener('serviceSeekerRecords', setServiceSeekerRecords);
     setupOrgListener('opdRecords', setOpdRecords);
+    setupOrgListener('dispensaryRecords', setDispensaryRecords);
     setupOrgListener('emergencyRecords', setEmergencyRecords);
     setupOrgListener('cbimnciRecords', setCbimnciRecords);
     setupOrgListener('billingRecords', setBillingRecords);
@@ -432,6 +434,24 @@ const App: React.FC = () => {
       await remove(getOrgRef(`opdRecords/${id}`));
     } catch (error) {
       alert("OPD रेकर्ड हटाउन सकिएन।");
+    }
+  };
+
+  const handleSaveDispensaryRecord = async (record: DispensaryRecord) => {
+    if (!currentUser) return;
+    try {
+      await set(getOrgRef(`dispensaryRecords/${record.id}`), record);
+    } catch (error) {
+      alert("डिस्पेन्सरी रेकर्ड सुरक्षित गर्न सकिएन।");
+    }
+  };
+
+  const handleDeleteDispensaryRecord = async (id: string) => {
+    if (!currentUser) return;
+    try {
+      await remove(getOrgRef(`dispensaryRecords/${id}`));
+    } catch (error) {
+      alert("डिस्पेन्सरी रेकर्ड हटाउन सकिएन।");
     }
   };
 
@@ -1196,6 +1216,9 @@ const App: React.FC = () => {
     opdRecords={opdRecords}
     onSaveOPDRecord={handleSaveOPDRecord}
     onDeleteOPDRecord={handleDeleteOPDRecord}
+    dispensaryRecords={dispensaryRecords}
+    onSaveDispensaryRecord={handleSaveDispensaryRecord}
+    onDeleteDispensaryRecord={handleDeleteDispensaryRecord}
     emergencyRecords={emergencyRecords}
     onSaveEmergencyRecord={handleSaveEmergencyRecord}
     onDeleteEmergencyRecord={handleDeleteEmergencyRecord}

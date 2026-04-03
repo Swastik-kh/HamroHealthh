@@ -59,7 +59,7 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
   const [dispenseItems, setDispenseItems] = useState<any[]>([]);
   const [tbMedicine, setTbMedicine] = useState('');
   const [tbQuantity, setTbQuantity] = useState('');
-  const [tbBatch, setTbBatch] = useState('');
+  const [tbInventoryId, setTbInventoryId] = useState('');
 
   const tbPatientRecord = useMemo(() => {
     if (!selectedPatient) return null;
@@ -118,18 +118,26 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
   };
 
   const handleDispenseTB = () => {
-    if (!tbPatientRecord || !tbMedicine || !tbQuantity || !tbBatch) {
-      alert("कृपया सबै जानकारी भर्नुहोस्।");
+    if (!tbPatientRecord) {
+      alert("कृपया पहिले बिरामी छान्नुहोस्।");
+      return;
+    }
+    if (!tbMedicine) {
+      alert("कृपया औषधि छान्नुहोस्।");
+      return;
+    }
+    if (!tbInventoryId) {
+      alert("कृपया ब्याच छान्नुहोस्। (यदि ब्याच खाली छ भने स्टकमा औषधि नहुन सक्छ)");
+      return;
+    }
+    if (!tbQuantity || parseInt(tbQuantity) <= 0) {
+      alert("कृपया मान्य मात्रा (Quantity) राख्नुहोस्।");
       return;
     }
     
-    // Find inventory items that match the selected standard medicine name
-    const matchingItems = inventoryItems.filter(i => 
-      fuzzyMatch(i.itemName, tbMedicine, generalSettings.medicineMappings) && 
-      i.batchNo === tbBatch
-    );
+    // Find the specific inventory item
+    const item = inventoryItems.find(i => i.id === tbInventoryId);
     
-    const item = matchingItems[0];
     if (!item || item.currentQuantity < parseInt(tbQuantity)) {
       alert("स्टकमा पर्याप्त औषधि छैन।");
       return;
@@ -138,13 +146,39 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
     // Update inventory
     onUpdateInventoryItem({
       ...item,
-      currentQuantity: item.currentQuantity - parseInt(tbQuantity)
+      currentQuantity: item.currentQuantity - parseInt(tbQuantity),
+      lastUpdateDateBs: new NepaliDate().format('YYYY-MM-DD'),
+      lastUpdateDateAd: new Date().toISOString().split('T')[0]
     });
+
+    // Save Dispensary Record
+    const newRecord: DispensaryRecord = {
+      id: `DISP-TB-${Date.now()}`,
+      fiscalYear: currentFiscalYear,
+      serviceSeekerId: selectedPatient!.id,
+      uniquePatientId: selectedPatient!.uniquePatientId,
+      patientName: selectedPatient!.name,
+      dispenseDate: new NepaliDate().format('YYYY-MM-DD'),
+      storeId: item.storeId,
+      items: [{
+        medicineName: item.itemName,
+        quantity: parseInt(tbQuantity),
+        unit: item.unit,
+        batchNo: item.batchNo,
+        expiryDate: item.expiryDateBs,
+        dosage: 'As per TB regimen',
+        instructions: 'TB Treatment'
+      }],
+      remarks: `TB Treatment Dispensing: ${tbMedicine}`,
+      createdBy: currentUser.fullName
+    };
+    
+    onSaveDispensaryRecord(newRecord);
     
     alert("औषधि सफलतापूर्वक डिस्पेंस गरियो।");
     setTbMedicine('');
     setTbQuantity('');
-    setTbBatch('');
+    setTbInventoryId('');
   };
 
   const renderTBTreatmentCard = () => {
@@ -308,7 +342,18 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
               onChange={(e) => {
                 const selectedMed = e.target.value;
                 setTbMedicine(selectedMed);
-                setTbBatch('');
+                
+                // Find available batches for this medicine
+                const availableBatches = inventoryItems.filter(i => 
+                  fuzzyMatch(i.itemName, selectedMed, generalSettings.medicineMappings) && 
+                  i.currentQuantity > 0
+                );
+                
+                if (availableBatches.length === 1) {
+                  setTbInventoryId(availableBatches[0].id);
+                } else {
+                  setTbInventoryId('');
+                }
                 
                 // Auto-populate daily quantity
                 const requirements = calculatePatientRequirements(tbPatientRecord!, inventoryItems, generalSettings.medicineMappings);
@@ -327,15 +372,17 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
               ))}
             </select>
             <select 
-              value={tbBatch} 
-              onChange={(e) => setTbBatch(e.target.value)}
+              value={tbInventoryId} 
+              onChange={(e) => setTbInventoryId(e.target.value)}
               className="px-3 py-2 border rounded-lg text-xs"
             >
               <option value="">ब्याच छान्नुहोस्</option>
               {inventoryItems
                 .filter(i => fuzzyMatch(i.itemName, tbMedicine, generalSettings.medicineMappings) && i.currentQuantity > 0)
                 .map(i => (
-                  <option key={i.id} value={i.batchNo}>{i.batchNo} (Stock: {i.currentQuantity})</option>
+                  <option key={i.id} value={i.id}>
+                    ब्याच: {i.batchNo || 'N/A'} | म्याद: {i.expiryDateBs || 'N/A'} | मौज्दात: {i.currentQuantity}
+                  </option>
                 ))}
             </select>
             <input 
