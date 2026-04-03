@@ -336,8 +336,8 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
 
   const defaulterPatients = useMemo(() => {
     return (patients || []).filter(p => p.serviceType === 'TB' && p.fiscalYear === currentFiscalYear).map(p => {
-        const { isDefaulter, sinceDate } = checkDefaulter(p);
-        return { ...p, isDefaulter, sinceDate };
+        const { isDefaulter, sinceDate, treatmentStartDate, daysSinceStopped } = checkDefaulter(p);
+        return { ...p, isDefaulter, sinceDate, treatmentStartDate, daysSinceStopped };
     }).filter(p => p.isDefaulter);
   }, [patients, currentFiscalYear]);
 
@@ -800,10 +800,12 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                     <div>
                       <p className="font-bold">{p.name}</p>
                       <p className="text-xs text-slate-500">दर्ता नं: {p.registrationNumber}</p>
+                      <p className="text-xs text-slate-500">उपचार सुरु: {p.treatmentStartDate}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs text-slate-500">डिफल्टर भएको मिति</p>
-                      <p className="font-bold text-red-600">{p.sinceDate}</p>
+                      <p className="text-xs text-slate-500">औषधि नखाएको दिन</p>
+                      <p className="font-bold text-red-600">{p.daysSinceStopped} दिन</p>
+                      <p className="text-[10px] text-slate-400">डिफल्टर मिति: {p.sinceDate}</p>
                     </div>
                   </div>
                 ))}

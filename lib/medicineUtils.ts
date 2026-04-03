@@ -241,25 +241,49 @@ export const calculatePatientRequirements = (
   }));
 };
 
-export function checkDefaulter(patient: TBPatient): { isDefaulter: boolean; sinceDate?: string } {
+export function checkDefaulter(patient: TBPatient): { isDefaulter: boolean; sinceDate?: string; treatmentStartDate?: string; daysSinceStopped?: number } {
   if (!patient.treatmentStartDate || !patient.dailyDoses) return { isDefaulter: false };
   
-  const startDate = new Date(patient.treatmentStartDate);
-  const today = new Date();
+  // 1. Convert treatmentStartDate (BS) to AD
+  let startAd: Date | null = null;
+  const startDateStr = patient.treatmentStartDate;
+  const parts = startDateStr.split(/[-/]/);
+  if (parts.length === 3) {
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    const d = parseInt(parts[2], 10);
+    const startNepali = new NepaliDate(y, m, d);
+    startAd = startNepali.toJsDate();
+  }
   
-  // Calculate total days since treatment start
-  const diffTime = Math.abs(today.getTime() - startDate.getTime());
-  const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  if (!startAd) return { isDefaulter: false };
+
+  const todayAd = new Date();
+  const dosesSet = new Set(patient.dailyDoses);
   
-  // Count missed days
-  const takenDays = patient.dailyDoses.length;
-  const missedDays = totalDays - takenDays;
+  let firstMissedDate: Date | null = null;
+  let currentDate = new Date(startAd);
   
-  if (missedDays > 1) {
-    // Calculate the date of the first missed day
-    const firstMissedDate = new Date(startDate);
-    firstMissedDate.setDate(startDate.getDate() + takenDays + 1);
-    return { isDefaulter: true, sinceDate: firstMissedDate.toISOString().split('T')[0] };
+  // Only check up to today
+  while (currentDate <= todayAd) {
+    const dateStr = currentDate.toISOString().split('T')[0];
+    if (!dosesSet.has(dateStr)) {
+      firstMissedDate = new Date(currentDate);
+      break;
+    }
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  if (firstMissedDate) {
+    const diffTime = Math.abs(todayAd.getTime() - firstMissedDate.getTime());
+    const daysSinceStopped = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to include the missed day itself
+    
+    return { 
+        isDefaulter: true, 
+        sinceDate: firstMissedDate.toISOString().split('T')[0],
+        treatmentStartDate: patient.treatmentStartDate,
+        daysSinceStopped: daysSinceStopped
+    };
   }
   
   return { isDefaulter: false };
