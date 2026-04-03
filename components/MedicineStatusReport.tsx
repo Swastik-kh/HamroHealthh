@@ -1,20 +1,52 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { TBPatient, InventoryItem } from '../types';
-import { calculatePatientRequirements, MedicineRequirement } from '../lib/medicineUtils';
-import { Pill, Package, AlertTriangle, CheckCircle, Info, Database, User, Trash2 } from 'lucide-react';
+import { Option } from '../types/coreTypes';
+import { SearchableSelect } from './SearchableSelect';
+import { calculatePatientRequirements, MedicineRequirement, fuzzyMatch } from '../lib/medicineUtils';
+import { Pill, Package, AlertTriangle, CheckCircle, Info, Database, User, Trash2, LayoutDashboard, ClipboardList, Settings, X, Plus, Trash } from 'lucide-react';
 
 interface MedicineStatusReportProps {
   patients: TBPatient[];
   inventory: InventoryItem[];
   onDeletePatient?: (id: string) => void;
+  medicineMappings?: Record<string, string[]>;
+  onUpdateMappings?: (mappings: Record<string, string[]>) => void;
 }
 
-export const MedicineStatusReport: React.FC<MedicineStatusReportProps> = ({ patients, inventory, onDeletePatient }) => {
+export const MedicineStatusReport: React.FC<MedicineStatusReportProps> = ({ 
+  patients, 
+  inventory, 
+  onDeletePatient,
+  medicineMappings = {},
+  onUpdateMappings
+}) => {
+  const [activeTab, setActiveTab] = useState<'summary' | 'management'>('summary');
+  const [showMappingSettings, setShowMappingSettings] = useState(false);
+  const [newMapping, setNewMapping] = useState({ standardName: '', keyword: '' });
+
+  const standardMedicineNames = [
+    'HRZE (Adult)', 'HR (Adult)', 'HRE (Adult)', 
+    'HRZE (Child)', 'HR (Child)', 
+    'Levofloxacin 250/500mg', 'Dapsone 100mg', 
+    'Clofazimine 50mg', 'Clofazimine 100mg', 
+    'Rifampicin 600mg', 'Rifampicin 450mg'
+  ];
+
   const activePatients = useMemo(() => 
     patients.filter(p => p.status === 'Active' || !p.status), 
     [patients]
   );
+
+  const inventoryOptions = useMemo(() => {
+    // Get unique item names from inventory
+    const uniqueNames = Array.from(new Set(inventory.map(item => item.itemName)));
+    return uniqueNames.map(name => ({
+      id: name,
+      label: name,
+      value: name
+    })).sort((a: Option, b: Option) => a.label.localeCompare(b.label));
+  }, [inventory]);
 
   const handleDelete = (id: string, name: string) => {
     if (onDeletePatient && window.confirm(`${name} को सम्पूर्ण विवरण हटाउन चाहनुहुन्छ?`)) {
@@ -25,186 +57,361 @@ export const MedicineStatusReport: React.FC<MedicineStatusReportProps> = ({ pati
   const patientRequirements = useMemo(() => {
     return activePatients.map(patient => ({
       patient,
-      requirements: calculatePatientRequirements(patient, inventory)
+      requirements: calculatePatientRequirements(patient, inventory, medicineMappings)
     }));
-  }, [activePatients, inventory]);
+  }, [activePatients, inventory, medicineMappings]);
 
   const aggregateRequirements = useMemo(() => {
     const aggregate: Record<string, { totalNeeded: number, totalRemaining: number, stock: number }> = {};
     
+    // Initialize with all standard names to ensure they all show up in the summary
+    standardMedicineNames.forEach(name => {
+      const stock = inventory
+        .filter(item => fuzzyMatch(item.itemName, name, medicineMappings))
+        .reduce((sum, item) => sum + item.currentQuantity, 0);
+        
+      aggregate[name] = { totalNeeded: 0, totalRemaining: 0, stock };
+    });
+    
+    // Add requirements from patients
     patientRequirements.forEach(({ requirements }) => {
       requirements.forEach(req => {
-        if (!aggregate[req.itemName]) {
-          aggregate[req.itemName] = { totalNeeded: 0, totalRemaining: 0, stock: req.availableStock };
+        if (aggregate[req.itemName]) {
+          aggregate[req.itemName].totalNeeded += req.totalNeeded;
+          aggregate[req.itemName].totalRemaining += req.remainingNeeded;
+        } else {
+          // For any non-standard names that might be returned by calculatePatientRequirements
+          if (!aggregate[req.itemName]) {
+            aggregate[req.itemName] = { 
+              totalNeeded: req.totalNeeded, 
+              totalRemaining: req.remainingNeeded, 
+              stock: req.availableStock 
+            };
+          } else {
+            aggregate[req.itemName].totalNeeded += req.totalNeeded;
+            aggregate[req.itemName].totalRemaining += req.remainingNeeded;
+          }
         }
-        aggregate[req.itemName].totalNeeded += req.totalNeeded;
-        aggregate[req.itemName].totalRemaining += req.remainingNeeded;
       });
     });
     
     return aggregate;
-  }, [patientRequirements]);
+  }, [standardMedicineNames, inventory, medicineMappings, patientRequirements]);
+
+  const handleAddMapping = () => {
+    if (!newMapping.standardName || !newMapping.keyword || !onUpdateMappings) return;
+    
+    const currentVariations = medicineMappings[newMapping.standardName] || [];
+    if (currentVariations.includes(newMapping.keyword)) return;
+    
+    const updatedMappings = {
+      ...medicineMappings,
+      [newMapping.standardName]: [...currentVariations, newMapping.keyword]
+    };
+    
+    onUpdateMappings(updatedMappings);
+    setNewMapping({ ...newMapping, keyword: '' });
+  };
+
+  const handleRemoveMapping = (standardName: string, keyword: string) => {
+    if (!onUpdateMappings) return;
+    
+    const updatedVariations = (medicineMappings[standardName] || []).filter(k => k !== keyword);
+    const updatedMappings = { ...medicineMappings };
+    
+    if (updatedVariations.length === 0) {
+      delete updatedMappings[standardName];
+    } else {
+      updatedMappings[standardName] = updatedVariations;
+    }
+    
+    onUpdateMappings(updatedMappings);
+  };
 
   return (
-    <div className="space-y-8 p-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-          <Pill className="text-blue-600" />
-          औषधि अवस्था विवरण (Medicine Status Report)
-        </h2>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-50 rounded-lg text-blue-600">
-              <Pill size={24} />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">सक्रिय बिरामी (Active Patients)</p>
-              <p className="text-2xl font-bold">{activePatients.length}</p>
-            </div>
-          </div>
+    <div className="space-y-6 p-4 relative">
+      {/* Tab Navigation */}
+      <div className="flex justify-between items-center border-b border-gray-200">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveTab('summary')}
+            className={`px-6 py-3 font-bold text-sm flex items-center gap-2 transition-all border-b-2 ${
+              activeTab === 'summary'
+                ? 'border-blue-600 text-blue-600 bg-blue-50/50'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <LayoutDashboard size={18} />
+            औषधि मौज्दात र आवश्यकता सारांश (Medicine Stock & Requirement Summary)
+          </button>
+          <button
+            onClick={() => setActiveTab('management')}
+            className={`px-6 py-3 font-bold text-sm flex items-center gap-2 transition-all border-b-2 ${
+              activeTab === 'management'
+                ? 'border-blue-600 text-blue-600 bg-blue-50/50'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <ClipboardList size={18} />
+            औषधि व्यवस्थापन (Medicine Management)
+          </button>
         </div>
         
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-green-50 rounded-lg text-green-600">
-              <Package size={24} />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">कुल औषधि प्रकार (Medicine Types)</p>
-              <p className="text-2xl font-bold">{Object.keys(aggregateRequirements).length}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-orange-50 rounded-lg text-orange-600">
-              <AlertTriangle size={24} />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">स्टक कम भएका औषधि (Low Stock)</p>
-              <p className="text-2xl font-bold">
-                {Object.values(aggregateRequirements).filter((a: any) => a.stock < a.totalRemaining).length}
-              </p>
-            </div>
-          </div>
-        </div>
+        <button 
+          onClick={() => setShowMappingSettings(!showMappingSettings)}
+          className={`p-2 rounded-lg transition-all ${showMappingSettings ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+          title="Medicine Mapping Settings"
+        >
+          <Settings size={20} />
+        </button>
       </div>
 
-      {/* Aggregate Stock View */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-4 border-b border-gray-100 bg-gray-50">
-          <h3 className="font-semibold text-gray-700 flex items-center gap-2">
-            <Database size={18} />
-            कुल मौज्दात र आवश्यकता (Total Stock vs Requirement)
-          </h3>
+      {/* Mapping Settings UI */}
+      {showMappingSettings && (
+        <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 animate-in fade-in slide-in-from-right-4 duration-300">
+          <div className="flex justify-between items-center mb-4">
+            <h4 className="font-bold text-slate-800 flex items-center gap-2">
+              <Settings size={18} className="text-blue-600" />
+              औषधि म्यापिङ सेटिङ (Medicine Name Mapping)
+            </h4>
+            <button onClick={() => setShowMappingSettings(false)} className="text-slate-400 hover:text-slate-600"><X size={18}/></button>
+          </div>
+          
+          <p className="text-xs text-slate-500 mb-6">
+            विभिन्न गोदामहरूमा फरक-फरक नामले चिनिने औषधिहरूलाई एउटै मानक नाममा मिलान गर्नुहोस्। 
+            उदाहरणका लागि: 'RHZE' वा '4FDC' लाई 'HRZE (Adult)' मा म्याप गर्न सकिन्छ।
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-white p-4 rounded-lg border border-slate-100">
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase">मानक नाम (Standard Name)</label>
+              <select 
+                value={newMapping.standardName}
+                onChange={(e) => setNewMapping({...newMapping, standardName: e.target.value})}
+                className="w-full p-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              >
+                <option value="">छनोट गर्नुहोस्</option>
+                {standardMedicineNames.map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase">स्टकको नाम/किबोर्ड (Stock Keyword)</label>
+              <SearchableSelect
+                options={inventoryOptions}
+                value={newMapping.keyword}
+                onChange={(val) => setNewMapping({...newMapping, keyword: val})}
+                placeholder="e.g. RHZE, 4FDC"
+                className="!py-1.5"
+              />
+            </div>
+            <div className="flex items-end">
+              <button 
+                onClick={handleAddMapping}
+                disabled={!newMapping.standardName || !newMapping.keyword}
+                className="w-full py-2 bg-blue-600 text-white rounded-lg font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-blue-700 transition-colors"
+              >
+                <Plus size={18} /> थप्नुहोस्
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h5 className="text-xs font-bold text-slate-600 border-b pb-1">हालका म्यापिङहरू (Current Mappings)</h5>
+            {Object.entries(medicineMappings).length === 0 ? (
+              <p className="text-xs text-slate-400 italic py-2">कुनै म्यापिङ सेट गरिएको छैन।</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {Object.entries(medicineMappings).map(([standardName, keywords]) => (
+                  <div key={standardName} className="bg-white p-3 rounded-lg border border-slate-100 shadow-sm">
+                    <p className="text-[10px] font-black text-blue-600 uppercase mb-2">{standardName}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {(keywords as string[]).map(keyword => (
+                        <span key={keyword} className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-700 rounded-full text-[10px] font-bold">
+                          {keyword}
+                          <button onClick={() => handleRemoveMapping(standardName, keyword)} className="text-slate-400 hover:text-red-500"><X size={12}/></button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-gray-50 text-gray-600 text-sm uppercase">
-                <th className="px-6 py-3 font-medium">औषधिको नाम (Medicine)</th>
-                <th className="px-6 py-3 font-medium">कुल आवश्यकता (Total Course)</th>
-                <th className="px-6 py-3 font-medium">बाँकी आवश्यकता (Remaining)</th>
-                <th className="px-6 py-3 font-medium">हालको मौज्दात (Current Stock)</th>
-                <th className="px-6 py-3 font-medium">अवस्था (Status)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {Object.entries(aggregateRequirements).map(([name, data]: [string, any]) => {
-                const isShortage = data.stock < data.totalRemaining;
-                return (
-                  <tr key={name} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 font-medium text-gray-900">{name}</td>
-                    <td className="px-6 py-4 text-gray-600">{data.totalNeeded}</td>
-                    <td className="px-6 py-4 text-gray-600 font-semibold">{data.totalRemaining}</td>
-                    <td className="px-6 py-4 text-gray-600">{data.stock}</td>
-                    <td className="px-6 py-4">
-                      {isShortage ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                          <AlertTriangle size={12} />
-                          अपुग (Shortage: {data.totalRemaining - data.stock})
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          <CheckCircle size={12} />
-                          पर्याप्त (Sufficient)
-                        </span>
-                      )}
-                    </td>
+      )}
+
+      {activeTab === 'summary' ? (
+        <div className="space-y-8 animate-in fade-in slide-in-from-top-2 duration-300">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-blue-50 rounded-lg text-blue-600">
+                  <Pill size={24} />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">सक्रिय बिरामी (Active Patients)</p>
+                  <p className="text-2xl font-bold">{activePatients.length}</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-green-50 rounded-lg text-green-600">
+                  <Package size={24} />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">कुल औषधि प्रकार (Medicine Types)</p>
+                  <p className="text-2xl font-bold">{Object.keys(aggregateRequirements).length}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-orange-50 rounded-lg text-orange-600">
+                  <AlertTriangle size={24} />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">स्टक कम भएका औषधि (Low Stock)</p>
+                  <p className="text-2xl font-bold">
+                    {Object.values(aggregateRequirements).filter((a: any) => a.stock < a.totalRemaining).length}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Aggregate Stock View */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="p-4 border-b border-gray-100 bg-gray-50">
+              <h3 className="font-semibold text-gray-700 flex items-center gap-2">
+                <Database size={18} />
+                कुल मौज्दात र आवश्यकता (Total Stock vs Requirement)
+              </h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-gray-50 text-gray-600 text-sm uppercase">
+                    <th className="px-6 py-3 font-medium">औषधिको नाम (Medicine)</th>
+                    <th className="px-6 py-3 font-medium">कुल आवश्यकता (Total Course)</th>
+                    <th className="px-6 py-3 font-medium">बाँकी आवश्यकता (Remaining)</th>
+                    <th className="px-6 py-3 font-medium">हालको मौज्दात (Current Stock)</th>
+                    <th className="px-6 py-3 font-medium">अवस्था (Status)</th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {Object.entries(aggregateRequirements).map(([name, data]: [string, any]) => {
+                    const isShortage = data.stock < data.totalRemaining;
+                    return (
+                      <tr key={name} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 font-medium text-gray-900">{name}</td>
+                        <td className="px-6 py-4 text-gray-600">{data.totalNeeded}</td>
+                        <td className="px-6 py-4 text-gray-600 font-semibold">{data.totalRemaining}</td>
+                        <td className="px-6 py-4 text-gray-600">{data.stock}</td>
+                        <td className="px-6 py-4">
+                          {isShortage ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                              <AlertTriangle size={12} />
+                              अपुग (Shortage: {data.totalRemaining - data.stock})
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              <CheckCircle size={12} />
+                              पर्याप्त (Sufficient)
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-      </div>
-
-      {/* Patient-wise Detail View */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-4 border-b border-gray-100 bg-gray-50">
-          <h3 className="font-semibold text-gray-700 flex items-center gap-2">
-            <User size={18} />
-            बिरामी अनुसार औषधि विवरण (Patient-wise Requirement)
-          </h3>
+      ) : (
+        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+          {/* Patient-wise Detail View */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="p-4 border-b border-gray-100 bg-gray-50">
+              <h3 className="font-semibold text-gray-700 flex items-center gap-2">
+                <User size={18} />
+                बिरामी अनुसार औषधि विवरण (Patient-wise Requirement)
+              </h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-gray-50 text-gray-600 text-sm uppercase">
+                    <th className="px-6 py-3 font-medium">बिरामीको नाम (Patient)</th>
+                    <th className="px-6 py-3 font-medium">सेवा (Service)</th>
+                    <th className="px-6 py-3 font-medium">तौल (Weight)</th>
+                    <th className="px-6 py-3 font-medium">दैनिक मात्रा (Daily Dose)</th>
+                    <th className="px-6 py-3 font-medium">बाँकी औषधि (Remaining)</th>
+                    <th className="px-6 py-3 font-medium text-right">कार्य (Action)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {patientRequirements.map(({ patient, requirements }) => (
+                    <tr key={patient.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="font-medium text-gray-900">{patient.name}</div>
+                        <div className="text-xs text-gray-500">ID: {patient.patientId}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${patient.serviceType === 'TB' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}`}>
+                          {patient.serviceType} {patient.leprosyType ? `(${patient.leprosyType})` : ''}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-gray-600">{patient.weight || '-'} kg</td>
+                      <td className="px-6 py-4">
+                        {requirements.map(r => (
+                          <div key={r.itemName} className="text-sm">
+                            {r.itemName}: <span className="font-semibold">{r.dailyQuantity}</span>
+                          </div>
+                        ))}
+                      </td>
+                      <td className="px-6 py-4">
+                        {requirements.map(r => {
+                          const futureNeeded = Math.max(0, r.remainingNeeded - r.dailyQuantity);
+                          const todayNeeded = r.remainingNeeded > 0 ? r.dailyQuantity : 0;
+                          
+                          return (
+                            <div key={r.itemName} className="text-sm mb-1 last:mb-0">
+                              <div className="font-medium text-gray-700">{r.itemName}:</div>
+                              <div className="flex items-center gap-1 text-xs">
+                                <span className="text-blue-600 font-bold">{todayNeeded} (आज)</span>
+                                <span className="text-gray-400">+</span>
+                                <span className="text-gray-600">{futureNeeded} (बाँकी)</span>
+                                <span className="text-gray-400">=</span>
+                                <span className="font-bold text-gray-900">{r.remainingNeeded}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button 
+                          onClick={() => handleDelete(patient.id, patient.name)}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete Patient"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-gray-50 text-gray-600 text-sm uppercase">
-                <th className="px-6 py-3 font-medium">बिरामीको नाम (Patient)</th>
-                <th className="px-6 py-3 font-medium">सेवा (Service)</th>
-                <th className="px-6 py-3 font-medium">तौल (Weight)</th>
-                <th className="px-6 py-3 font-medium">दैनिक मात्रा (Daily Dose)</th>
-                <th className="px-6 py-3 font-medium text-right">कार्य (Action)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {patientRequirements.map(({ patient, requirements }) => (
-                <tr key={patient.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="font-medium text-gray-900">{patient.name}</div>
-                    <div className="text-xs text-gray-500">ID: {patient.patientId}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${patient.serviceType === 'TB' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}`}>
-                      {patient.serviceType} {patient.leprosyType ? `(${patient.leprosyType})` : ''}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-gray-600">{patient.weight || '-'} kg</td>
-                  <td className="px-6 py-4">
-                    {requirements.map(r => (
-                      <div key={r.itemName} className="text-sm">
-                        {r.itemName}: <span className="font-semibold">{r.dailyQuantity}</span>
-                      </div>
-                    ))}
-                  </td>
-                  <td className="px-6 py-4">
-                    {requirements.map(r => (
-                      <div key={r.itemName} className="text-sm font-semibold text-blue-600">
-                        {r.itemName}: {r.remainingNeeded}
-                      </div>
-                    ))}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button 
-                      onClick={() => handleDelete(patient.id, patient.name)}
-                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Delete Patient"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      )}
       
       <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 flex gap-3">
         <Info className="text-blue-600 shrink-0" size={20} />

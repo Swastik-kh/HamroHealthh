@@ -483,7 +483,6 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
           icon: <Activity size={16} />,
           subItems: [
             { id: 'tb_leprosy', label: 'बिरामी दर्ता', icon: <UserPlus size={16} /> },
-            { id: 'tb_medicine_status', label: 'औषधि अवस्था', icon: <Pill size={16} /> },
           ]
         },
         { id: 'khop_sewa', label: 'खोप सेवा', icon: <Baby size={16} /> }, 
@@ -740,7 +739,21 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
                       </tbody>
                   </table>
                </div>
-               <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm"><h4 className="font-bold text-slate-800 font-nepali mb-4 flex items-center gap-2"><TrendingUp size={18} className="text-blue-600"/> मौज्दात सारांश</h4><div className="grid grid-cols-2 gap-4"><div className="p-4 bg-blue-50/50 rounded-xl border border-blue-100 text-center"><p className="text-xs font-bold text-slate-500 uppercase mb-1">खर्च हुने (Expendable)</p><p className="text-2xl font-black text-blue-700">{inventoryItems.filter(i => i.itemType === 'Expendable' && i.currentQuantity > 0).length}</p></div><div className="p-4 bg-teal-50/50 rounded-xl border border-teal-100 text-center"><p className="text-xs font-bold text-slate-500 uppercase mb-1">खर्च नहुने (Non-Exp)</p><p className="text-2xl font-black text-teal-700">{inventoryItems.filter(i => i.itemType === 'Non-Expendable' && i.currentQuantity > 0).length}</p></div></div></div>
+               <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                  <h4 className="font-bold text-slate-800 font-nepali mb-4 flex items-center gap-2">
+                    <TrendingUp size={18} className="text-blue-600"/> मौज्दात सारांश
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-100 text-center">
+                      <p className="text-xs font-bold text-slate-500 uppercase mb-1">खर्च हुने (Expendable)</p>
+                      <p className="text-2xl font-black text-blue-700">{inventoryItems.filter(i => i.itemType === 'Expendable' && i.currentQuantity > 0).length}</p>
+                    </div>
+                    <div className="p-4 bg-teal-50/50 rounded-xl border border-teal-100 text-center">
+                      <p className="text-xs font-bold text-slate-500 uppercase mb-1">खर्च नहुने (Non-Exp)</p>
+                      <p className="text-2xl font-black text-teal-700">{inventoryItems.filter(i => i.itemType === 'Non-Expendable' && i.currentQuantity > 0).length}</p>
+                    </div>
+                  </div>
+               </div>
                <div className="lg:col-span-2">
                 <OnLeaveToday users={users} leaveApplications={leaveApplications} />
                </div>
@@ -762,16 +775,14 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
                                   interFacilityRequests={interFacilityRequests}
                                   allUsers={allUsers}
                                   currentUser={currentUser}
+                                  generalSettings={generalSettings}
+                                  onUpdateGeneralSettings={onUpdateGeneralSettings}
                                   onAddPatient={onAddTbPatient} 
                                   onUpdatePatient={onUpdateTbPatient} 
                                   onDeletePatient={onDeleteTbPatient} 
                                   onAddInterFacilityRequest={onAddInterFacilityRequest}
                                   onUpdateInterFacilityRequest={onUpdateInterFacilityRequest}
                                 />;
-      case 'tb_medicine_status': return <MedicineStatusReport 
-                                          patients={tbPatients} 
-                                          inventory={inventoryItems} 
-                                        />;
       case 'rabies': return <RabiesRegistration currentFiscalYear={currentFiscalYear} patients={rabiesPatients} onAddPatient={onAddRabiesPatient} onUpdatePatient={onUpdatePatient} onDeletePatient={onDeletePatient} currentUser={currentUser} />;
       case 'report_rabies': return <RabiesReport currentFiscalYear={currentFiscalYear} currentUser={currentUser} patients={rabiesPatients} />;
       case 'report_cbimnci': return <CBIMNCIReport cbimnciRecords={cbimnciRecords} serviceSeekerRecords={serviceSeekerRecords} currentFiscalYear={currentFiscalYear} />;

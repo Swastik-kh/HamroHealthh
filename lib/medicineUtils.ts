@@ -1,5 +1,7 @@
 
 import { TBPatient, InventoryItem } from '../types';
+// @ts-ignore
+import NepaliDate from 'nepali-date-converter';
 
 export interface MedicineRequirement {
   itemName: string;
@@ -23,28 +25,80 @@ const MEDICINE_MAPPINGS: Record<string, string[]> = {
   'Rifampicin 450mg': ['Rifampicin 450mg', 'Rifampicin 450'],
 };
 
-export const fuzzyMatch = (stockName: string, targetName: string): boolean => {
+export const fuzzyMatch = (stockName: string, targetName: string, customMappings: Record<string, string[]> = {}): boolean => {
   const stock = stockName.toLowerCase().trim();
   const target = targetName.toLowerCase().trim();
   
-  if (stock.includes(target) || target.includes(stock)) return true;
+  // Exact match or very close match
+  if (stock === target) return true;
   
-  // Check mappings
+  // Check if there's a custom mapping for this target (highest priority)
+  const targetKey = Object.keys(customMappings).find(k => k.toLowerCase() === target);
+  if (targetKey && customMappings[targetKey].length > 0) {
+    // If custom mapping exists, ONLY use it (no fallback to default or broad match)
+    return customMappings[targetKey].some(v => {
+      const vLower = v.toLowerCase().trim();
+      return stock === vLower || stock.includes(vLower);
+    });
+  }
+
+  // Check default mappings (only if no custom mapping exists for this target)
   for (const [key, variations] of Object.entries(MEDICINE_MAPPINGS)) {
     if (key.toLowerCase() === target.toLowerCase()) {
-      return variations.some(v => stock.includes(v.toLowerCase()));
+      if (variations.some(v => stock.includes(v.toLowerCase()) || v.toLowerCase() === stock)) {
+        return true;
+      }
     }
   }
+  
+  // Fallback broad match - but be careful with HR vs HRZE
+  // If target is "HR" but stock is "HRZE", it should NOT match
+  if (target.includes('hr') && !target.includes('ze') && stock.includes('ze')) {
+    return false;
+  }
+
+  if (stock.includes(target) || target.includes(stock)) return true;
   
   return false;
 };
 
-export const calculatePatientRequirements = (patient: TBPatient, inventory: InventoryItem[]): MedicineRequirement[] => {
+export const calculatePatientRequirements = (
+  patient: TBPatient, 
+  inventory: InventoryItem[], 
+  customMappings: Record<string, string[]> = {}
+): MedicineRequirement[] => {
   const requirements: MedicineRequirement[] = [];
   const weight = parseFloat(patient.weight || '0');
   const isChild = patient.regimen === 'Child';
   const isLeprosy = patient.serviceType === 'Leprosy';
   
+  // Calculate days passed since treatment start
+  let daysPassed = 0;
+  try {
+    const startDateStr = patient.treatmentStartDate || patient.registrationDate;
+    if (startDateStr) {
+      const parts = startDateStr.split(/[-/]/);
+      if (parts.length === 3) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const d = parseInt(parts[2], 10);
+        const startNepali = new NepaliDate(y, m, d);
+        const todayNepali = new NepaliDate();
+        
+        // Convert both to AD to calculate difference
+        const startAd = startNepali.toJsDate();
+        const todayAd = todayNepali.toJsDate();
+        
+        // Difference in milliseconds
+        const diffTime = todayAd.getTime() - startAd.getTime();
+        daysPassed = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)));
+      }
+    }
+  } catch (e) {
+    // Fallback to completedSchedule if date calculation fails
+    daysPassed = (patient.completedSchedule?.length || 0) * 30;
+  }
+
   if (patient.serviceType === 'TB') {
     const treatmentType = patient.treatmentType || '2HRZE+4HR';
     
@@ -74,8 +128,6 @@ export const calculatePatientRequirements = (patient: TBPatient, inventory: Inve
       cpMedicineType = 'HR';
     }
     
-    const completedDays = (patient.completedSchedule?.length || 0) * 30;
-    
     // Intensive Phase Medicine (HRZE)
     const ipMedicineName = isChild ? 'HRZE (Child)' : 'HRZE (Adult)';
     let ipDailyQty = 0;
@@ -93,9 +145,9 @@ export const calculatePatientRequirements = (patient: TBPatient, inventory: Inve
       else ipDailyQty = 1;
     }
 
-    const ipRemainingDays = Math.max(0, intensivePhaseDays - completedDays);
+    const ipRemainingDays = Math.max(0, intensivePhaseDays - daysPassed);
     const ipStock = inventory
-      .filter(item => fuzzyMatch(item.itemName, ipMedicineName))
+      .filter(item => fuzzyMatch(item.itemName, ipMedicineName, customMappings))
       .reduce((sum, item) => sum + item.currentQuantity, 0);
 
     requirements.push({
@@ -109,7 +161,7 @@ export const calculatePatientRequirements = (patient: TBPatient, inventory: Inve
     // Levofloxacin if needed
     if (needsLfx) {
       const lfxStock = inventory
-        .filter(item => fuzzyMatch(item.itemName, 'Levofloxacin 250/500mg'))
+        .filter(item => fuzzyMatch(item.itemName, 'Levofloxacin 250/500mg', customMappings))
         .reduce((sum, item) => sum + item.currentQuantity, 0);
       
       requirements.push({
@@ -126,10 +178,10 @@ export const calculatePatientRequirements = (patient: TBPatient, inventory: Inve
       const cpMedicineName = cpMedicineType === 'HRE' ? 'HRE (Adult)' : (isChild ? 'HR (Child)' : 'HR (Adult)');
       let cpDailyQty = ipDailyQty;
 
-      const cpCompletedDays = Math.max(0, completedDays - intensivePhaseDays);
+      const cpCompletedDays = Math.max(0, daysPassed - intensivePhaseDays);
       const cpRemainingDays = Math.max(0, continuationPhaseDays - cpCompletedDays);
       const cpStock = inventory
-        .filter(item => fuzzyMatch(item.itemName, cpMedicineName))
+        .filter(item => fuzzyMatch(item.itemName, cpMedicineName, customMappings))
         .reduce((sum, item) => sum + item.currentQuantity, 0);
 
       requirements.push({
@@ -143,33 +195,33 @@ export const calculatePatientRequirements = (patient: TBPatient, inventory: Inve
   } else if (isLeprosy) {
     const isMB = patient.leprosyType === 'MB';
     const totalMonths = isMB ? 12 : 6;
-    const completedMonths = patient.completedSchedule?.length || 0;
-    const remainingMonths = Math.max(0, totalMonths - completedMonths);
+    const totalDays = totalMonths * 30;
+    const remainingDays = Math.max(0, totalDays - daysPassed);
 
     // Dapsone (Daily)
     const dapsoneStock = inventory
-      .filter(item => fuzzyMatch(item.itemName, 'Dapsone 100mg'))
+      .filter(item => fuzzyMatch(item.itemName, 'Dapsone 100mg', customMappings))
       .reduce((sum, item) => sum + item.currentQuantity, 0);
     
     requirements.push({
       itemName: 'Dapsone 100mg',
       dailyQuantity: 1,
-      totalNeeded: 1 * totalMonths * 30,
-      remainingNeeded: 1 * remainingMonths * 30,
+      totalNeeded: 1 * totalDays,
+      remainingNeeded: 1 * remainingDays,
       availableStock: dapsoneStock
     });
 
     if (isMB) {
       // Clofazimine (Daily)
       const clofStock = inventory
-        .filter(item => fuzzyMatch(item.itemName, 'Clofazimine 50mg'))
+        .filter(item => fuzzyMatch(item.itemName, 'Clofazimine 50mg', customMappings))
         .reduce((sum, item) => sum + item.currentQuantity, 0);
       
       requirements.push({
         itemName: 'Clofazimine 50mg',
         dailyQuantity: 1,
-        totalNeeded: 1 * totalMonths * 30,
-        remainingNeeded: 1 * remainingMonths * 30,
+        totalNeeded: 1 * totalDays,
+        remainingNeeded: 1 * remainingDays,
         availableStock: clofStock
       });
     }

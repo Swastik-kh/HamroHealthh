@@ -90,6 +90,7 @@ export interface OrganizationSettings {
   ipdWards?: WardConfig[]; 
   isSubscribed?: boolean;
   subscriptionExpiryDate?: string;
+  medicineMappings?: Record<string, string[]>;
 }
 
 export interface SubscriptionRequest {

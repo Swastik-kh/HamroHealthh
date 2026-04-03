@@ -84,6 +84,7 @@ export interface TBPatient {
   gender: 'Male' | 'Female' | 'Other';
   ethnicity: string;
   registrationDate: string;
+  treatmentStartDate?: string; // Nepali date (BS)
   serviceType: 'TB' | 'Leprosy';
   leprosyType?: 'MB' | 'PB'; 
   weight?: string;

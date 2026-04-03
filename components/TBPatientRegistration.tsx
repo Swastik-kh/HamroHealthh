@@ -9,7 +9,7 @@ import {
 import { Input } from './Input';
 import { Select } from './Select';
 import { NepaliDatePicker } from './NepaliDatePicker';
-import { Option, User } from '../types/coreTypes';
+import { Option, User, OrganizationSettings } from '../types/coreTypes';
 import { TBPatient, TBReport, InterFacilityRequest } from '../types/healthTypes';
 import { InventoryItem } from '../types/inventoryTypes';
 import { calculatePatientRequirements, MedicineRequirement } from '../lib/medicineUtils';
@@ -26,6 +26,8 @@ interface TBPatientRegistrationProps {
   interFacilityRequests: InterFacilityRequest[];
   allUsers: User[];
   currentUser: User | null;
+  generalSettings: OrganizationSettings;
+  onUpdateGeneralSettings: (settings: OrganizationSettings) => void;
   onAddPatient: (patient: TBPatient) => void;
   onUpdatePatient: (patient: TBPatient, sourceOrgName?: string) => void;
   onDeletePatient: (patientId: string) => void;
@@ -40,6 +42,8 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
   interFacilityRequests: globalInterFacilityRequests = [],
   allUsers = [],
   currentUser,
+  generalSettings,
+  onUpdateGeneralSettings,
   onAddPatient, 
   onUpdatePatient,
   onDeletePatient,
@@ -177,6 +181,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
     classification: '',
     leprosyType: undefined, 
     registrationDate: todayBs, // Initialize with today's Nepali date
+    treatmentStartDate: todayBs, // Initialize with today's Nepali date
     serviceType: 'TB', // Default to TB
     completedSchedule: [],
     newReportAvailable: false,
@@ -458,6 +463,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
         classification: '',
         leprosyType: activeTab === 'Leprosy' ? 'PB' : undefined, // Reset based on activeTab
         registrationDate: todayBs, // Reset to today's Nepali date
+        treatmentStartDate: todayBs, // Reset to today's Nepali date
         serviceType: activeTab,
         completedSchedule: [],
         newReportAvailable: false,
@@ -760,67 +766,6 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
         </div>
       </div>
 
-      {/* Medicine Status Summary Card */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-blue-100 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-slate-800 flex items-center gap-2">
-              <Pill size={18} className="text-blue-600" />
-              औषधि मौज्दात र आवश्यकता सारांश ({activeTab})
-            </h3>
-            <button onClick={() => setShowMedicineStatusModal(true)} className="text-xs font-bold text-blue-600 hover:underline">विस्तृत विवरण</button>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {Object.entries(medicineStats).length === 0 ? (
-              <div className="sm:col-span-2 text-center py-4 text-slate-400 text-sm italic">कुनै औषधि विवरण उपलब्ध छैन।</div>
-            ) : (
-              (Object.entries(medicineStats) as [string, any][]).map(([name, data]) => (
-                <div key={name} className={`p-3 rounded-xl border ${data.stock < data.totalRemaining ? 'bg-red-50 border-red-100' : 'bg-slate-50 border-slate-100'}`}>
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-xs font-bold text-slate-700 truncate max-w-[150px]">{name}</span>
-                    {data.stock < data.totalRemaining ? (
-                      <span className="text-[10px] font-black text-red-600 bg-red-100 px-1.5 py-0.5 rounded uppercase">अपुग</span>
-                    ) : (
-                      <span className="text-[10px] font-black text-green-600 bg-green-100 px-1.5 py-0.5 rounded uppercase">पर्याप्त</span>
-                    )}
-                  </div>
-                  <div className="flex justify-between items-end">
-                    <div>
-                      <p className="text-[9px] text-slate-400 font-bold uppercase">बाँकी आवश्यकता</p>
-                      <p className="text-sm font-black text-slate-800">{data.totalRemaining}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[9px] text-slate-400 font-bold uppercase">मौज्दात</p>
-                      <p className={`text-sm font-black ${data.stock < data.totalRemaining ? 'text-red-600' : 'text-slate-800'}`}>{data.stock}</p>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-indigo-600 to-blue-700 p-6 rounded-2xl text-white shadow-lg shadow-indigo-200 flex flex-col justify-between">
-          <div>
-            <h3 className="text-lg font-bold mb-1">औषधि व्यवस्थापन</h3>
-            <p className="text-indigo-100 text-xs">बिरामीको उपचारको लागि आवश्यक औषधिको मौज्दात सुनिश्चित गर्नुहोस्।</p>
-          </div>
-          <div className="mt-6 space-y-4">
-            <div className="flex items-center justify-between bg-white/10 p-3 rounded-xl backdrop-blur-sm">
-              <span className="text-xs font-medium">कुल औषधि प्रकार</span>
-              <span className="text-xl font-black">{Object.keys(medicineStats).length}</span>
-            </div>
-            <div className="flex items-center justify-between bg-white/10 p-3 rounded-xl backdrop-blur-sm">
-              <span className="text-xs font-medium">अपुग औषधि</span>
-              <span className="text-xl font-black text-orange-300">{lowStockMedicines.length}</span>
-            </div>
-            <button onClick={() => setShowMedicineStatusModal(true)} className="w-full py-3 bg-white text-indigo-600 rounded-xl font-bold text-sm shadow-sm hover:bg-indigo-50 transition-all active:scale-95">
-              विस्तृत रिपोर्ट हेर्नुहोस्
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Registration Form */}
       <div className="bg-white p-6 rounded-2xl border shadow-sm">
         <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-6">
@@ -883,6 +828,13 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
             onChange={val => setFormData({...formData, registrationDate: val})} 
             required 
             // Removed minDate and maxDate restrictions
+          />
+
+          <NepaliDatePicker 
+            label="उपचार सुरु गरेको मिति" 
+            value={formData.treatmentStartDate || ''} 
+            onChange={val => setFormData({...formData, treatmentStartDate: val})} 
+            required 
           />
 
           {activeTab === 'TB' && (
@@ -999,7 +951,12 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                                   {(!p.reports || p.reports.length === 0) && <span className="text-slate-300">-</span>}
                               </div>
                           </td>
-                          <td className="px-6 py-4 text-xs text-slate-500 font-nepali">{p.registrationDate}</td>
+                          <td className="px-6 py-4 text-[10px] text-slate-500 font-nepali">
+                              <div className="flex flex-col">
+                                  <span>दर्ता: {p.registrationDate}</span>
+                                  {p.treatmentStartDate && <span className="text-indigo-600 font-bold">सुरु: {p.treatmentStartDate}</span>}
+                              </div>
+                          </td>
                           <td className="px-6 py-4 text-right relative">
                               <div className="flex justify-end gap-2">
                                   <button onClick={() => {
@@ -1283,6 +1240,8 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                       <p><strong>उमेर:</strong> {selectedPatientForDetails.age}</p>
                       <p><strong>ठेगाना:</strong> {selectedPatientForDetails.address}</p>
                       <p><strong>फोन नं:</strong> {selectedPatientForDetails.phone}</p>
+                      <p><strong>दर्ता मिति:</strong> {selectedPatientForDetails.registrationDate}</p>
+                      <p><strong>उपचार सुरु गरेको मिति:</strong> {selectedPatientForDetails.treatmentStartDate || '-'}</p>
                       <div className="flex items-center gap-2">
                         <strong>अवस्था:</strong>
                         <select 
@@ -1505,6 +1464,8 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                 patients={patients} 
                 inventory={inventoryItems} 
                 onDeletePatient={onDeletePatient}
+                medicineMappings={generalSettings.medicineMappings || {}}
+                onUpdateMappings={(mappings) => onUpdateGeneralSettings({ ...generalSettings, medicineMappings: mappings })}
               />
             </div>
           </div>
