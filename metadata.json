@@ -1,5 +1,5 @@
 {
   "name": "Smart Inventory copy",
   "description": "A professional inventory management system with secure login and fiscal year tracking.",
-  "requestFramePermissions": []
+  "requestFramePermissions": ["publickey-credentials-get", "publickey-credentials-create"]
 }

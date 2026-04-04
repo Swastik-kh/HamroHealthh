@@ -52,11 +52,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({ users, onLoginSuccess, ini
     try {
       await new Promise(resolve => setTimeout(resolve, 600));
       
-      const inputUsername = formData.username.trim().toLowerCase();
+      const inputUsername = formData.username.trim();
       const inputPassword = formData.password.trim();
 
       const foundUser = users.find(u => {
-          const dbUsername = String(u.username || '').trim().toLowerCase();
+          const dbUsername = String(u.username || '').trim();
           const dbPassword = String(u.password || '').trim();
           return dbUsername === inputUsername && dbPassword === inputPassword;
       });

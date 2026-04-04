@@ -77,6 +77,8 @@ import { MedicineStatusReport } from './MedicineStatusReport';
 // @ts-ignore
 import NepaliDate from 'nepali-date-converter';
 
+import { BiometricSetupPrompt } from './BiometricSetupPrompt';
+
 interface ExtendedDashboardProps extends DashboardProps {
   onUploadData: (sectionId: string, data: any[], extraMeta?: any) => Promise<void>;
   garbhawotiRecords: GarbhawotiRecord[];
@@ -223,6 +225,36 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
   const [chalaniSearchQuery, setChalaniSearchQuery] = useState('');
   
   const [previewDakhila, setPreviewDakhila] = useState<DakhilaPratibedanEntry | null>(null);
+  const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
+
+  useEffect(() => {
+    // Check if we should prompt for biometric setup
+    const shouldPrompt = () => {
+      if (!window.PublicKeyCredential) return false;
+      if (currentUser.biometricCredential) return false;
+      if (sessionStorage.getItem('biometric_prompt_dismissed')) return false;
+      
+      // Only prompt if they've logged in recently (e.g., first time this session)
+      return true;
+    };
+
+    if (shouldPrompt()) {
+      const timer = setTimeout(() => {
+        setShowBiometricPrompt(true);
+      }, 3000); // Show after 3 seconds of dashboard load
+      return () => clearTimeout(timer);
+    }
+  }, [currentUser]);
+
+  const handleSetupBiometric = () => {
+    setShowBiometricPrompt(false);
+    setActiveItem('change_password');
+  };
+
+  const handleDismissBiometric = () => {
+    setShowBiometricPrompt(false);
+    sessionStorage.setItem('biometric_prompt_dismissed', 'true');
+  };
   
   // New State for Dashboard Date Selection
   const [selectedStatsDate, setSelectedStatsDate] = useState<string>(() => {
@@ -762,7 +794,7 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
       case 'report_khop': return <ImmunizationReport currentFiscalYear={currentFiscalYear} bachhaRecords={bachhaImmunizationRecords} maternalRecords={garbhawatiPatients} generalSettings={generalSettings} />;
       case 'conference': return <Conference currentUser={currentUser} allUsers={users} />;
       case 'user_management': return <UserManagement currentUser={currentUser} users={users} onAddUser={onAddUser} onUpdateUser={onUpdateUser} onDeleteUser={onDeleteUser} isDbLocked={isDbLocked} />;
-      case 'change_password': return <ChangePassword currentUser={currentUser} users={users} onChangePassword={onChangePassword} />;
+      case 'change_password': return <ChangePassword currentUser={currentUser} users={users} onChangePassword={onChangePassword} onUpdateUser={onUpdateUser} />;
       case 'store_setup': return <StoreSetup currentUser={currentUser} currentFiscalYear={currentFiscalYear} stores={stores} onAddStore={onAddStore} onUpdateStore={onUpdateStore} onDeleteStore={onDeleteStore} inventoryItems={inventoryItems} onUpdateInventoryItem={onUpdateInventoryItem} />;
       case 'tb_leprosy': return <TBPatientRegistration 
                                   currentFiscalYear={currentFiscalYear} 
@@ -1669,6 +1701,13 @@ export const Dashboard: React.FC<ExtendedDashboardProps> = ({
         <PrintOptionsModal 
           onClose={() => setShowExpiryPrintOptionsModal(false)} 
           onPrint={(orientation) => handlePrint(expiryModalType === 'expired' ? 'expired-items-print' : 'near-expiry-items-print', orientation)} 
+        />
+      )}
+
+      {showBiometricPrompt && (
+        <BiometricSetupPrompt 
+          onClose={handleDismissBiometric} 
+          onSetup={handleSetupBiometric} 
         />
       )}
     </div>
