@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Calendar, User, Lock, LogIn, Eye, EyeOff, Loader2, AlertCircle, Info, Code, ShieldAlert, Fingerprint } from 'lucide-react';
+import { Calendar, User, Lock, LogIn, Eye, EyeOff, Loader2, AlertCircle, Info, Code, ShieldAlert } from 'lucide-react';
 import { Input } from './Input';
 import { Select } from './Select';
 import { FISCAL_YEARS } from '../constants';
@@ -71,59 +71,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({ users, onLoginSuccess, ini
       }
     } catch (error) {
       setErrors(prev => ({ ...prev, form: 'सिस्टममा समस्या आयो, पुनः प्रयास गर्नुहोस्' }));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleBiometricLogin = async () => {
-    setIsLoading(true);
-    setErrors({});
-
-    try {
-      if (!window.PublicKeyCredential) {
-        setErrors({ form: 'तपाईंको ब्राउजरले बायोमेट्रिक लगइन समर्थन गर्दैन।' });
-        return;
-      }
-
-      const challenge = new Uint8Array(32);
-      window.crypto.getRandomValues(challenge);
-
-      const publicKeyCredentialRequestOptions: PublicKeyCredentialRequestOptions = {
-        challenge,
-        timeout: 60000,
-        rpId: window.location.hostname,
-        userVerification: "preferred",
-      };
-
-      const assertion = await navigator.credentials.get({
-        publicKey: publicKeyCredentialRequestOptions,
-      }) as PublicKeyCredential;
-
-      if (assertion) {
-        // Helper to convert ArrayBuffer to Base64
-        const bufferToBase64 = (buffer: ArrayBuffer) => {
-          return btoa(String.fromCharCode(...new Uint8Array(buffer)));
-        };
-
-        const credentialId = bufferToBase64(assertion.rawId);
-        
-        // Find user by credentialId
-        const foundUser = users.find(u => u.biometricCredential?.credentialId === credentialId);
-
-        if (foundUser) {
-          onLoginSuccess(foundUser, formData.fiscalYear);
-        } else {
-          setErrors({ form: 'बायोमेट्रिक पहिचान हुन सकेन।' });
-        }
-      }
-    } catch (err: any) {
-      console.error(err);
-      if (err.name === 'NotAllowedError') {
-        // User cancelled
-      } else {
-        setErrors({ form: 'बायोमेट्रिक लगइनमा समस्या आयो।' });
-      }
     } finally {
       setIsLoading(false);
     }
@@ -208,23 +155,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({ users, onLoginSuccess, ini
       >
         {isLoading ? <Loader2 size={20} className="animate-spin" /> : <LogIn size={20} />}
         <span>{isLoading ? 'प्रक्रियामा छ...' : 'लगइन गर्नुहोस्'}</span>
-      </button>
-
-      <div className="relative flex items-center justify-center py-2">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-slate-200"></div>
-        </div>
-        <span className="relative px-4 bg-white text-slate-400 text-xs font-medium uppercase tracking-wider">अथवा</span>
-      </div>
-
-      <button
-        type="button"
-        onClick={handleBiometricLogin}
-        disabled={isLoading}
-        className="w-full bg-white border-2 border-slate-200 text-slate-700 hover:border-primary-600 hover:text-primary-600 font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-70"
-      >
-        <Fingerprint size={20} />
-        <span>बायोमेट्रिक लगइन (Biometric Login)</span>
       </button>
 
       <div className="text-center pt-2">
