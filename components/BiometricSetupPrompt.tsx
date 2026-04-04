@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Fingerprint, X, CheckCircle2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface BiometricSetupPromptProps {
   onClose: () => void;
