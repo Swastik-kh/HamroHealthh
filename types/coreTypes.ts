@@ -23,6 +23,12 @@ export interface LoginFormData {
 
 export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'STAFF' | 'STOREKEEPER' | 'ACCOUNT' | 'APPROVAL' | 'HEALTH_SECTION';
 
+export interface BiometricCredential {
+  credentialId: string;
+  publicKey: string;
+  counter: number;
+}
+
 export interface User {
   id: string;
   username: string;
@@ -39,6 +45,7 @@ export interface User {
   createdAt?: string; // ISO date string
   subscriptionExpiryDate?: string; // ISO date string
   isSubscribed?: boolean;
+  biometricCredential?: BiometricCredential;
 }
 
 export interface WardConfig {

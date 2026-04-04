@@ -4,15 +4,16 @@ import React, { useState, useMemo } from 'react';
 import { User } from '../types/coreTypes'; // Corrected import path
 import { Input } from './Input';
 import { Select } from './Select';
-import { KeyRound, Save, AlertCircle, CheckCircle2, Lock, UserCog, ShieldAlert } from 'lucide-react';
+import { KeyRound, Save, AlertCircle, CheckCircle2, Lock, UserCog, ShieldAlert, Fingerprint } from 'lucide-react';
 
 interface ChangePasswordProps {
   currentUser: User;
   users: User[];
   onChangePassword: (userId: string, newPassword: string) => void;
+  onUpdateUser?: (user: User) => void;
 }
 
-export const ChangePassword: React.FC<ChangePasswordProps> = ({ currentUser, users, onChangePassword }) => {
+export const ChangePassword: React.FC<ChangePasswordProps> = ({ currentUser, users, onChangePassword, onUpdateUser }) => {
   // Can reset others if SUPER_ADMIN or ADMIN
   const isPrivileged = currentUser.role === 'SUPER_ADMIN' || currentUser.role === 'ADMIN';
 
@@ -97,6 +98,73 @@ export const ChangePassword: React.FC<ChangePasswordProps> = ({ currentUser, use
     // Reset Form
     setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
     if (!selectedUserId) setSelectedUserId('');
+  };
+
+  const handleSetupBiometric = async () => {
+    setError(null);
+    setSuccess(null);
+
+    if (!window.PublicKeyCredential) {
+      setError('तपाईंको ब्राउजरले बायोमेट्रिक लगइन समर्थन गर्दैन।');
+      return;
+    }
+
+    try {
+      const challenge = new Uint8Array(32);
+      window.crypto.getRandomValues(challenge);
+
+      const userID = currentUser.id;
+      const publicKeyCredentialCreationOptions: PublicKeyCredentialCreationOptions = {
+        challenge,
+        rp: {
+          name: "Smart Inventory System",
+          id: window.location.hostname,
+        },
+        user: {
+          id: new TextEncoder().encode(userID),
+          name: currentUser.username,
+          displayName: currentUser.fullName,
+        },
+        pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
+        authenticatorSelection: {
+          userVerification: "preferred",
+          residentKey: "preferred",
+        },
+        timeout: 60000,
+        attestation: "none",
+      };
+
+      const credential = await navigator.credentials.create({
+        publicKey: publicKeyCredentialCreationOptions,
+      }) as PublicKeyCredential;
+
+      if (credential) {
+        const response = credential.response as AuthenticatorAttestationResponse;
+        
+        // Helper to convert ArrayBuffer to Base64
+        const bufferToBase64 = (buffer: ArrayBuffer) => {
+          return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+        };
+
+        const biometricData = {
+          credentialId: bufferToBase64(credential.rawId),
+          publicKey: bufferToBase64(response.getPublicKey()),
+          counter: 0,
+        };
+
+        if (onUpdateUser) {
+          onUpdateUser({ ...currentUser, biometricCredential: biometricData });
+          setSuccess('बायोमेट्रिक लगइन सफलतापूर्वक सेटअप भयो।');
+        }
+      }
+    } catch (err: any) {
+      console.error(err);
+      if (err.name === 'NotAllowedError') {
+        setError('बायोमेट्रिक सेटअप रद्द गरियो।');
+      } else {
+        setError('बायोमेट्रिक सेटअपमा समस्या आयो। कृपया पुनः प्रयास गर्नुहोस्।');
+      }
+    }
   };
 
   return (
@@ -199,6 +267,46 @@ export const ChangePassword: React.FC<ChangePasswordProps> = ({ currentUser, use
             </button>
           </div>
         </form>
+
+        {!selectedUserId && (
+          <div className="mt-10 pt-8 border-t border-slate-100">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="bg-indigo-100 p-2 rounded-lg text-indigo-600">
+                <Fingerprint size={24} />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800 font-nepali">बायोमेट्रिक लगइन सेटअप (Biometric Setup)</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  आफ्नो फिंगरप्रिन्ट वा फेस अनलक प्रयोग गरेर छिटो लगइन गर्नुहोस्।
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1">
+                  <p className="text-sm text-slate-700 font-medium font-nepali">
+                    {currentUser.biometricCredential 
+                      ? 'बायोमेट्रिक लगइन सक्रिय छ।' 
+                      : 'बायोमेट्रिक लगइन हाल निष्क्रिय छ।'}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {currentUser.biometricCredential 
+                      ? 'तपाईंले यसलाई पुनः सेटअप गर्न वा अर्को डिभाइस थप्न सक्नुहुन्छ।' 
+                      : 'सुरक्षित र छिटो लगइनको लागि बायोमेट्रिक सेटअप गर्नुहोस्।'}
+                  </p>
+                </div>
+                <button
+                  onClick={handleSetupBiometric}
+                  className="flex items-center gap-2 bg-white text-slate-700 border border-slate-200 px-5 py-2.5 rounded-lg hover:bg-slate-50 transition-all font-bold font-nepali shadow-sm active:scale-95"
+                >
+                  <Fingerprint size={18} className="text-indigo-600" />
+                  {currentUser.biometricCredential ? 'पुनः सेटअप गर्नुहोस्' : 'बायोमेट्रिक सेटअप गर्नुहोस्'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
