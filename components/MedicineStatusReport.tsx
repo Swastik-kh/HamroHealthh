@@ -3,8 +3,8 @@ import React, { useMemo, useState } from 'react';
 import { TBPatient, InventoryItem } from '../types';
 import { Option } from '../types/coreTypes';
 import { SearchableSelect } from './SearchableSelect';
-import { calculatePatientRequirements, MedicineRequirement, fuzzyMatch } from '../lib/medicineUtils';
-import { Pill, Package, AlertTriangle, CheckCircle, Info, Database, User, Trash2, LayoutDashboard, ClipboardList, Settings, X, Plus, Trash, Search } from 'lucide-react';
+import { calculatePatientRequirements, MedicineRequirement, fuzzyMatch, getCombinedStandardNames } from '../lib/medicineUtils';
+import { Pill, Package, AlertTriangle, CheckCircle, Info, Database, User, Trash2, LayoutDashboard, ClipboardList, Settings, X, Plus, Trash, Search, Edit3 } from 'lucide-react';
 
 interface MedicineStatusReportProps {
   patients: TBPatient[];
@@ -12,6 +12,8 @@ interface MedicineStatusReportProps {
   onDeletePatient?: (id: string) => void;
   medicineMappings?: Record<string, string[]>;
   onUpdateMappings?: (mappings: Record<string, string[]>) => void;
+  customStandardMedicineNames?: string[];
+  onUpdateCustomStandardNames?: (names: string[]) => void;
 }
 
 export const MedicineStatusReport: React.FC<MedicineStatusReportProps> = ({ 
@@ -19,21 +21,22 @@ export const MedicineStatusReport: React.FC<MedicineStatusReportProps> = ({
   inventory, 
   onDeletePatient,
   medicineMappings = {},
-  onUpdateMappings
+  onUpdateMappings,
+  customStandardMedicineNames = [],
+  onUpdateCustomStandardNames
 }) => {
   const [activeTab, setActiveTab] = useState<'summary' | 'management'>('summary');
   const [showMappingSettings, setShowMappingSettings] = useState(false);
   const [newMapping, setNewMapping] = useState({ standardName: '', keyword: '' });
+  const [newStandardName, setNewStandardName] = useState('');
+  const [showAddStandardName, setShowAddStandardName] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('Active');
 
-  const standardMedicineNames = [
-    'HRZE (Adult)', 'HR (Adult)', 'HRE (Adult)', 
-    'HRZE (Child)', 'HR (Child)', 
-    'Levofloxacin 250/500mg', 'Dapsone 100mg', 
-    'Clofazimine 50mg', 'Clofazimine 100mg', 
-    'Rifampicin 600mg', 'Rifampicin 450mg'
-  ];
+  const standardMedicineNames = useMemo(() => 
+    getCombinedStandardNames(customStandardMedicineNames),
+    [customStandardMedicineNames]
+  );
 
   const activePatients = useMemo(() => 
     patients.filter(p => p.status === 'Active' || !p.status), 
@@ -123,6 +126,35 @@ export const MedicineStatusReport: React.FC<MedicineStatusReportProps> = ({
     setNewMapping({ ...newMapping, keyword: '' });
   };
 
+  const handleAddStandardName = () => {
+    if (!newStandardName.trim() || !onUpdateCustomStandardNames) return;
+    
+    if (standardMedicineNames.includes(newStandardName.trim())) {
+      alert('यो नाम पहिले नै सूचीमा छ।');
+      return;
+    }
+    
+    const updatedNames = [...customStandardMedicineNames, newStandardName.trim()];
+    onUpdateCustomStandardNames(updatedNames);
+    setNewMapping({ ...newMapping, standardName: newStandardName.trim() });
+    setNewStandardName('');
+    setShowAddStandardName(false);
+  };
+
+  const handleRemoveStandardName = (name: string) => {
+    if (!onUpdateCustomStandardNames || !window.confirm(`के तपाईं "${name}" लाई मानक नामको सूचीबाट हटाउन चाहनुहुन्छ?`)) return;
+    
+    const updatedNames = customStandardMedicineNames.filter(n => n !== name);
+    onUpdateCustomStandardNames(updatedNames);
+    
+    // Also clean up mappings if any
+    if (medicineMappings[name] && onUpdateMappings) {
+      const updatedMappings = { ...medicineMappings };
+      delete updatedMappings[name];
+      onUpdateMappings(updatedMappings);
+    }
+  };
+
   const handleRemoveMapping = (standardName: string, keyword: string) => {
     if (!onUpdateMappings) return;
     
@@ -194,17 +226,44 @@ export const MedicineStatusReport: React.FC<MedicineStatusReportProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-white p-4 rounded-lg border border-slate-100">
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase">मानक नाम (Standard Name)</label>
-              <select 
-                value={newMapping.standardName}
-                onChange={(e) => setNewMapping({...newMapping, standardName: e.target.value})}
-                className="w-full p-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-              >
-                <option value="">छनोट गर्नुहोस्</option>
-                {standardMedicineNames.map(name => (
-                  <option key={name} value={name}>{name}</option>
-                ))}
-              </select>
+              <div className="flex justify-between items-center">
+                <label className="text-[10px] font-black text-slate-400 uppercase">मानक नाम (Standard Name)</label>
+                <button 
+                  onClick={() => setShowAddStandardName(!showAddStandardName)}
+                  className="text-[10px] font-bold text-blue-600 hover:underline"
+                >
+                  {showAddStandardName ? 'सूचीबाट छान्नुहोस्' : 'नयाँ थप्नुहोस्'}
+                </button>
+              </div>
+              {showAddStandardName ? (
+                <div className="flex gap-1">
+                  <input 
+                    type="text"
+                    value={newStandardName}
+                    onChange={(e) => setNewStandardName(e.target.value)}
+                    placeholder="नयाँ मानक नाम..."
+                    className="w-full p-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    autoFocus
+                  />
+                  <button 
+                    onClick={handleAddStandardName}
+                    className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700"
+                  >
+                    <CheckCircle size={18} />
+                  </button>
+                </div>
+              ) : (
+                <select 
+                  value={newMapping.standardName}
+                  onChange={(e) => setNewMapping({...newMapping, standardName: e.target.value})}
+                  className="w-full p-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                >
+                  <option value="">छनोट गर्नुहोस्</option>
+                  {standardMedicineNames.map(name => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+                </select>
+              )}
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase">स्टकको नाम/किबोर्ड (Stock Keyword)</label>
@@ -229,11 +288,40 @@ export const MedicineStatusReport: React.FC<MedicineStatusReportProps> = ({
 
           <div className="space-y-3">
             <h5 className="text-xs font-bold text-slate-600 border-b pb-1">हालका म्यापिङहरू (Current Mappings)</h5>
-            {Object.entries(medicineMappings).length === 0 ? (
+            {Object.entries(medicineMappings).length === 0 && customStandardMedicineNames.length === 0 ? (
               <p className="text-xs text-slate-400 italic py-2">कुनै म्यापिङ सेट गरिएको छैन।</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {Object.entries(medicineMappings).map(([standardName, keywords]) => (
+                {/* Custom Standard Names (even if no mapping yet) */}
+                {customStandardMedicineNames.map(name => (
+                  <div key={name} className="bg-white p-3 rounded-lg border border-blue-100 shadow-sm relative group">
+                    <p className="text-[10px] font-black text-blue-600 uppercase mb-2 flex justify-between items-center">
+                      {name}
+                      <button 
+                        onClick={() => handleRemoveStandardName(name)}
+                        className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                      >
+                        <Trash size={12} />
+                      </button>
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {(medicineMappings[name] || []).map(keyword => (
+                        <span key={keyword} className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-700 rounded-full text-[10px] font-bold">
+                          {keyword}
+                          <button onClick={() => handleRemoveMapping(name, keyword)} className="text-slate-400 hover:text-red-500"><X size={12}/></button>
+                        </span>
+                      ))}
+                      {(!medicineMappings[name] || medicineMappings[name].length === 0) && (
+                        <span className="text-[10px] text-slate-400 italic">कुनै म्यापिङ छैन</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {/* Default Standard Names with Mappings */}
+                {Object.entries(medicineMappings)
+                  .filter(([name]) => !customStandardMedicineNames.includes(name))
+                  .map(([standardName, keywords]) => (
                   <div key={standardName} className="bg-white p-3 rounded-lg border border-slate-100 shadow-sm">
                     <p className="text-[10px] font-black text-blue-600 uppercase mb-2">{standardName}</p>
                     <div className="flex flex-wrap gap-1">

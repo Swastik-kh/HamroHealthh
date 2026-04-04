@@ -18,6 +18,7 @@ export const Select: React.FC<SelectExtendedProps> = ({
   onAddOptionHotkeyTriggered,
   addOptionHotkey,
   placeholder,
+  helperText,
   ...props 
 }) => {
   const selectId = id || props.name || 'select';
@@ -92,6 +93,11 @@ export const Select: React.FC<SelectExtendedProps> = ({
       {error && (
         <span className="text-xs text-red-500 font-medium">
           {error}
+        </span>
+      )}
+      {helperText && !error && (
+        <span className="text-[10px] text-slate-500 font-medium">
+          {helperText}
         </span>
       )}
     </div>

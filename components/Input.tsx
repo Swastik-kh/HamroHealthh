@@ -6,6 +6,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
   label, 
   error, 
   icon, 
+  helperText,
   className = '', 
   id,
   ...props 
@@ -45,6 +46,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
       {error && (
         <span className="text-xs text-red-500 font-medium animate-pulse">
           {error}
+        </span>
+      )}
+      {helperText && !error && (
+        <span className="text-[10px] text-slate-500 font-medium">
+          {helperText}
         </span>
       )}
     </div>

@@ -98,6 +98,7 @@ export interface OrganizationSettings {
   isSubscribed?: boolean;
   subscriptionExpiryDate?: string;
   medicineMappings?: Record<string, string[]>;
+  customStandardMedicineNames?: string[];
 }
 
 export interface SubscriptionRequest {
@@ -538,6 +539,7 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   label: string;
   error?: string;
   icon?: React.ReactNode;
+  helperText?: string;
 }
 
 export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
@@ -546,4 +548,5 @@ export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElemen
   error?: string;
   icon?: React.ReactNode;
   placeholder?: string;
+  helperText?: string;
 }

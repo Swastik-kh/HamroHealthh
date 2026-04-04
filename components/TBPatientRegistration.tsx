@@ -195,6 +195,8 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
     fiscalYear: currentFiscalYear, 
     status: 'Active',
     statusDateBs: todayBs,
+    intensivePhaseExtensionDays: 0,
+    continuationPhaseExtensionDays: 0,
   });
 
   // Effect to update patientId and reset leprosyType when activeTab or fiscal year changes
@@ -276,7 +278,7 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
   };
 
   const getDosageInfo = (p: TBPatient) => {
-    if (p.serviceType !== 'TB' || p.regimen !== 'Adult' || p.treatmentType !== '2HRZE+4HR' || !p.weight) return null;
+    if (p.serviceType !== 'TB' || p.regimen !== 'Adult' || (p.treatmentType !== '2HRZE+4HR' && p.treatmentType !== '6HRZE' && p.treatmentType !== '6HRZE+Lfx') || !p.weight) return null;
     
     const weight = parseFloat(p.weight);
     if (isNaN(weight)) return null;
@@ -287,10 +289,22 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
     else if (weight <= 70) tablets = 4;
     else tablets = 5;
 
+    if (p.treatmentType?.includes('6HRZE')) {
+      const totalDays = 180 + (p.intensivePhaseExtensionDays || 0);
+      return {
+        tablets,
+        phase1: `${Math.round(totalDays/30)} महिना HRZE`,
+        phase2: "N/A"
+      };
+    }
+
+    const ipDays = 60 + (p.intensivePhaseExtensionDays || 0);
+    const cpDays = 120 + (p.continuationPhaseExtensionDays || 0);
+
     return {
       tablets,
-      phase1: "२ महिना HRZE",
-      phase2: "४ महिना HR"
+      phase1: `${Math.round(ipDays/30)} महिना HRZE`,
+      phase2: `${Math.round(cpDays/30)} महिना HR`
     };
   };
 
@@ -455,7 +469,11 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
   const handleEditPatient = (patient: TBPatient) => {
     setEditingPatientId(patient.id);
     // Fix: patient object already contains fiscalYear, so spreading it is correct.
-    setFormData({ ...patient });
+    setFormData({ 
+      ...patient,
+      intensivePhaseExtensionDays: patient.intensivePhaseExtensionDays || 0,
+      continuationPhaseExtensionDays: patient.continuationPhaseExtensionDays || 0
+    });
     setActiveTab(patient.serviceType); // Ensure tab matches edited patient
     setShowRegistrationForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -976,12 +994,42 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                       const val = e.target.value;
                       if (val !== 'Other') {
                         setFormData({...formData, treatmentType: val});
-                      } else if (formData.treatmentType === '2HRZE+4HR' || formData.treatmentType === '6HRZE' || formData.treatmentType === '6HRZE+Lfx' || formData.treatmentType === '2HRZE+7HRE' || !formData.treatmentType) {
+                      } else if (formData.treatmentType === '2HRZE+4HR' || formData.treatmentType === '2HRZE+10HR' || formData.treatmentType === '6HRZE' || formData.treatmentType === '6HRZE+Lfx' || formData.treatmentType === '2HRZE+7HRE' || !formData.treatmentType) {
                         setFormData({...formData, treatmentType: ''});
                       }
                     }} 
                     icon={<Pill size={18}/>}
                   />
+
+                  {formData.classification === 'EP' && (
+                    <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100 space-y-3">
+                      <h4 className="text-xs font-bold text-indigo-700 flex items-center gap-2">
+                        <Clock size={14} /> उपचार अवधि थप (Treatment Extension for EP)
+                      </h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <Input 
+                          label="सघन चरण थप दिन (Intensive Ext. Days)" 
+                          type="number" 
+                          value={formData.intensivePhaseExtensionDays} 
+                          onChange={e => setFormData({...formData, intensivePhaseExtensionDays: parseInt(e.target.value) || 0})} 
+                          placeholder="0"
+                        />
+                        <Input 
+                          label="निरन्तर चरण थप दिन (Continuation Ext. Days)" 
+                          type="number" 
+                          value={formData.continuationPhaseExtensionDays} 
+                          onChange={e => {
+                            let val = parseInt(e.target.value) || 0;
+                            // Standard is 120, max is 300 total, so max extension is 180
+                            if (val > 180) val = 180;
+                            setFormData({...formData, continuationPhaseExtensionDays: val});
+                          }} 
+                          placeholder="0"
+                          helperText="कुल निरन्तर चरण ३०० दिन भन्दा बढी हुन पाउने छैन।"
+                        />
+                      </div>
+                    </div>
+                  )}
                   
                   {(formData.treatmentType === '' || !treatmentTypeOptions.some(opt => opt.value === formData.treatmentType && opt.value !== 'Other')) && (
                     <Input 
@@ -1628,6 +1676,8 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                 onDeletePatient={onDeletePatient}
                 medicineMappings={generalSettings.medicineMappings || {}}
                 onUpdateMappings={(mappings) => onUpdateGeneralSettings({ ...generalSettings, medicineMappings: mappings })}
+                customStandardMedicineNames={generalSettings.customStandardMedicineNames || []}
+                onUpdateCustomStandardNames={(names) => onUpdateGeneralSettings({ ...generalSettings, customStandardMedicineNames: names })}
               />
             </div>
           </div>

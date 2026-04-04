@@ -10,7 +10,7 @@ import {
   DispensaryRecord, User as AppUser, OrganizationSettings, TBPatient 
 } from '../types';
 import { InventoryItem, Store } from '../types/inventoryTypes';
-import { STANDARD_MEDICINE_NAMES, fuzzyMatch, calculatePatientRequirements } from '../lib/medicineUtils';
+import { STANDARD_MEDICINE_NAMES, fuzzyMatch, calculatePatientRequirements, getCombinedStandardNames } from '../lib/medicineUtils';
 // @ts-ignore
 import NepaliDate from 'nepali-date-converter';
 
@@ -197,7 +197,12 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
     const startAdDate = new NepaliDate(startYear, startMonth, startDay).toJsDate();
     const todayAd = new Date();
     todayAd.setHours(0, 0, 0, 0);
-    const isStandardRegimen = tbPatientRecord.treatmentType === '2HRZE+4HR';
+    const isStandardRegimen = tbPatientRecord.treatmentType === '2HRZE+4HR' || tbPatientRecord.treatmentType?.includes('6HRZE');
+    const is6HRZE = tbPatientRecord.treatmentType?.includes('6HRZE');
+    
+    const intensiveDays = (is6HRZE ? 180 : 60) + (tbPatientRecord.intensivePhaseExtensionDays || 0);
+    const continuationDays = is6HRZE ? 0 : (120 + (tbPatientRecord.continuationPhaseExtensionDays || 0));
+    const totalDays = intensiveDays + continuationDays;
 
     const months = [];
     for (let i = 0; i < 12; i++) {
@@ -248,12 +253,14 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
               <>
                 <div className="flex items-center gap-1.5">
                   <div className="w-3 h-3 bg-blue-50 border border-blue-200 rounded-sm"></div>
-                  <span>सघन चरण (Intensive: 60 Days)</span>
+                  <span>सघन चरण (Intensive: {intensiveDays} Days)</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 bg-orange-50 border border-orange-200 rounded-sm"></div>
-                  <span>निरन्तर चरण (Continuation: 120 Days)</span>
-                </div>
+                {!is6HRZE && (
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 bg-orange-50 border border-orange-200 rounded-sm"></div>
+                    <span>निरन्तर चरण (Continuation: {continuationDays} Days)</span>
+                  </div>
+                )}
               </>
             )}
             <div className="flex items-center gap-1.5">
@@ -294,8 +301,8 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
                     const diffTime = currentAdDate.getTime() - startAdDate.getTime();
                     const daysFromStart = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
                     
-                    const isIntensive = isStandardRegimen && daysFromStart >= 1 && daysFromStart <= 60;
-                    const isContinuation = isStandardRegimen && daysFromStart >= 61 && daysFromStart <= 180;
+                    const isIntensive = isStandardRegimen && daysFromStart >= 1 && daysFromStart <= intensiveDays;
+                    const isContinuation = !is6HRZE && isStandardRegimen && daysFromStart > intensiveDays && daysFromStart <= totalDays;
 
                     let cellClass = "border border-slate-300 p-0 text-center transition-colors ";
                     if (!isValid || isBeforeStart || isFuture) {
@@ -370,7 +377,7 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
               className="px-3 py-2 border rounded-lg text-xs"
             >
               <option value="">औषधि छान्नुहोस्</option>
-              {STANDARD_MEDICINE_NAMES.map(name => (
+              {getCombinedStandardNames(generalSettings.customStandardMedicineNames || []).map(name => (
                 <option key={name} value={name}>{name}</option>
               ))}
             </select>

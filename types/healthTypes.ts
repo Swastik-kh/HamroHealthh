@@ -102,6 +102,8 @@ export interface TBPatient {
   status?: 'Active' | 'Transfer Out' | 'Completed' | 'Died' | 'Loss to Follow-up';
   statusDateBs?: string | null; // Date when the status was changed
   interFacilityRequests?: InterFacilityRequest[];
+  intensivePhaseExtensionDays?: number;
+  continuationPhaseExtensionDays?: number;
 }
 
 export interface GarbhawatiPatient {

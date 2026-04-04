@@ -19,6 +19,10 @@ export const STANDARD_MEDICINE_NAMES = [
   'Rifampicin 600mg', 'Rifampicin 450mg'
 ];
 
+export const getCombinedStandardNames = (customNames: string[] = []) => {
+  return Array.from(new Set([...STANDARD_MEDICINE_NAMES, ...customNames]));
+};
+
 const MEDICINE_MAPPINGS: Record<string, string[]> = {
   'HRZE (Adult)': ['HRZE', 'HRZE Adult', 'Isoniazid+Rifampicin+Pyrazinamide+Ethambutol', 'TB Intensive', '4FDC', 'Fixed Dose Combination Adult', 'RHZE'],
   'HR (Adult)': ['HR', 'HR Adult', 'Isoniazid+Rifampicin', 'TB Continuation', '2FDC', 'RH'],
@@ -125,15 +129,23 @@ export const calculatePatientRequirements = (
       intensivePhaseDays = 60;
       continuationPhaseDays = 210;
       cpMedicineType = 'HRE';
-    } else if (treatmentType.includes('10HRE')) {
-      intensivePhaseDays = 60;
-      continuationPhaseDays = 300;
-      cpMedicineType = 'HRE';
     } else {
       // Default 2HRZE+4HR
       intensivePhaseDays = 60;
       continuationPhaseDays = 120;
       cpMedicineType = 'HR';
+    }
+
+    // Add extensions if present
+    if (patient.intensivePhaseExtensionDays) {
+      intensivePhaseDays += patient.intensivePhaseExtensionDays;
+    }
+    if (patient.continuationPhaseExtensionDays) {
+      continuationPhaseDays += patient.continuationPhaseExtensionDays;
+      // Cap continuation phase at 300 days total (as per user request)
+      if (continuationPhaseDays > 300) {
+        continuationPhaseDays = 300;
+      }
     }
     
     // Intensive Phase Medicine (HRZE)
