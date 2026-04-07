@@ -197,6 +197,8 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
     const startAdDate = new NepaliDate(startYear, startMonth, startDay).toJsDate();
     const todayAd = new Date();
     todayAd.setHours(0, 0, 0, 0);
+    const statusAdDate = tbPatientRecord.statusDateBs ? new NepaliDate(parseInt(tbPatientRecord.statusDateBs.split('-')[0]), parseInt(tbPatientRecord.statusDateBs.split('-')[1]) - 1, parseInt(tbPatientRecord.statusDateBs.split('-')[2])).toJsDate() : null;
+    if (statusAdDate) statusAdDate.setHours(0, 0, 0, 0);
     const isStandardRegimen = tbPatientRecord.treatmentType === '2HRZE+4HR' || tbPatientRecord.treatmentType?.includes('6HRZE');
     const is6HRZE = tbPatientRecord.treatmentType?.includes('6HRZE');
     
@@ -241,7 +243,14 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
             </div>
             <div>
               <h3 className="font-bold text-slate-800 font-nepali text-lg">क्षयरोग उपचार कार्ड (TB Treatment Card)</h3>
-              <p className="text-xs text-slate-500">दैनिक औषधि सेवन रेकर्ड (Daily Medicine Intake Record) | उपचार सुरु: {tbPatientRecord.treatmentStartDate}</p>
+              <p className="text-xs text-slate-500">
+                दैनिक औषधि सेवन रेकर्ड (Daily Medicine Intake Record) | उपचार सुरु: {tbPatientRecord.treatmentStartDate}
+                {tbPatientRecord.status !== 'Active' && (
+                  <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-700 rounded text-[10px] font-bold">
+                    {tbPatientRecord.status} ({tbPatientRecord.statusDateBs})
+                  </span>
+                )}
+              </p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-[9px]">
@@ -298,6 +307,7 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
                     
                     const isBeforeStart = currentAdDate < startAdDate;
                     const isFuture = currentAdDate > todayAd;
+                    const isAfterStatusChange = tbPatientRecord.status !== 'Active' && statusAdDate && currentAdDate >= statusAdDate;
                     const diffTime = currentAdDate.getTime() - startAdDate.getTime();
                     const daysFromStart = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
                     
@@ -305,7 +315,7 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
                     const isContinuation = !is6HRZE && isStandardRegimen && daysFromStart > intensiveDays && daysFromStart <= totalDays;
 
                     let cellClass = "border border-slate-300 p-0 text-center transition-colors ";
-                    if (!isValid || isBeforeStart || isFuture) {
+                    if (!isValid || isBeforeStart || isFuture || isAfterStatusChange) {
                       cellClass += "bg-slate-300 cursor-not-allowed ";
                     } else {
                       cellClass += "cursor-pointer hover:bg-white/50 ";
@@ -330,7 +340,7 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
                       <td 
                         key={dIdx} 
                         className={cellClass}
-                        onClick={() => isValid && !isBeforeStart && !isFuture && handleToggleDailyDose(dateStr)}
+                        onClick={() => isValid && !isBeforeStart && !isFuture && !isAfterStatusChange && handleToggleDailyDose(dateStr)}
                       >
                         <div className="w-full h-6 flex items-center justify-center">
                           {isValid && !isBeforeStart && !isFuture ? (isTaken ? '✓' : '') : ''}
