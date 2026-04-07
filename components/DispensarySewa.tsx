@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
+import { TBTreatmentCard } from './TBTreatmentCard';
 import { 
   Search, Pill, User, Calendar, Clock, CheckCircle2, 
   AlertCircle, Printer, Save, Trash2, Warehouse,
@@ -183,8 +184,8 @@ export const DispensarySewa: React.FC<DispensarySewaProps> = ({
 
   const renderTBTreatmentCard = () => {
     if (!tbPatientRecord) return null;
-
-    const startDateStr = tbPatientRecord.treatmentStartDate || tbPatientRecord.registrationDate;
+    return <TBTreatmentCard tbPatientRecord={tbPatientRecord} />;
+  };
     if (!startDateStr) return null;
 
     const parts = startDateStr.split('-');

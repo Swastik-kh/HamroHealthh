@@ -85,6 +85,8 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
   const [activeMenuPatientId, setActiveMenuPatientId] = useState<string | null>(null);
   const [selectedInterFacilityRequest, setSelectedInterFacilityRequest] = useState<{patient: TBPatient, request: InterFacilityRequest} | null>(null);
   const [showMedicineStatusModal, setShowMedicineStatusModal] = useState(false);
+  const [showTreatmentCardModal, setShowTreatmentCardModal] = useState(false);
+  const [selectedPatientForTreatmentCard, setSelectedPatientForTreatmentCard] = useState<TBPatient | null>(null);
 
   // Filter Palikas (Users with role ADMIN or SUPER_ADMIN)
   const palikaOptions = useMemo(() => {
@@ -775,6 +777,55 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
     alert('रिपोर्ट सफलतापूर्वक प्रविष्ट गरियो।');
   };
 
+  const handleToggleDailyDose = (date: string) => {
+    if (!selectedPatientForTreatmentCard) return;
+    
+    const currentDoses = selectedPatientForTreatmentCard.dailyDoses || [];
+    let newDoses: string[];
+    
+    if (currentDoses.includes(date)) {
+      newDoses = currentDoses.filter(d => d !== date);
+    } else {
+      newDoses = [...currentDoses, date].sort();
+      
+      // Check for interruption if this is a new dose being added
+      const sortedDoses = [...currentDoses].sort();
+      if (sortedDoses.length > 0) {
+        const lastDoseStr = sortedDoses[sortedDoses.length - 1];
+        try {
+          const lastDoseParts = lastDoseStr.split('-');
+          const currentDoseParts = date.split('-');
+          
+          const lastDoseNep = new NepaliDate(parseInt(lastDoseParts[0]), parseInt(lastDoseParts[1]) - 1, parseInt(lastDoseParts[2]));
+          const currentDoseNep = new NepaliDate(parseInt(currentDoseParts[0]), parseInt(currentDoseParts[1]) - 1, parseInt(currentDoseParts[2]));
+          
+          const diffTime = currentDoseNep.toJsDate().getTime() - lastDoseNep.toJsDate().getTime();
+          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+          
+          if (diffDays > 1) {
+            // Interruption detected
+            if (diffDays < 30) {
+              alert(`⚠️ उपचार अवरोध (${diffDays} दिन): बिरामीलाई २४-४८ घण्टा भित्र खोज्नुहोस्। छुटेका डोजहरू थप गरी उपचार जारी राख्नुहोस्। औषधि प्रतिरोध विकास हुन नदिन छुटेका डोजहरू व्यवस्थापन गर्नुहोस्।`);
+            } else if (diffDays >= 30 && diffDays < 60) {
+              alert(`⚠️ उपचार अवरोध १ देखि २ महिना (${diffDays} दिन): बिरामी खोज्नुहोस्, कारण पत्ता लगाउनुहोस् र २ वटा खकार नमुना परीक्षण (Microscopy/Xpert) को लागि पठाउनुहोस्। यदि खकार नेगेटिभ भए उपचार जारी राख्नुहोस् र छुटेका डोजहरू पूर्ति गर्न उपचार अवधि थप गर्नुहोस्। यदि पोजिटिभ भए उपचार पुनः सुरु गर्नुहोस्।`);
+            } else if (diffDays >= 60) {
+              alert(`⚠️ उपचार अवरोध २ महिना वा सोभन्दा बढी (${diffDays} दिन): बिरामीलाई 'Lost to Follow-up' मानिन्छ। बिरामी खोज्नुहोस्, अवरोधको कारण पत्ता लगाउनुहोस्, खकार परीक्षण गर्नुहोस् र राष्ट्रिय निर्देशिका अनुसार उपचार पुनः सुरु गर्नुहोस्।`);
+            }
+          }
+        } catch (e) {
+          console.error("Error calculating interruption gap", e);
+        }
+      }
+    }
+    
+    const updatedPatient = {
+      ...selectedPatientForTreatmentCard,
+      dailyDoses: newDoses
+    };
+    onUpdatePatient(updatedPatient);
+    setSelectedPatientForTreatmentCard(updatedPatient);
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
       {/* Header & Tabs */}
@@ -1170,13 +1221,22 @@ export const TBPatientRegistration: React.FC<TBPatientRegistrationProps> = ({
                                                   <Pencil size={14}/> सम्पादन गर्नुहोस्
                                               </button>
                                               {activeTab === 'TB' && (
-                                                <button onClick={() => {
-                                                    setSelectedPatientForInterFacility(p);
-                                                    setShowInterFacilityModal(true);
-                                                    setActiveMenuPatientId(null);
-                                                }} className="w-full text-left px-4 py-2 text-xs font-bold text-indigo-600 hover:bg-indigo-50 flex items-center gap-2">
-                                                    <Microscope size={14}/> अन्तर संस्था अनुरोध
-                                                </button>
+                                                <>
+                                                  <button onClick={() => {
+                                                      setSelectedPatientForTreatmentCard(p);
+                                                      setShowTreatmentCardModal(true);
+                                                      setActiveMenuPatientId(null);
+                                                  }} className="w-full text-left px-4 py-2 text-xs font-bold text-blue-600 hover:bg-blue-50 flex items-center gap-2">
+                                                      <ClipboardList size={14}/> TB उपचार कार्ड
+                                                  </button>
+                                                  <button onClick={() => {
+                                                      setSelectedPatientForInterFacility(p);
+                                                      setShowInterFacilityModal(true);
+                                                      setActiveMenuPatientId(null);
+                                                  }} className="w-full text-left px-4 py-2 text-xs font-bold text-indigo-600 hover:bg-indigo-50 flex items-center gap-2">
+                                                      <Microscope size={14}/> अन्तर संस्था अनुरोध
+                                                  </button>
+                                                </>
                                               )}
                                               <div className="border-t my-1"></div>
                                               <button onClick={() => {

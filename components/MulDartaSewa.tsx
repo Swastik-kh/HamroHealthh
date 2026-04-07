@@ -685,6 +685,8 @@ export const MulDartaSewa: React.FC<MulDartaSewaProps> = ({ records = [], onSave
                     <option value="Emergency">Emergency</option>
                     <option value="Vaccination">Vaccination (खोप)</option>
                     <option value="Safe Motherhood">Safe Motherhood (सुरक्षित मातृत्व)</option>
+                    <option value="TB">क्षयरोग सेवा (TB)</option>
+                    <option value="Leprosy">कुष्ठरोग सेवा (Leprosy)</option>
                     <option value="Lab">Lab (प्रयोगशाला)</option>
                     <option value="Other">Other (अन्य)</option>
                   </select>

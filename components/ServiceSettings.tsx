@@ -20,6 +20,8 @@ const SERVICE_CATEGORIES = [
   { id: 'Emergency', value: 'Emergency', label: 'Emergency Service' },
   { id: 'Pharmacy', value: 'Pharmacy', label: 'Pharmacy / Dispensary' },
   { id: 'Physiotherapy', value: 'Physiotherapy', label: 'Physiotherapy' },
+  { id: 'TB', value: 'TB', label: 'TB Service' },
+  { id: 'Leprosy', value: 'Leprosy', label: 'Leprosy Service' },
   { id: 'Other', value: 'Other', label: 'Other Services' },
 ];
 
@@ -89,6 +91,8 @@ export const ServiceSettings: React.FC<ServiceSettingsProps> = ({
       case 'Pharmacy': return <Pill size={16} className="text-green-600" />;
       case 'Physiotherapy': return <Accessibility size={16} className="text-orange-600" />;
       case 'Emergency': return <Siren size={16} className="text-red-500" />;
+      case 'TB': return <Activity size={16} className="text-amber-600" />;
+      case 'Leprosy': return <Activity size={16} className="text-emerald-600" />;
       default: return <Settings size={16} className="text-slate-500" />;
     }
   };
